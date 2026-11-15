@@ -35,5 +35,7 @@
 | BE の階段は `weirdo_direction`（0〜3）、`upside_down_bit`、`minecraft:corner` を持つ | `bridge.servers.test.ts` |
 | BE の比較器は `minecraft:cardinal_direction` と `direction` の両方を持ち、`cardinal_direction=south` のとき南側（+Z）から入力を受ける | `poc/launcher` |
 | `execute in` でネザーへ移ると x・z が 1/8 になる（y はそのまま）。BE と Java で同じ | `poc/launcher/dimension.servers.test.ts` |
-| BE では整数座標の x・z が中心に寄る（`execute positioned 7 8 9` → 7.5, 8, 9.5。JE では 7.0, 8.0, 9.0） | `poc/launcher`、詳細は #10 |
+| 整数座標の x・z は中心（+0.5）に寄り、`.0` を付けると寄らない。`summon`、`execute positioned`、`~` での加算、`tp` のどれでも BE と Java で一致する（以前「JE では 7.0」と書いていたのは実測前の誤り） | `poc/coordinates/` |
+| セレクタの `x=,y=,z=` は中心に寄らない（BE・Java とも） | 同上 |
+| ブロック座標に小数を直接書くと、Java は構文エラー、BE は切り捨てて実行する。`~` 経由ならどちらも切り捨て | 同上 |
 | 自前で生成した `.mcstructure` のコマンドブロック（インパルス・チェーン、常時実行、条件付き）は `structure load` で動く。ブロックの version とコマンドブロックの Version は仮の値（#9） | `poc/launcher` |

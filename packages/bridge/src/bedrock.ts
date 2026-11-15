@@ -111,6 +111,13 @@ export class BedrockServer {
 
     // ビヘイビアーパックをワールドに入れる
     const packs = [paths.bridgePack, ...(opts.behaviorPacks ?? [])];
+    for (const p of packs) {
+      const m = JSON.parse(readFileSync(join(p, "manifest.json"), "utf8")) as { modules?: { type: string; entry?: string }[] };
+      const entry = m.modules?.find((mod) => mod.type === "script")?.entry;
+      if (entry && !existsSync(join(p, entry))) {
+        throw new Error(`${join(p, entry)} がありません。先に npm run build:pack を実行してください`);
+      }
+    }
     const packsDir = join(worldDir, "behavior_packs");
     mkdirSync(packsDir, { recursive: true });
     const refs = packs.map((p) => {

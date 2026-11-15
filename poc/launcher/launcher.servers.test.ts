@@ -206,7 +206,7 @@ describe("launcher poc", () => {
     expect(find("ctx.custom", "pos")?.origin).toMatchObject({ sourceType: "Server", sourceBlock: null });
     expect(find("scriptevent", "ctxse")).toMatchObject({ sourceType: "Server", sourceBlock: null });
     expect(find("ctx.arg", "direct")).toMatchObject({ pos: { x: 22.5, y: -49.5, z: 0.5 }, origin: { sourceType: "Block" } });
-    // BEでは整数座標の x・z が中心に寄る（JEでは 7.0 8.0 9.0）
+    // 整数座標の x・z は中心に寄る（Java も同じ。#10、poc/coordinates）
     expect(find("ctx.arg", "positioned")).toMatchObject({ pos: { x: 7.5, y: 8, z: 9.5 }, forward: { x: 7.5, y: 8, z: 10.5 } });
     expect(find("ctx.arg", "rotated")?.forward).toEqual({ x: 6.5, y: 8, z: 9.5 });
     expect(find("ctx.arg", "as_at")).toMatchObject({
