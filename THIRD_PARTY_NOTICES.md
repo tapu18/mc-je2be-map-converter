@@ -4,8 +4,9 @@
 
 ID and block-state mappings are sourced from [GeyserMC/mappings](https://github.com/GeyserMC/mappings).
 The initial source revision is `e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`.
-This notice accompanies the approved source selection; mapping extraction is not yet implemented.
-When distributing derived mapping tables, include this copyright notice and license in both
+`npm run setup:mappings` extracts the selected mappings and writes `NOTICE.txt` and
+`LICENSE.geyser.txt` beside `mappings.json`. When distributing derived mapping tables,
+include this copyright notice and license in both
 the converter distribution and generated packs containing those tables.
 
 GeyserMC licenses only the original work its contributors have the right to license.

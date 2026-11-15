@@ -77,6 +77,13 @@
 | 自前で生成した `.mcstructure` のコマンドブロック（インパルス・チェーン・リピート、常時実行、条件付き）は `structure load` で動く | `poc/launcher`、`poc/mcstructure-version/version.servers.test.ts` |
 | BDS 1.26.63.1 が新規作成・保存するブロックの `version` は `18168865`（`0x01153c21`）、コマンドブロックの `Version` は3種類とも `55`。製品バージョンから計算した値とは異なる。この値で生成した構造物では、新しい `execute positioned`・`if block`・`if/unless score` が実行され、条件付きチェーンにも成否が伝搬する | `poc/mcstructure-version/` の実サーバーテスト、`results.json`、BDS保存データ `native.mcstructure`（#9） |
 
+## ID 対応表（Geyser 固定版）
+
+| 事実 | 根拠 |
+| --- | --- |
+| Geyser mappings `e9271c0`（BE 1.26.60 向け）の対応を使い、BDS 1.26.63.1 上で石・レンガ、丸太3軸、乾いたスラブ3種、乾いた直線階段4方向×上下の計16状態を `setblock` で配置でき、表が明示する型・状態を読み戻せた。JE との挙動等価性、水没レイヤー、全状態の互換性はこの測定の対象外 | `packages/bridge/src/mappings.servers.test.ts` の `places and reads back ...`。2026-11-15、3回連続成功（#56） |
+| 同表の `minecraft:stone` の状態指定は空だが、BDS 1.26.63.1 で `setblock ... minecraft:stone []` として配置して Script API で読むと `stone_type: "stone"` が補われる。表の明示状態と、サーバーで補われる既定状態を区別する必要がある | 同テストの stone の読み戻し検査、3回連続成功 |
+
 ## 性能
 
 | 事実 | 根拠 |
