@@ -51,7 +51,7 @@
 ### 3. PRを出してマージする
 
 1. `gh pr create` で PR を出す。本文に `Closes #<番号>` を書く（テンプレートあり）。
-2. CI（`check` と `servers`）が通るのを待つ。失敗したら直す。
+2. CI（`check` と `servers`）が通るのを待つ。待つときは `tools/wait-pr-ci.sh <PR番号>` を使う（push 直後は CI が未登録で `gh pr checks --watch` がすぐ終わり、待ったつもりで素通りすることがあるため。#28 で発生）。失敗したら直す。
 3. マージの条件：
    - CI が通っている
    - Issue の完了条件を満たしている
@@ -63,7 +63,7 @@
      1. 下の PR を `--delete-branch` を付けずにマージする（**base のブランチを先に消すと、上に積んだ PR が自動でクローズされる**）
      2. 上の PR の base を main に切り替える（`gh pr edit <番号> --base main`）。base が main 以外のままマージすると `Closes #番号` で Issue が閉じない
      3. 下の PR のブランチを削除する（`git push origin --delete <ブランチ>`）
-     4. 上の PR の CI が通っていることを確かめてマージする
+     4. 上の PR の CI が通っていることを `tools/wait-pr-ci.sh` で確かめてマージする（base を変えたり main を取り込んだりした後は、CI をもう一度待つ）
 5. マージ後、worktree を片付ける（`git worktree remove`）。
 
 ### 4. 中断する
