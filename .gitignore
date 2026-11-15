@@ -1,2 +1,7 @@
 sample-map/
 scripts/__pycache__/
+node_modules/
+dist/
+*.tsbuildinfo
+servers/
+packages/bridge-pack/pack/scripts/
