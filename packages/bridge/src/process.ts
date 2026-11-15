@@ -28,6 +28,12 @@ export class ServerProcess {
     return () => this.listeners.delete(fn);
   }
 
+  /** ローカルの性能計測用。 */
+  get pid(): number {
+    if (this.proc.pid === undefined) throw new Error("server process has no PID");
+    return this.proc.pid;
+  }
+
   /** 条件に合う行が出るまで待つ。既に出ている行も対象にする。 */
   waitFor(pred: (line: string) => boolean, timeoutMs: number, what: string): Promise<string> {
     const found = this.lines.find(pred);

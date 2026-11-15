@@ -204,6 +204,11 @@ export class BedrockServer {
     return this.proc.lines;
   }
 
+  /** ローカルの性能計測用のBDSプロセスID。再起動後は新しいインスタンスから取得する。 */
+  get pid(): number {
+    return this.proc.pid;
+  }
+
   async stop(): Promise<void> {
     await this.shutdown();
     this.lock.release();

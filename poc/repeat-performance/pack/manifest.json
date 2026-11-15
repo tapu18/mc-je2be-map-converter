@@ -1,0 +1,20 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "je2be repeat performance PoC",
+    "description": "Native commands and queued script launchers",
+    "uuid": "650bb3e8-c427-456d-90a3-132c08ca3b07",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 60]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "697c0a6c-1593-4747-bdc6-3a78f1552ba3",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.12.0-beta" }]
+}
