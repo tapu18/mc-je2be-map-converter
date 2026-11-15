@@ -1,0 +1,916 @@
+{
+  "environment": {
+    "bedrock": "1.26.63.1",
+    "node": "v24.13.1",
+    "os": "linux 5.15.167.4-microsoft-standard-WSL2",
+    "arch": "x64",
+    "cpu": "11th Gen Intel(R) Core(TM) i5-11400 @ 2.60GHz",
+    "logicalCpus": 12,
+    "memoryBytes": 8243036160,
+    "clockTicksPerSecond": 100
+  },
+  "method": {
+    "samplesPerRun": 100,
+    "warmupTicks": 20,
+    "repetitions": 2,
+    "cpuIncludesAllBdsThreads": true,
+    "cpuIsNotMainThreadMspt": true,
+    "scriptTimerResolutionMs": 1
+  },
+  "runs": [
+    {
+      "id": "0_baseline_0_dense",
+      "mode": "baseline",
+      "count": 0,
+      "layout": "dense",
+      "repetition": 0,
+      "startTick": 50,
+      "endTick": 154,
+      "windowTicks": 104,
+      "wallMs": 5198.94625,
+      "processCpuMs": 160,
+      "processCpuMsPerTick": 1.5384615384615385,
+      "processCpuClockTicks": 16,
+      "intervalMs": {
+        "mean": 50.01,
+        "p50": 50,
+        "p95": 51,
+        "max": 55
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "expectedWritesPerTick": 0,
+      "observedWritesPerTick": 0,
+      "perBlockWrites": null,
+      "queuedJobsPerTick": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        1.21,
+        1.04,
+        1.13
+      ]
+    },
+    {
+      "id": "0_native_100_dense",
+      "mode": "native",
+      "count": 100,
+      "layout": "dense",
+      "repetition": 0,
+      "startTick": 184,
+      "endTick": 286,
+      "windowTicks": 102,
+      "wallMs": 5100.196999,
+      "processCpuMs": 230,
+      "processCpuMsPerTick": 2.2549019607843137,
+      "processCpuClockTicks": 23,
+      "intervalMs": {
+        "mean": 49.98,
+        "p50": 50,
+        "p95": 51,
+        "max": 52
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "expectedWritesPerTick": 100,
+      "observedWritesPerTick": 100,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        1.12,
+        1.02,
+        1.12
+      ]
+    },
+    {
+      "id": "0_custom_100_dense",
+      "mode": "custom",
+      "count": 100,
+      "layout": "dense",
+      "repetition": 0,
+      "startTick": 316,
+      "endTick": 420,
+      "windowTicks": 104,
+      "wallMs": 5200.061048,
+      "processCpuMs": 580,
+      "processCpuMsPerTick": 5.576923076923077,
+      "processCpuClockTicks": 58,
+      "intervalMs": {
+        "mean": 50,
+        "p50": 50,
+        "p95": 52,
+        "max": 53
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 1.39,
+        "p50": 1,
+        "p95": 2,
+        "max": 3
+      },
+      "expectedWritesPerTick": 100,
+      "observedWritesPerTick": 100,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 100,
+        "p50": 100,
+        "p95": 100,
+        "max": 100
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        1.03,
+        1.01,
+        1.12
+      ]
+    },
+    {
+      "id": "0_scriptevent_100_dense",
+      "mode": "scriptevent",
+      "count": 100,
+      "layout": "dense",
+      "repetition": 0,
+      "startTick": 450,
+      "endTick": 552,
+      "windowTicks": 102,
+      "wallMs": 5100.109612,
+      "processCpuMs": 510,
+      "processCpuMsPerTick": 5,
+      "processCpuClockTicks": 51,
+      "intervalMs": {
+        "mean": 50,
+        "p50": 50,
+        "p95": 51,
+        "max": 52
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 1.86,
+        "p50": 2,
+        "p95": 2,
+        "max": 3
+      },
+      "expectedWritesPerTick": 100,
+      "observedWritesPerTick": 100,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 100,
+        "p50": 100,
+        "p95": 100,
+        "max": 100
+      },
+      "maxDelayTicks": 1,
+      "startLoad": [
+        0.87,
+        0.97,
+        1.1
+      ]
+    },
+    {
+      "id": "0_native_500_dense",
+      "mode": "native",
+      "count": 500,
+      "layout": "dense",
+      "repetition": 0,
+      "startTick": 582,
+      "endTick": 685,
+      "windowTicks": 103,
+      "wallMs": 5151.593649,
+      "processCpuMs": 260,
+      "processCpuMsPerTick": 2.5242718446601944,
+      "processCpuClockTicks": 26,
+      "intervalMs": {
+        "mean": 50.02,
+        "p50": 50,
+        "p95": 51,
+        "max": 52
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 200,
+      "perBlockWrites": {
+        "min": 33,
+        "max": 50
+      },
+      "queuedJobsPerTick": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.8,
+        0.96,
+        1.1
+      ]
+    },
+    {
+      "id": "0_custom_500_dense",
+      "mode": "custom",
+      "count": 500,
+      "layout": "dense",
+      "repetition": 0,
+      "startTick": 714,
+      "endTick": 817,
+      "windowTicks": 103,
+      "wallMs": 5152.177503,
+      "processCpuMs": 920,
+      "processCpuMsPerTick": 8.932038834951456,
+      "processCpuClockTicks": 92,
+      "intervalMs": {
+        "mean": 49.99,
+        "p50": 50,
+        "p95": 53,
+        "max": 55
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 2.42,
+        "p50": 2,
+        "p95": 3,
+        "max": 5
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 200,
+      "perBlockWrites": {
+        "min": 33,
+        "max": 50
+      },
+      "queuedJobsPerTick": {
+        "mean": 200,
+        "p50": 200,
+        "p95": 200,
+        "max": 200
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.73,
+        0.94,
+        1.09
+      ]
+    },
+    {
+      "id": "0_scriptevent_500_dense",
+      "mode": "scriptevent",
+      "count": 500,
+      "layout": "dense",
+      "repetition": 0,
+      "startTick": 847,
+      "endTick": 950,
+      "windowTicks": 103,
+      "wallMs": 5150.517801,
+      "processCpuMs": 860,
+      "processCpuMsPerTick": 8.349514563106796,
+      "processCpuClockTicks": 86,
+      "intervalMs": {
+        "mean": 49.99,
+        "p50": 50,
+        "p95": 51,
+        "max": 53
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 2.93,
+        "p50": 3,
+        "p95": 4,
+        "max": 4
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 200,
+      "perBlockWrites": {
+        "min": 33,
+        "max": 50
+      },
+      "queuedJobsPerTick": {
+        "mean": 200,
+        "p50": 200,
+        "p95": 200,
+        "max": 200
+      },
+      "maxDelayTicks": 1,
+      "startLoad": [
+        0.7,
+        0.93,
+        1.08
+      ]
+    },
+    {
+      "id": "0_native_500_spread",
+      "mode": "native",
+      "count": 500,
+      "layout": "spread",
+      "repetition": 0,
+      "startTick": 984,
+      "endTick": 1087,
+      "windowTicks": 103,
+      "wallMs": 5148.891652,
+      "processCpuMs": 440,
+      "processCpuMsPerTick": 4.271844660194175,
+      "processCpuClockTicks": 44,
+      "intervalMs": {
+        "mean": 50.01,
+        "p50": 50,
+        "p95": 52,
+        "max": 52
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 500,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.64,
+        0.91,
+        1.08
+      ]
+    },
+    {
+      "id": "0_custom_500_spread",
+      "mode": "custom",
+      "count": 500,
+      "layout": "spread",
+      "repetition": 0,
+      "startTick": 1117,
+      "endTick": 1220,
+      "windowTicks": 103,
+      "wallMs": 5150.622728,
+      "processCpuMs": 1900,
+      "processCpuMsPerTick": 18.446601941747574,
+      "processCpuClockTicks": 190,
+      "intervalMs": {
+        "mean": 50.01,
+        "p50": 50,
+        "p95": 53,
+        "max": 55
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 6.32,
+        "p50": 6,
+        "p95": 8,
+        "max": 11
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 500,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 500,
+        "p50": 500,
+        "p95": 500,
+        "max": 500
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.75,
+        0.93,
+        1.08
+      ]
+    },
+    {
+      "id": "0_scriptevent_500_spread",
+      "mode": "scriptevent",
+      "count": 500,
+      "layout": "spread",
+      "repetition": 0,
+      "startTick": 1256,
+      "endTick": 1360,
+      "windowTicks": 104,
+      "wallMs": 5199.583025,
+      "processCpuMs": 1680,
+      "processCpuMsPerTick": 16.153846153846153,
+      "processCpuClockTicks": 168,
+      "intervalMs": {
+        "mean": 50,
+        "p50": 50,
+        "p95": 51,
+        "max": 52
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 6.15,
+        "p50": 6,
+        "p95": 7,
+        "max": 10
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 500,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 500,
+        "p50": 500,
+        "p95": 500,
+        "max": 500
+      },
+      "maxDelayTicks": 1,
+      "startLoad": [
+        0.64,
+        0.9,
+        1.07
+      ]
+    },
+    {
+      "id": "1_scriptevent_500_spread",
+      "mode": "scriptevent",
+      "count": 500,
+      "layout": "spread",
+      "repetition": 1,
+      "startTick": 1390,
+      "endTick": 1493,
+      "windowTicks": 103,
+      "wallMs": 5150.037788,
+      "processCpuMs": 1670,
+      "processCpuMsPerTick": 16.21359223300971,
+      "processCpuClockTicks": 167,
+      "intervalMs": {
+        "mean": 49.97,
+        "p50": 50,
+        "p95": 52,
+        "max": 53
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 6.12,
+        "p50": 6,
+        "p95": 7,
+        "max": 10
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 500,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 500,
+        "p50": 500,
+        "p95": 500,
+        "max": 500
+      },
+      "maxDelayTicks": 1,
+      "startLoad": [
+        0.67,
+        0.9,
+        1.07
+      ]
+    },
+    {
+      "id": "1_custom_500_spread",
+      "mode": "custom",
+      "count": 500,
+      "layout": "spread",
+      "repetition": 1,
+      "startTick": 1531,
+      "endTick": 1635,
+      "windowTicks": 104,
+      "wallMs": 5200.999879,
+      "processCpuMs": 1840,
+      "processCpuMsPerTick": 17.692307692307693,
+      "processCpuClockTicks": 184,
+      "intervalMs": {
+        "mean": 50.03,
+        "p50": 50,
+        "p95": 52,
+        "max": 58
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 6.41,
+        "p50": 6,
+        "p95": 8,
+        "max": 9
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 500,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 500,
+        "p50": 500,
+        "p95": 500,
+        "max": 500
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.61,
+        0.89,
+        1.07
+      ]
+    },
+    {
+      "id": "1_native_500_spread",
+      "mode": "native",
+      "count": 500,
+      "layout": "spread",
+      "repetition": 1,
+      "startTick": 1667,
+      "endTick": 1769,
+      "windowTicks": 102,
+      "wallMs": 5102.523822,
+      "processCpuMs": 450,
+      "processCpuMsPerTick": 4.411764705882353,
+      "processCpuClockTicks": 45,
+      "intervalMs": {
+        "mean": 49.98,
+        "p50": 50,
+        "p95": 52,
+        "max": 55
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 500,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.67,
+        0.89,
+        1.07
+      ]
+    },
+    {
+      "id": "1_scriptevent_500_dense",
+      "mode": "scriptevent",
+      "count": 500,
+      "layout": "dense",
+      "repetition": 1,
+      "startTick": 1798,
+      "endTick": 1902,
+      "windowTicks": 104,
+      "wallMs": 5200.026461,
+      "processCpuMs": 860,
+      "processCpuMsPerTick": 8.26923076923077,
+      "processCpuClockTicks": 86,
+      "intervalMs": {
+        "mean": 50,
+        "p50": 50,
+        "p95": 51,
+        "max": 53
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 3.17,
+        "p50": 3,
+        "p95": 4,
+        "max": 5
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 200,
+      "perBlockWrites": {
+        "min": 33,
+        "max": 50
+      },
+      "queuedJobsPerTick": {
+        "mean": 200,
+        "p50": 200,
+        "p95": 200,
+        "max": 200
+      },
+      "maxDelayTicks": 1,
+      "startLoad": [
+        0.78,
+        0.91,
+        1.07
+      ]
+    },
+    {
+      "id": "1_custom_500_dense",
+      "mode": "custom",
+      "count": 500,
+      "layout": "dense",
+      "repetition": 1,
+      "startTick": 1932,
+      "endTick": 2034,
+      "windowTicks": 102,
+      "wallMs": 5098.546518,
+      "processCpuMs": 960,
+      "processCpuMsPerTick": 9.411764705882353,
+      "processCpuClockTicks": 96,
+      "intervalMs": {
+        "mean": 50.04,
+        "p50": 50,
+        "p95": 53,
+        "max": 56
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 2.79,
+        "p50": 3,
+        "p95": 3,
+        "max": 6
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 200,
+      "perBlockWrites": {
+        "min": 33,
+        "max": 50
+      },
+      "queuedJobsPerTick": {
+        "mean": 200,
+        "p50": 200,
+        "p95": 200,
+        "max": 200
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.72,
+        0.89,
+        1.06
+      ]
+    },
+    {
+      "id": "1_native_500_dense",
+      "mode": "native",
+      "count": 500,
+      "layout": "dense",
+      "repetition": 1,
+      "startTick": 2064,
+      "endTick": 2167,
+      "windowTicks": 103,
+      "wallMs": 5150.088313,
+      "processCpuMs": 310,
+      "processCpuMsPerTick": 3.0097087378640777,
+      "processCpuClockTicks": 31,
+      "intervalMs": {
+        "mean": 50.02,
+        "p50": 50,
+        "p95": 51,
+        "max": 52
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "expectedWritesPerTick": 500,
+      "observedWritesPerTick": 200,
+      "perBlockWrites": {
+        "min": 33,
+        "max": 50
+      },
+      "queuedJobsPerTick": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.61,
+        0.86,
+        1.05
+      ]
+    },
+    {
+      "id": "1_scriptevent_100_dense",
+      "mode": "scriptevent",
+      "count": 100,
+      "layout": "dense",
+      "repetition": 1,
+      "startTick": 2197,
+      "endTick": 2299,
+      "windowTicks": 102,
+      "wallMs": 5097.920689,
+      "processCpuMs": 580,
+      "processCpuMsPerTick": 5.686274509803922,
+      "processCpuClockTicks": 58,
+      "intervalMs": {
+        "mean": 49.99,
+        "p50": 50,
+        "p95": 51,
+        "max": 52
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 1.96,
+        "p50": 2,
+        "p95": 3,
+        "max": 3
+      },
+      "expectedWritesPerTick": 100,
+      "observedWritesPerTick": 100,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 100,
+        "p50": 100,
+        "p95": 100,
+        "max": 100
+      },
+      "maxDelayTicks": 1,
+      "startLoad": [
+        0.56,
+        0.85,
+        1.05
+      ]
+    },
+    {
+      "id": "1_custom_100_dense",
+      "mode": "custom",
+      "count": 100,
+      "layout": "dense",
+      "repetition": 1,
+      "startTick": 2329,
+      "endTick": 2432,
+      "windowTicks": 103,
+      "wallMs": 5147.584959,
+      "processCpuMs": 610,
+      "processCpuMsPerTick": 5.922330097087379,
+      "processCpuClockTicks": 61,
+      "intervalMs": {
+        "mean": 50.01,
+        "p50": 50,
+        "p95": 52,
+        "max": 54
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 1.64,
+        "p50": 2,
+        "p95": 2,
+        "max": 2
+      },
+      "expectedWritesPerTick": 100,
+      "observedWritesPerTick": 100,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 100,
+        "p50": 100,
+        "p95": 100,
+        "max": 100
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.51,
+        0.83,
+        1.04
+      ]
+    },
+    {
+      "id": "1_native_100_dense",
+      "mode": "native",
+      "count": 100,
+      "layout": "dense",
+      "repetition": 1,
+      "startTick": 2465,
+      "endTick": 2568,
+      "windowTicks": 103,
+      "wallMs": 5150.081216,
+      "processCpuMs": 240,
+      "processCpuMsPerTick": 2.3300970873786406,
+      "processCpuClockTicks": 24,
+      "intervalMs": {
+        "mean": 50,
+        "p50": 50,
+        "p95": 51,
+        "max": 52
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "expectedWritesPerTick": 100,
+      "observedWritesPerTick": 100,
+      "perBlockWrites": {
+        "min": 100,
+        "max": 100
+      },
+      "queuedJobsPerTick": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.43,
+        0.81,
+        1.03
+      ]
+    },
+    {
+      "id": "1_baseline_0_dense",
+      "mode": "baseline",
+      "count": 0,
+      "layout": "dense",
+      "repetition": 1,
+      "startTick": 2597,
+      "endTick": 2700,
+      "windowTicks": 103,
+      "wallMs": 5150.490488,
+      "processCpuMs": 170,
+      "processCpuMsPerTick": 1.6504854368932038,
+      "processCpuClockTicks": 17,
+      "intervalMs": {
+        "mean": 49.98,
+        "p50": 50,
+        "p95": 50,
+        "max": 51
+      },
+      "intervalsOver75Ms": 0,
+      "drainMs": {
+        "mean": 0.03,
+        "p50": 0,
+        "p95": 0,
+        "max": 1
+      },
+      "expectedWritesPerTick": 0,
+      "observedWritesPerTick": 0,
+      "perBlockWrites": null,
+      "queuedJobsPerTick": {
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "maxDelayTicks": 0,
+      "startLoad": [
+        0.4,
+        0.79,
+        1.02
+      ]
+    }
+  ]
+}
