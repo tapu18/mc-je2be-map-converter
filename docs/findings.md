@@ -22,7 +22,8 @@
 | `ScoreboardObjective.getScore` は、一度もスコアを持ったことのない名前で例外を投げる | `poc/launcher` |
 | 起動口の挙動（成否の伝搬、実行順、ハンドラ内の制限、実行コンテキストの復元）は `design.md` 7章のとおり | `poc/launcher/launcher.servers.test.ts` |
 | カスタムコマンドのハンドラ内でも動的プロパティは読み書きできる（ワールドの変更だけが禁止） | 同上 |
-| `execute in the_nether` を挟むと、カスタムコマンドのハンドラが呼ばれない（原因未調査、#8） | 同上 |
+| ネザーのIDは BE が `nether`、Java が `the_nether`。BE で `execute in the_nether` は構文エラーになり、カスタムコマンドもBEコマンドも動かない | `poc/launcher/dimension.servers.test.ts` |
+| `execute in nether` を挟むと発生元は `Server` になり、ハンドラからディメンションはわからない。別ディメンションのチャンクが読み込まれていなくてもハンドラは動く | 同上 |
 | tick内の実行順は BE が「コマンドブロック → `tick.json` → `runInterval` → `system.run` → `scriptevent`」、Java が「`tick` 関数 → コマンドブロック」（推定）。詳細は `design.md` 7章 | `poc/tick-order/` |
 | `system.run` の実行順は積んだ順ではない。スクリプトの処理中（`runInterval` 内）に積んだものが、コマンドブロックの処理中に積んだものより先に動く | 同上 |
 | Java のリピートコマンドブロックは、座標順ではなく置いた順に動く | 同上 |
@@ -33,5 +34,6 @@
 | --- | --- |
 | BE の階段は `weirdo_direction`（0〜3）、`upside_down_bit`、`minecraft:corner` を持つ | `bridge.servers.test.ts` |
 | BE の比較器は `minecraft:cardinal_direction` と `direction` の両方を持ち、`cardinal_direction=south` のとき南側（+Z）から入力を受ける | `poc/launcher` |
+| `execute in` でネザーへ移ると x・z が 1/8 になる（y はそのまま）。BE と Java で同じ | `poc/launcher/dimension.servers.test.ts` |
 | BE では整数座標の x・z が中心に寄る（`execute positioned 7 8 9` → 7.5, 8, 9.5。JE では 7.0, 8.0, 9.0） | `poc/launcher`、詳細は #10 |
 | 自前で生成した `.mcstructure` のコマンドブロック（インパルス・チェーン、常時実行、条件付き）は `structure load` で動く。ブロックの version とコマンドブロックの Version は仮の値（#9） | `poc/launcher` |

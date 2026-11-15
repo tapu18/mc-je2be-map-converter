@@ -1,0 +1,215 @@
+{
+  "unloaded": {
+    "a_ow": {
+      "command": "execute in overworld run je2be:ctx a_ow",
+      "succeeded": true,
+      "handlerCalled": true,
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    "a_javaid": {
+      "command": "execute in the_nether run je2be:ctx a_javaid",
+      "succeeded": false,
+      "handlerCalled": false
+    },
+    "a_javaid_native": {
+      "command": "execute in the_nether run scoreboard players set a_javaid_native_ran t 1",
+      "succeeded": false,
+      "handlerCalled": false,
+      "nativeRan": false
+    },
+    "a_ctx": {
+      "command": "execute in nether run je2be:ctx a_ctx",
+      "succeeded": true,
+      "handlerCalled": true,
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    "a_arg": {
+      "command": "execute in nether run je2be:ctxarg a_arg ~ ~ ~",
+      "succeeded": true,
+      "handlerCalled": true,
+      "pos": {
+        "z": 0.0625,
+        "y": -49.5,
+        "x": 1.0625
+      },
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    "a_pos": {
+      "command": "execute in nether positioned 3 70 3 run je2be:ctxarg a_pos ~ ~ ~",
+      "succeeded": true,
+      "handlerCalled": true,
+      "pos": {
+        "z": 3.5,
+        "y": 70,
+        "x": 3.5
+      },
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    "a_se": {
+      "command": "execute in nether run scriptevent je2be:ev a_se",
+      "succeeded": true,
+      "handlerCalled": true,
+      "sourceType": "Server"
+    },
+    "a_native": {
+      "command": "execute in nether run scoreboard players set a_native_ran t 1",
+      "succeeded": true,
+      "handlerCalled": false,
+      "nativeRan": true
+    },
+    "a_end": {
+      "command": "execute in the_end run je2be:ctx a_end",
+      "succeeded": true,
+      "handlerCalled": true,
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    }
+  },
+  "netherTickingArea": {
+    "id": 6,
+    "ok": true,
+    "result": {
+      "successCount": 1
+    }
+  },
+  "netherLoaded": {
+    "b_ow": {
+      "command": "execute in overworld run je2be:ctx b_ow",
+      "succeeded": true,
+      "handlerCalled": true,
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    "b_javaid": {
+      "command": "execute in the_nether run je2be:ctx b_javaid",
+      "succeeded": false,
+      "handlerCalled": false
+    },
+    "b_javaid_native": {
+      "command": "execute in the_nether run scoreboard players set b_javaid_native_ran t 1",
+      "succeeded": false,
+      "handlerCalled": false,
+      "nativeRan": false
+    },
+    "b_ctx": {
+      "command": "execute in nether run je2be:ctx b_ctx",
+      "succeeded": true,
+      "handlerCalled": true,
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    "b_arg": {
+      "command": "execute in nether run je2be:ctxarg b_arg ~ ~ ~",
+      "succeeded": true,
+      "handlerCalled": true,
+      "pos": {
+        "z": 1.3125,
+        "y": -49.5,
+        "x": 1.0625
+      },
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    "b_pos": {
+      "command": "execute in nether positioned 3 70 3 run je2be:ctxarg b_pos ~ ~ ~",
+      "succeeded": true,
+      "handlerCalled": true,
+      "pos": {
+        "z": 3.5,
+        "y": 70,
+        "x": 3.5
+      },
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    "b_se": {
+      "command": "execute in nether run scriptevent je2be:ev b_se",
+      "succeeded": true,
+      "handlerCalled": true,
+      "sourceType": "Server"
+    },
+    "b_native": {
+      "command": "execute in nether run scoreboard players set b_native_ran t 1",
+      "succeeded": true,
+      "handlerCalled": false,
+      "nativeRan": true
+    },
+    "b_end": {
+      "command": "execute in the_end run je2be:ctx b_end",
+      "succeeded": true,
+      "handlerCalled": true,
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    }
+  },
+  "fromScript": {
+    "unloadedEnd": {
+      "id": 11,
+      "ok": true,
+      "result": {
+        "successCount": 1
+      }
+    },
+    "javaId": {
+      "id": 12,
+      "ok": false,
+      "error": "CommandError: Error occurred with parsing command params: Syntax error: Unexpected \"the_nether\": at \"xecute in >>the_nether<< run je2be\"\n"
+    },
+    "loadedNether": {
+      "id": 13,
+      "ok": true,
+      "result": {
+        "successCount": 1
+      }
+    }
+  },
+  "fromScriptHandled": [
+    "c_end",
+    "c_nether"
+  ],
+  "contentLog": []
+}
