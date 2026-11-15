@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "je2be poc dynamic properties",
+    "description": "動的プロパティの容量上限と復元のPoC",
+    "uuid": "6b2061d3-16cf-4a48-9095-3b6e7745c4d4",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 60]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "9ce62d97-10f0-4382-92b0-8da226b182ef",
+      "version": [0, 1, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "2.12.0-beta" }
+  ]
+}

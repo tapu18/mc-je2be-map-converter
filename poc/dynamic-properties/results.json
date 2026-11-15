@@ -1,0 +1,119 @@
+{
+  "worldMaxAscii": {
+    "id": 1,
+    "ok": true,
+    "result": {
+      "max": 32767,
+      "error": "ArgumentOutOfBoundsError: Unsupported or out of bounds value passed to function argument [0]: String length for dynamic property 'probe', Value: 32768, Argument max: 32767",
+      "ms": 52
+    }
+  },
+  "worldMaxMultibyte": {
+    "id": 2,
+    "ok": true,
+    "result": {
+      "max": 10922,
+      "error": "ArgumentOutOfBoundsError: Unsupported or out of bounds value passed to function argument [0]: String length for dynamic property 'probe', Value: 32769, Argument max: 32767",
+      "ms": 53
+    }
+  },
+  "entityMaxAscii": {
+    "id": 3,
+    "ok": true,
+    "result": {
+      "max": 32767,
+      "error": "ArgumentOutOfBoundsError: Unsupported or out of bounds value passed to function argument [0]: String length for dynamic property 'probe', Value: 32768, Argument max: 32767",
+      "ms": 51
+    }
+  },
+  "worldTotal": {
+    "id": 4,
+    "ok": true,
+    "result": {
+      "reachedCap": true,
+      "keys": 1049,
+      "totalBytes": 33578429,
+      "afterClear": 0,
+      "ms": 169
+    }
+  },
+  "entityTotal": {
+    "id": 5,
+    "ok": true,
+    "result": {
+      "reachedCap": true,
+      "keys": 1049,
+      "totalBytes": 33578429,
+      "afterClear": 0,
+      "ms": 116
+    }
+  },
+  "persistSet": {
+    "world": {
+      "id": 6,
+      "ok": true,
+      "result": {
+        "totalBytes": 32009
+      }
+    },
+    "entity": {
+      "id": 7,
+      "ok": true,
+      "result": {
+        "totalBytes": 1009
+      }
+    }
+  },
+  "farSet": {
+    "id": 8,
+    "ok": true,
+    "result": {
+      "totalBytes": 509
+    }
+  },
+  "farAfterReload": {
+    "id": 9,
+    "ok": true,
+    "result": {
+      "type": "string",
+      "length": 500,
+      "head": "dddddddddddddddd"
+    }
+  },
+  "bulkSet": {
+    "id": 10,
+    "ok": true,
+    "result": {
+      "totalBytes": 8226459
+    }
+  },
+  "afterRestart": {
+    "world": {
+      "id": 11,
+      "ok": true,
+      "result": {
+        "type": "string",
+        "length": 32000,
+        "head": "bbbbbbbbbbbbbbbb"
+      }
+    },
+    "entity": {
+      "id": 12,
+      "ok": true,
+      "result": {
+        "type": "string",
+        "length": 1000,
+        "head": "cccccccccccccccc"
+      }
+    },
+    "bulk": {
+      "id": 13,
+      "ok": true,
+      "result": {
+        "keys": 256,
+        "intact": 256,
+        "totalBytes": 8226459
+      }
+    }
+  }
+}

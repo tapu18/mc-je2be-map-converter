@@ -25,22 +25,36 @@ export class JavaServer {
   private readonly proc: ServerProcess;
   private readonly rcon: Rcon;
   private readonly lock: DirLock;
+  private readonly opts: JavaStartOptions;
 
-  private constructor(proc: ServerProcess, rcon: Rcon, lock: DirLock) {
+  private constructor(proc: ServerProcess, rcon: Rcon, lock: DirLock, opts: JavaStartOptions) {
     this.proc = proc;
     this.rcon = rcon;
     this.lock = lock;
+    this.opts = opts;
   }
 
   static async start(opts: JavaStartOptions = {}): Promise<JavaServer> {
     const lock = new DirLock(paths.javaServer);
     lock.acquire();
     try {
+      JavaServer.prepareWorld(opts);
       const { proc, rcon } = await JavaServer.launch(opts);
-      return new JavaServer(proc, rcon, lock);
+      return new JavaServer(proc, rcon, lock, opts);
     } catch (e) {
       lock.release();
       throw e;
+    }
+  }
+
+  /** ワールドを作り直し、データパックを入れる。 */
+  private static prepareWorld(opts: JavaStartOptions): void {
+    const worldDir = join(paths.javaServer, LEVEL);
+    rmSync(worldDir, { recursive: true, force: true });
+    if (opts.world) cpSync(opts.world, worldDir, { recursive: true });
+    for (const dp of opts.datapacks ?? []) {
+      mkdirSync(join(worldDir, "datapacks"), { recursive: true });
+      cpSync(dp, join(worldDir, "datapacks", basename(dp)), { recursive: true });
     }
   }
 
@@ -48,13 +62,6 @@ export class JavaServer {
     const dir = paths.javaServer;
     const rconPort = opts.rconPort ?? (await freeTcpPort());
     const serverPort = await freeTcpPort();
-    const worldDir = join(dir, LEVEL);
-    rmSync(worldDir, { recursive: true, force: true });
-    if (opts.world) cpSync(opts.world, worldDir, { recursive: true });
-    for (const dp of opts.datapacks ?? []) {
-      mkdirSync(join(worldDir, "datapacks"), { recursive: true });
-      cpSync(dp, join(worldDir, "datapacks", basename(dp)), { recursive: true });
-    }
     writeFileSync(
       join(dir, "server.properties"),
       [
@@ -109,6 +116,11 @@ export class JavaServer {
   }
 
   async stop(): Promise<void> {
+    await this.shutdown();
+    this.lock.release();
+  }
+
+  private async shutdown(): Promise<void> {
     try {
       await this.rcon.exec("stop");
     } catch {
@@ -118,6 +130,20 @@ export class JavaServer {
     const timer = setTimeout(() => this.proc.kill(), 30_000);
     await this.proc.exited;
     clearTimeout(timer);
-    this.lock.release();
+  }
+
+  /**
+   * 同じワールドのまま再起動する（保存と復元の確認用）。戻り値の新しいインスタンスを使うこと。
+   * このインスタンスはそれ以降使えない。
+   */
+  async restart(): Promise<JavaServer> {
+    await this.shutdown();
+    try {
+      const { proc, rcon } = await JavaServer.launch(this.opts);
+      return new JavaServer(proc, rcon, this.lock, this.opts);
+    } catch (e) {
+      this.lock.release();
+      throw e;
+    }
   }
 }

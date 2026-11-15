@@ -61,10 +61,12 @@ export class BedrockServer {
   private parts = new Map<number, string[]>();
   private readonly proc: ServerProcess;
   private readonly lock: DirLock;
+  private readonly opts: BedrockStartOptions;
 
-  private constructor(proc: ServerProcess, lock: DirLock) {
+  private constructor(proc: ServerProcess, lock: DirLock, opts: BedrockStartOptions) {
     this.proc = proc;
     this.lock = lock;
+    this.opts = opts;
     proc.onLine((line) => this.onLine(line));
   }
 
@@ -95,16 +97,21 @@ export class BedrockServer {
     const lock = new DirLock(paths.bedrockServer);
     lock.acquire();
     try {
-      return await BedrockServer.launch(opts, lock);
+      BedrockServer.prepareWorld(await BedrockServer.baseWorld(opts), opts);
+      return await BedrockServer.spawn(opts, lock);
     } catch (e) {
       lock.release();
       throw e;
     }
   }
 
-  private static async launch(opts: BedrockStartOptions, lock: DirLock): Promise<BedrockServer> {
+  private static async baseWorld(opts: BedrockStartOptions): Promise<string> {
+    return opts.world ?? (await BedrockServer.ensureTemplate());
+  }
+
+  /** ワールドを雛形から作り直し、パックを入れ、ベータAPIを有効にする。 */
+  private static prepareWorld(base: string, opts: BedrockStartOptions): void {
     const dir = paths.bedrockServer;
-    const base = opts.world ?? (await BedrockServer.ensureTemplate());
     const worldDir = join(dir, "worlds", LEVEL);
     rmSync(worldDir, { recursive: true, force: true });
     cpSync(base, worldDir, { recursive: true });
@@ -142,14 +149,18 @@ export class BedrockServer {
     root.set("commandsEnabled", nbt.byte(1));
     root.set("commandblocksenabled", nbt.byte(1));
     writeFileSync(datPath, writeBedrockLevelDat(dat));
+  }
 
+  /** 準備済みのワールドでサーバーを起動し、検証パックと読み込み範囲が使えるまで待つ。 */
+  private static async spawn(opts: BedrockStartOptions, lock: DirLock): Promise<BedrockServer> {
+    const dir = paths.bedrockServer;
     await writeProperties(dir, LEVEL);
     const proc = new ServerProcess("./bedrock_server", [], {
       cwd: dir,
       env: { LD_LIBRARY_PATH: "." },
       logFile: join(paths.servers, "bedrock-last.log"),
     });
-    const server = new BedrockServer(proc, lock);
+    const server = new BedrockServer(proc, lock, opts);
     try {
       await proc.waitFor((l) => l.includes("Server started"), 120_000, "bedrock server start");
       await proc.waitFor((l) => l.includes("JE2BE_READY"), 60_000, "bridge pack ready");
@@ -194,11 +205,29 @@ export class BedrockServer {
   }
 
   async stop(): Promise<void> {
+    await this.shutdown();
+    this.lock.release();
+  }
+
+  /**
+   * 同じワールドのまま再起動する（保存と復元の確認用）。戻り値の新しいインスタンスを使うこと。
+   * このインスタンスはそれ以降使えない。
+   */
+  async restart(): Promise<BedrockServer> {
+    await this.shutdown();
+    try {
+      return await BedrockServer.spawn(this.opts, this.lock);
+    } catch (e) {
+      this.lock.release();
+      throw e;
+    }
+  }
+
+  private async shutdown(): Promise<void> {
     this.proc.write("stop");
     const timer = setTimeout(() => this.proc.kill(), 30_000);
     await this.proc.exited;
     clearTimeout(timer);
-    this.lock.release();
   }
 
   private onLine(line: string): void {
