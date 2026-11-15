@@ -19,6 +19,7 @@
 | --- | --- |
 | `status:ready` | 着手可能。担当なし |
 | `status:in-progress` | 作業中。担当は Issue の `claim:` コメントで示す |
+| `status:in-review` | PR を提出済み。人のマージ待ち。マージされると Issue は閉じる |
 | `status:paused` | 中断。再開手順が Issue のコメントにある |
 | `status:blocked` | 他の Issue か人の判断を待っている |
 | `needs-approval` | 人の承認が必要。PRをマージする前に承認をもらう |
@@ -55,8 +56,9 @@
    - CI が通っている
    - Issue の完了条件を満たしている
    - `needs-approval` が付いた Issue・PR は、人の承認コメントがある
-4. **main へのマージは人が行う。** エージェントは条件を満たしたら、PR に「マージ可能」とコメントし、Issue にも PR の番号を書いて次の Issue に進む。マージを自動化する場合は、人がエージェントに権限を与えたうえで、この節を書き換える。
+4. **main へのマージは人が行う。** エージェントは条件を満たしたら、PR に「マージ可能」とコメントし、Issue に PR の番号を書いてラベルを `status:in-review` にし、次の Issue に進む。マージを自動化する場合は、人がエージェントに権限を与えたうえで、この節を書き換える。
    - マージ待ちの PR に依存する作業は、その PR のブランチから派生させ、PR の base をそのブランチにする（積み上げ）。依存元がマージされたら base を main に切り替える。
+   - base が main 以外の PR は、マージしても `Closes #番号` で Issue が自動では閉じない。base を main に切り替えてからマージする。
 5. マージ後、worktree を片付ける（`git worktree remove`）。
 
 ### 4. 中断する
