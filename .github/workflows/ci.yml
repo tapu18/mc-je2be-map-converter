@@ -60,7 +60,7 @@ jobs:
           run=true
           if [ "$GROUP" = performance ] && [ "$EVENT" = pull_request ]; then
             changed="$(git diff --name-only "origin/$BASE"...HEAD)"
-            if ! echo "$changed" | grep -qE '^(poc/repeat-performance/|packages/bridge|tools/servers\.json|package(-lock)?\.json|\.github/workflows/)'; then
+            if ! echo "$changed" | grep -qE '^(poc/repeat-performance/|packages/|tools/servers\.json|package(-lock)?\.json|\.github/workflows/)'; then
               run=false
               echo "performance: 関連する変更がないため PR では省略（main への push で流す）"
             fi
