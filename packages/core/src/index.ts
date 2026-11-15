@@ -2,3 +2,4 @@
 
 export * from "./nbt/nbt.ts";
 export * from "./bedrock/mcstructure.ts";
+export * from "./java/world.ts";

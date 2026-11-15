@@ -12,7 +12,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 | パス | 内容 |
 | --- | --- |
 | `packages/core` | Minecraft非依存の中核（NBT、今後パーサ・中間表現・ランタイム中核）。ゲーム内でも動かすため Node / DOM のAPIを使わない |
-| `packages/bridge` | 検証ブリッジ（Node専用）。Java版サーバー（RCON）とBDS（検証パック経由）を起動・操作する |
+| `packages/bridge` | 検証ブリッジ（Node専用）。Java版サーバー（RCON）とBDS（検証パック経由）を起動・操作する。`JavaServer.dump()` で保存データからブロック・スコア・storage・エンティティを取り出す |
 | `packages/bridge-pack` | BDSに入れる検証用ビヘイビアーパック。`scriptevent je2be:req <JSON>` を受け、`JE2BE_RES <JSON>` をコンソールに出す |
 | `poc/` | PoC（実機での検証）。各ディレクトリにパック、テスト、実測結果（`results.json`） |
 | `tools/` | 開発用スクリプト。`servers.json` に検証用サーバーの固定バージョン |

@@ -5,6 +5,7 @@ import { paths } from "./paths.ts";
 import { ServerProcess } from "./process.ts";
 import { Rcon } from "./rcon.ts";
 import { DirLock, freeTcpPort } from "./resources.ts";
+import { dumpJavaWorld, type JavaDump, type JavaDumpRequest } from "./java-dump.ts";
 
 export interface JavaStartOptions {
   /** ワールドの datapacks/ にコピーするデータパックのディレクトリ */
@@ -104,6 +105,16 @@ export class JavaServer {
       proc.kill();
       throw e;
     }
+  }
+
+  /**
+   * ワールドを保存し（save-all flush）、保存データから状態を取り出す。
+   * RCON の文字列出力では取れないブロックステート、エンティティ一覧、storage の型付きの値を得るため。
+   */
+  async dump(req: JavaDumpRequest): Promise<JavaDump> {
+    const res = await this.rcon.exec("save-all flush");
+    if (!/Saved the game/.test(res)) throw new Error(`save-all flush failed: ${res}`);
+    return dumpJavaWorld(join(paths.javaServer, LEVEL), req);
   }
 
   /** コマンドを実行し、フィードバック文字列を返す。先頭の `/` は不要。 */

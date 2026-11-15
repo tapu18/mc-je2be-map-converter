@@ -17,6 +17,16 @@
 | BDS のベータAPIは `level.dat` の `experiments.gametest=1` で有効になる | 検証パックの起動 |
 | BDS の `level.dat` は自前のNBT実装で読み書きでき、書き戻すとバイト単位で一致する | 2026-11-15 の確認 |
 
+## Java版の保存形式（26.3、DataVersion 5023）
+
+| 事実 | 根拠 |
+| --- | --- |
+| チャンクは `dimensions/minecraft/<ディメンション>/region/`、エンティティは同じく `entities/` にある。チャンクは zlib 圧縮 | `packages/bridge/src/java-dump.servers.test.ts` |
+| ブロックのパレットは型の混ざったリストで、状態のないブロックは文字列、状態のあるブロックは `{id, properties}`。文字列の要素はキーが空文字の compound `{"": "minecraft:stone"}` で包んで保存される | 同上、`packages/core/src/java/world.ts` |
+| スコアは `data/minecraft/scoreboard.dat`、storage は `data/<名前空間>/command_storage.dat`（どちらも gzip の NBT） | 同上 |
+| エンティティのタグは集合として保存され、付けた順にはならない | 同上 |
+| ブロックステートの値は Java が文字列、BE が数値・真偽値・文字列。両エディションのダンプを比べるときは型を合わせる必要がある | 同上、`bridge.servers.test.ts` |
+
 ## Script API
 
 | 事実 | 根拠 |
