@@ -7,6 +7,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 - 正解データのシナリオの書き方: `docs/scenarios.md`
 - PoC の書き方と共通の小道具: `docs/poc.md`
 - 配布マップのコマンドの型の頻度と、M1 の検証用マップに入れる型: `docs/corpus-patterns.md`
+- ID対応表の入手元・ライセンス比較と検証案（採用承認待ち）: `docs/id-mapping-sources.md`
 - 作業の管理: GitHub の Issue・マイルストーン・PR（https://github.com/tapu18/mc-je2be-map-converter）。手順は `docs/workflow.md`
 - 開発は複数のAIエージェントが並行して進める。人は `needs-approval` の判断、段階の関門での承認、実クライアントでのプレイ確認を担う
 
