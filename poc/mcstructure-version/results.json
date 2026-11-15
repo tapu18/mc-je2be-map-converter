@@ -1,0 +1,33 @@
+{
+  "bedrock": "1.26.63.1",
+  "native": {
+    "blockVersions": [
+      18168865,
+      18168865,
+      18168865
+    ],
+    "commandVersions": [
+      55,
+      55,
+      55
+    ]
+  },
+  "loaded": {
+    "blockVersions": [
+      18168865,
+      18168865,
+      18168865,
+      18168865
+    ],
+    "commandVersions": [
+      55,
+      55,
+      55
+    ]
+  },
+  "scores": {
+    "repeat": 33,
+    "chain": 22,
+    "impulse": 11
+  }
+}
