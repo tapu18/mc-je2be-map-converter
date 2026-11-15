@@ -159,6 +159,7 @@ flowchart TD
   - **ホスト層**：Script APIへの薄い接続。エンティティ検索、ブロック操作、BEコマンドの実行（`runCommand`）、永続化。
 - BEに同等のコマンドがあるものは、ホスト層からBEコマンドとして実行する。
 - `tick` タグの関数はScriptのタイマーから毎tick呼ぶ。`load` はワールド読み込み時に呼ぶ。
+- （提案、#3。実装は #19）コマンドブロックから起動した処理の書き込みは `system.run` に任せず、ランタイムが持つキューに積む。ランタイムの毎tickの処理では、`tick` 関数より先にこのキューを反映する。`system.run` のままだと `runInterval` の後に動くため、Javaでは読めるはずの値（直前のコマンドブロックが書いた値）を `tick` 関数が読めない
 - 状態（storage、スケジュール、仮想NBT）は動的プロパティに保存する（サイズ制限は未確認）。
 - 後の段階で足すもの：`team`、`bossbar`、`trigger`、進捗、`predicate`、ルートテーブル、`item`、`attribute`、`damage`。
 
@@ -245,7 +246,11 @@ Animated Javaなどの機械生成アニメーションは、1行ずつ解釈実
   - 未解決：`execute in the_nether` を挟むとハンドラが呼ばれない
   - BEでは整数座標のx・zが中心に寄る（`positioned 7 8 9` → 7.5, 8, 9.5。JEでは 7.0, 8.0, 9.0）。変換時の補正が必要
   - 根拠：`poc/launcher/launcher.servers.test.ts`、`poc/launcher/results.json`（BDS 1.26.63.1、2026-11-15）
-- [ ] `tick.json`、スクリプト、コマンドブロックのtick内の実行順
+- [x] `tick.json`、スクリプト、コマンドブロックのtick内の実行順
+  - BE：毎tick「リピートコマンドブロック（チェーン含む） → `tick.json` の関数（記載順） → `system.runInterval` → `system.run` で積んだ処理 → `scriptevent` のハンドラ」。`system.run` は、スクリプトの処理中に積んだもの（`runInterval` 内）が、コマンドブロックの処理中に積んだものより先に動く
+  - Java：毎tick「`tick` 関数 → リピートコマンドブロック」と推定（RCONの直後から記録した並びによる）。BEとは逆だが、どちらも関数とコマンドブロックが交互に動く
+  - Javaのリピートブロックは座標順ではなく、置いた順に動く。BEで何が順序を決めるかは未確認（#18）
+  - 根拠：`poc/tick-order/`（`results.json`、`results.java.json`）
 - [ ] 動的プロパティのサイズ制限と、ワールド再起動後の状態復元
 - [ ] 常時実行のリピートが100個前後あるマップで、毎tickの起動が性能上耐えるか
 

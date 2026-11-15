@@ -1,0 +1,38 @@
+{
+  "recordedTicks": 8,
+  "distinctOrders": [
+    {
+      "order": [
+        "repeat_x8_head",
+        "repeat_x8_chain",
+        "repeat_x0",
+        "repeat_x4",
+        "function_a",
+        "function_b"
+      ],
+      "ticks": 8
+    }
+  ],
+  "firstMarks": [
+    "0:function_a",
+    "0:function_b",
+    "1:repeat_x8_head",
+    "1:repeat_x8_chain",
+    "1:repeat_x0",
+    "1:repeat_x4",
+    "1:function_a",
+    "1:function_b",
+    "2:repeat_x8_head",
+    "2:repeat_x8_chain",
+    "2:repeat_x0",
+    "2:repeat_x4"
+  ],
+  "lastMarks": [
+    "9:repeat_x8_head",
+    "9:repeat_x8_chain",
+    "9:repeat_x0",
+    "9:repeat_x4",
+    "9:function_a",
+    "9:function_b"
+  ]
+}

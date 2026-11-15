@@ -1,0 +1,8 @@
+{
+  "pack": {
+    "description": "je2be poc: tick内の実行順の記録",
+    "pack_format": 121,
+    "min_format": 121,
+    "max_format": 121
+  }
+}

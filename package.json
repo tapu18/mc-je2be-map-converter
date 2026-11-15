@@ -11,7 +11,7 @@
   "scripts": {
     "check": "npm run typecheck && npm run test",
     "typecheck": "tsc -b && tsc -p tools && npm run build:pack",
-    "build:pack": "tsc -p packages/bridge-pack && tsc -p poc/launcher",
+    "build:pack": "tsc -p packages/bridge-pack && tsc -p poc/launcher && tsc -p poc/tick-order",
     "test": "vitest run",
     "test:servers": "npm run build:pack && vitest run --config vitest.servers.config.ts",
     "setup:servers": "node tools/setup-servers.ts"
