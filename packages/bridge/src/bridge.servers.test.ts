@@ -76,3 +76,35 @@ describe("bedrock bridge", () => {
     expect(res.result).toHaveLength(1000);
   });
 });
+
+describe("restart keeps the world", () => {
+  it("bedrock", async () => {
+    let bds = await BedrockServer.start();
+    try {
+      await bds.exec("scoreboard objectives add r dummy");
+      await bds.exec("scoreboard players set a r 7");
+      await bds.exec("setblock 3 -50 3 gold_block");
+      bds = await bds.restart();
+      const scores = await bds.request<{ objective: string; scores: { participant: string; score: number }[] }[]>("scores");
+      expect(scores.result?.find((o) => o.objective === "r")?.scores).toEqual([expect.objectContaining({ participant: "a", score: 7 })]);
+      const blocks = await bds.request<{ type: string }[]>("blocks", { from: [3, -50, 3] });
+      expect(blocks.result?.[0]?.type).toBe("minecraft:gold_block");
+    } finally {
+      await bds.stop();
+    }
+  });
+
+  it("java", async () => {
+    let java = await JavaServer.start();
+    try {
+      await java.exec("scoreboard objectives add r dummy");
+      await java.exec("scoreboard players set #a r 7");
+      await java.exec("setblock 3 -50 3 minecraft:gold_block");
+      java = await java.restart();
+      expect(await java.exec("scoreboard players get #a r")).toMatch(/#a has 7 \[r\]/);
+      expect(await java.exec("execute if block 3 -50 3 minecraft:gold_block")).toMatch(/Test passed/);
+    } finally {
+      await java.stop();
+    }
+  });
+});
