@@ -214,7 +214,7 @@ describe("launcher poc", () => {
       executor: [{ type: "minecraft:armor_stand", tags: ["ctx_stand"] }],
       origin: { sourceType: "Entity", sourceEntity: "minecraft:armor_stand" },
     });
-    // 未解決：execute in the_nether を挟むとハンドラが呼ばれない（原因未調査。T2-11）
+    // 未解決：execute in the_nether を挟むとハンドラが呼ばれない（原因未調査。#8）
     expect(find("ctx.custom", "nether")).toBeUndefined();
     expect(find("ctx.arg", "nether")).toBeUndefined();
     expect(results.contentLog).toEqual([]);

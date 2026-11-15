@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (型チェックとNodeのテスト)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  servers:
+    name: servers (Java版サーバーとBDSでの実機テスト)
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: サーバーのダウンロードをキャッシュ
+        uses: actions/cache@v4
+        with:
+          path: servers/.download
+          key: servers-${{ hashFiles('tools/servers.json') }}
+      # EULAへの同意はリポジトリの所有者が承認済み（CLAUDE.md 参照）
+      - run: npm run setup:servers
+      - run: npm run test:servers
+      - name: ログと実測結果を保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            servers/*.log
+            poc/**/results.json
+          if-no-files-found: ignore
