@@ -1,0 +1,17 @@
+{
+  "$comment": "検証用サーバーの固定バージョン。BE更新時はここと packages/*/package.json の @minecraft/* を同時に上げる",
+  "jre": {
+    "name": "temurin-25.0.5+8",
+    "url": "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jre_x64_linux_hotspot_25.0.5_8.tar.gz",
+    "sha256": "6fac98f0c8202efc3135a9e9e42aa61963ec42d1c5cbb40caf231e7b14a24ef6"
+  },
+  "java": {
+    "version": "26.3",
+    "url": "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar",
+    "sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c"
+  },
+  "bedrock": {
+    "version": "1.26.63.1",
+    "url": "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.63.1.zip"
+  }
+}
