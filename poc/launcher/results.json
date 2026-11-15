@@ -1,0 +1,474 @@
+{
+  "structureLoad": {
+    "id": 8,
+    "ok": true,
+    "result": {
+      "successCount": 1
+    }
+  },
+  "scores": {
+    "w_cmp": 1,
+    "w_ctxse": 1,
+    "rc_rs": 1,
+    "w_rs": 1,
+    "w_se": 1,
+    "w_ose": 1,
+    "rc_rd": 1,
+    "y": 1,
+    "seq_ocu": 2,
+    "w_ocu": 1,
+    "r_scriptevent": 1,
+    "r_custom_ok": 1,
+    "w_rd": 1,
+    "seq_ose": 2,
+    "r_custom_void": 1,
+    "r_native_ok": 1,
+    "x": 1
+  },
+  "logs": [
+    {
+      "event": "probe.handler",
+      "tick": 2,
+      "label": "ocu",
+      "seq": 1,
+      "origin": {
+        "sourceType": "Block",
+        "sourceBlock": {
+          "pos": [
+            16,
+            -50,
+            1
+          ],
+          "dim": "minecraft:overworld",
+          "type": "minecraft:chain_command_block"
+        },
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    {
+      "event": "restrict.handler",
+      "tick": 2,
+      "label": "r",
+      "ops": {
+        "readScore": {
+          "ok": true
+        },
+        "writeScore": {
+          "ok": false,
+          "error": "ReferenceError: Native function [ScoreboardObjective::setScore] cannot be used in restricted execution."
+        },
+        "runCommand": {
+          "ok": false,
+          "error": "ReferenceError: Native function [Dimension::runCommand] cannot be used in restricted execution."
+        },
+        "getBlock": {
+          "ok": true,
+          "value": "minecraft:grass_block"
+        },
+        "setBlock": {
+          "ok": false,
+          "error": "ReferenceError: Native function [Block::setType] cannot be used in restricted execution."
+        },
+        "getEntities": {
+          "ok": true,
+          "value": 1
+        },
+        "spawnEntity": {
+          "ok": false,
+          "error": "ReferenceError: Native function [Dimension::spawnEntity] cannot be used in restricted execution."
+        },
+        "setDynamicProperty": {
+          "ok": true
+        },
+        "getDynamicProperty": {
+          "ok": true,
+          "value": 1
+        }
+      }
+    },
+    {
+      "event": "ctx.custom",
+      "tick": 2,
+      "label": "pos",
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    {
+      "event": "ctx.arg",
+      "tick": 2,
+      "label": "direct",
+      "pos": {
+        "z": 0.5,
+        "y": -49.5,
+        "x": 22.5
+      },
+      "forward": {
+        "z": 1.5,
+        "y": -49.5,
+        "x": 22.5
+      },
+      "origin": {
+        "sourceType": "Block",
+        "sourceBlock": {
+          "pos": [
+            22,
+            -50,
+            0
+          ],
+          "dim": "minecraft:overworld",
+          "type": "minecraft:command_block"
+        },
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    {
+      "event": "ctx.arg",
+      "tick": 2,
+      "label": "positioned",
+      "pos": {
+        "z": 9.5,
+        "y": 8,
+        "x": 7.5
+      },
+      "forward": {
+        "z": 10.5,
+        "y": 8,
+        "x": 7.5
+      },
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    {
+      "event": "ctx.arg",
+      "tick": 2,
+      "label": "as_at",
+      "pos": {
+        "z": 40.5,
+        "y": -60,
+        "x": 30.5
+      },
+      "forward": {
+        "z": 41.20710754394531,
+        "y": -60,
+        "x": 29.792892456054688
+      },
+      "executor": [
+        {
+          "type": "minecraft:armor_stand",
+          "tags": [
+            "ctx_stand"
+          ],
+          "dim": "minecraft:overworld"
+        }
+      ],
+      "origin": {
+        "sourceType": "Entity",
+        "sourceBlock": null,
+        "sourceEntity": "minecraft:armor_stand",
+        "initiator": null
+      }
+    },
+    {
+      "event": "ctx.arg",
+      "tick": 2,
+      "label": "rotated",
+      "pos": {
+        "z": 9.5,
+        "y": 8,
+        "x": 7.5
+      },
+      "forward": {
+        "z": 9.5,
+        "y": 8,
+        "x": 6.5
+      },
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    {
+      "event": "ctx.arg",
+      "tick": 2,
+      "label": "anchored",
+      "pos": {
+        "z": 9.5,
+        "y": 8,
+        "x": 7.5
+      },
+      "forward": {
+        "z": 10.5,
+        "y": 8,
+        "x": 7.5
+      },
+      "origin": {
+        "sourceType": "Server",
+        "sourceBlock": null,
+        "sourceEntity": null,
+        "initiator": null
+      }
+    },
+    {
+      "event": "probe.deferred",
+      "tick": 2,
+      "label": "ocu",
+      "seq": 2,
+      "successCount": 1,
+      "readBack": 1
+    },
+    {
+      "event": "restrict.deferred",
+      "tick": 2,
+      "label": "r",
+      "ops": {
+        "readScore": {
+          "ok": true
+        },
+        "writeScore": {
+          "ok": true
+        },
+        "runCommand": {
+          "ok": true,
+          "value": 1
+        },
+        "getBlock": {
+          "ok": true,
+          "value": "minecraft:grass_block"
+        },
+        "setBlock": {
+          "ok": true
+        },
+        "getEntities": {
+          "ok": true,
+          "value": 1
+        },
+        "spawnEntity": {
+          "ok": true,
+          "value": "-8589934590"
+        },
+        "setDynamicProperty": {
+          "ok": true
+        },
+        "getDynamicProperty": {
+          "ok": true,
+          "value": 1
+        }
+      }
+    },
+    {
+      "event": "scriptevent",
+      "tick": 2,
+      "label": "ose",
+      "seq": 2,
+      "sourceType": "Block",
+      "sourceBlock": {
+        "pos": [
+          14,
+          -50,
+          1
+        ],
+        "dim": "minecraft:overworld",
+        "type": "minecraft:chain_command_block"
+      }
+    },
+    {
+      "event": "scriptevent.write",
+      "tick": 2,
+      "label": "ose",
+      "successCount": 1,
+      "readBack": 1
+    },
+    {
+      "event": "scriptevent",
+      "tick": 2,
+      "label": "se",
+      "sourceType": "Block",
+      "sourceBlock": {
+        "pos": [
+          10,
+          -50,
+          0
+        ],
+        "dim": "minecraft:overworld",
+        "type": "minecraft:command_block"
+      }
+    },
+    {
+      "event": "scriptevent.write",
+      "tick": 2,
+      "label": "se",
+      "successCount": 1,
+      "readBack": 1
+    },
+    {
+      "event": "scriptevent.ops",
+      "tick": 2,
+      "label": "r",
+      "ops": {
+        "readScore": {
+          "ok": true
+        },
+        "writeScore": {
+          "ok": true
+        },
+        "runCommand": {
+          "ok": true,
+          "value": 1
+        },
+        "getBlock": {
+          "ok": true,
+          "value": "minecraft:grass_block"
+        },
+        "setBlock": {
+          "ok": true
+        },
+        "getEntities": {
+          "ok": true,
+          "value": 2
+        },
+        "spawnEntity": {
+          "ok": true,
+          "value": "-8589934589"
+        },
+        "setDynamicProperty": {
+          "ok": true
+        },
+        "getDynamicProperty": {
+          "ok": true,
+          "value": 1
+        }
+      }
+    },
+    {
+      "event": "scriptevent",
+      "tick": 2,
+      "label": "ctxse",
+      "sourceType": "Server",
+      "sourceBlock": null
+    },
+    {
+      "event": "scriptevent.write",
+      "tick": 2,
+      "label": "ctxse",
+      "successCount": 1,
+      "readBack": 1
+    },
+    {
+      "event": "scriptevent",
+      "tick": 2,
+      "label": "cmp",
+      "sourceType": "Block",
+      "sourceBlock": {
+        "pos": [
+          32,
+          -50,
+          1
+        ],
+        "dim": "minecraft:overworld",
+        "type": "minecraft:command_block"
+      }
+    },
+    {
+      "event": "scriptevent.write",
+      "tick": 2,
+      "label": "cmp",
+      "successCount": 1,
+      "readBack": 1
+    }
+  ],
+  "comparators": {
+    "cmp_native_ok": [
+      {
+        "z": 0,
+        "type": "minecraft:powered_comparator",
+        "lit": true
+      },
+      {
+        "z": 1,
+        "type": "minecraft:command_block"
+      },
+      {
+        "z": 2,
+        "type": "minecraft:unpowered_comparator",
+        "lit": false
+      }
+    ],
+    "cmp_native_fail": [
+      {
+        "z": 0,
+        "type": "minecraft:unpowered_comparator",
+        "lit": false
+      },
+      {
+        "z": 1,
+        "type": "minecraft:command_block"
+      },
+      {
+        "z": 2,
+        "type": "minecraft:unpowered_comparator",
+        "lit": false
+      }
+    ],
+    "cmp_custom_ok": [
+      {
+        "z": 0,
+        "type": "minecraft:powered_comparator",
+        "lit": true
+      },
+      {
+        "z": 1,
+        "type": "minecraft:command_block"
+      },
+      {
+        "z": 2,
+        "type": "minecraft:unpowered_comparator",
+        "lit": false
+      }
+    ],
+    "cmp_custom_fail": [
+      {
+        "z": 0,
+        "type": "minecraft:unpowered_comparator",
+        "lit": false
+      },
+      {
+        "z": 1,
+        "type": "minecraft:command_block"
+      },
+      {
+        "z": 2,
+        "type": "minecraft:unpowered_comparator",
+        "lit": false
+      }
+    ],
+    "cmp_scriptevent": [
+      {
+        "z": 0,
+        "type": "minecraft:powered_comparator",
+        "lit": true
+      },
+      {
+        "z": 1,
+        "type": "minecraft:command_block"
+      },
+      {
+        "z": 2,
+        "type": "minecraft:unpowered_comparator",
+        "lit": false
+      }
+    ]
+  },
+  "contentLog": []
+}

@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "je2be poc launcher",
+    "description": "起動口のPoC（scriptevent とカスタムコマンド）",
+    "uuid": "a8fdec63-aa5f-4ab6-9946-913642ea8967",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 60]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "8ec7be7c-99fe-4419-bcb6-d86dec92ed40",
+      "version": [0, 1, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "2.12.0-beta" }
+  ]
+}

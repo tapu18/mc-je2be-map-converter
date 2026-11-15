@@ -31,8 +31,11 @@
 | --- | --- | --- | --- | --- | --- |
 | T2-1 | 検証サーバーの取得 | `npm run setup:servers` で JRE 25 / Java 26.3 / BDS 1.26.63.1 が揃う | 完了 | - | `tools/setup-servers.ts` |
 | T2-2 | ブリッジ（Java: RCON、BDS: 検証パック） | `npm run test:servers` の bridge テストが通る | 完了 | - | `packages/bridge`、コミット 8ef13ae |
-| T2-3 | `.mcstructure` 生成（コマンドブロック込み） | 単体テストが通り、BDSで読み込んだコマンドブロックが動く | 進行中 | claude-main 2026-11-15 | 単体テストは通過。実機確認はT2-4で行う |
-| T2-4 | PoC：起動口（scriptevent / カスタムコマンド） | design.md 7章のチェックリスト3〜7項目目に実測結果が付く | 進行中 | claude-main 2026-11-15 | `poc/launcher/` |
+| T2-3 | `.mcstructure` 生成（コマンドブロック込み） | 単体テストが通り、BDSで読み込んだコマンドブロックが動く | 完了 | - | `structure load` で読み込み、常時実行・条件付き・チェーンが動くことを確認。ブロックの version とコマンドブロックの Version は仮の値（T2-12） |
+| T2-4 | PoC：起動口（scriptevent / カスタムコマンド） | design.md 7章のチェックリスト3〜7項目目に実測結果が付く | 完了 | - | design.md 7章に記載。`poc/launcher/` の期待値で固定 |
+| T2-11 | `execute in <別ディメンション>` を挟むとカスタムコマンドのハンドラが呼ばれない原因の調査 | 原因がわかり、別ディメンションの実行コンテキストを渡す方法が決まる | 未着手 | | ネザー側のticking areaの有無、`positioned` なしの場合、scriptevent の場合を切り分ける |
+| T2-12 | `.mcstructure` のブロック version とコマンドブロックの Version の正しい値 | 実機が保存した値と一致させる。古い値で旧構文として解釈されないことを確認 | 未着手 | | BDSの保存データ（LevelDB）を読むか、既存ツールの値を調べる |
+| T2-13 | BEの整数座標の中心寄せと、JEとの座標の差 | `~`、整数、小数、`positioned` / `tp` / `summon` での差を表にする | 未着手 | | 変換規則（座標に `.0` を付けるなど）を決めるため |
 | T2-5 | PoC：tick内の実行順（tick.json、スクリプト、コマンドブロック） | チェックリスト8項目目に実測結果 | 未着手 | | |
 | T2-6 | PoC：動的プロパティのサイズ上限と再起動後の復元 | チェックリスト9項目目に実測結果 | 未着手 | | BDSを再起動するテストが必要 |
 | T2-7 | PoC：常時実行リピート100個前後の性能 | チェックリスト10項目目に実測結果 | 未着手 | | BDSのtick時間の取り方から調べる |
@@ -62,7 +65,12 @@
 | Java 26.3 はプレイヤーがいないと原点付近のチャンクも読み込まない。`forceload` が必要 | `JavaServer.start` |
 | BDS の平坦ワールドは `level.dat` の `Generator=2` で作れる（y=-64 岩盤、-63〜-62 土、-61 草） | `bridge.servers.test.ts` |
 | BDS のベータAPIは `level.dat` の `experiments.gametest=1` で有効になり、`@minecraft/server` 2.12.0-beta が読み込める | 検証パックの起動 |
+| 起動口の挙動（成否の伝搬、実行順、ハンドラ内の制限、実行コンテキストの復元）は design.md 7章のとおり | `poc/launcher/launcher.servers.test.ts` |
+| カスタムコマンドのハンドラ内でも動的プロパティは読み書きできる（ワールドの変更だけが禁止） | 同上 |
+| BE の比較器は `cardinal_direction=south` のとき南側（+Z）から入力を受ける | 同上 |
+| `ScoreboardObjective.getScore` は一度もスコアを持ったことのない名前で例外を投げる | 同上 |
 
 ## 作業ログ
 
 - 2026-11-15 claude-main：段階0確定。土台、NBT、サーバー取得、ブリッジを実装しコミット。`.mcstructure` 生成を実装（単体テスト通過）。次は `poc/launcher/` で起動口のPoC。
+- 2026-11-15 claude-main：起動口PoC（T2-4）完了。チェックリスト3〜7を design.md に記録し、期待値をテストで固定。ブリッジのパック配置の不具合（同名ディレクトリの上書き）を修正。新規タスク T2-11〜13 を追加。次は T2-5（tick内の実行順）。

@@ -1,6 +1,6 @@
 // BDSの起動・操作。検証パック（packages/bridge-pack）を経由して結果を受け取る。
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { nbt, readBedrockLevelDat, writeBedrockLevelDat, type NbtTag } from "@je2be/core";
 import { paths } from "./paths.ts";
 import { ServerProcess } from "./process.ts";
@@ -97,8 +97,9 @@ export class BedrockServer {
     const packsDir = join(worldDir, "behavior_packs");
     mkdirSync(packsDir, { recursive: true });
     const refs = packs.map((p) => {
-      cpSync(p, join(packsDir, basename(p) === "pack" ? "je2be-bridge" : basename(p)), { recursive: true });
       const m = readManifest(p);
+      // ディレクトリ名は "pack" などで重なり得るため、UUIDで置く
+      cpSync(p, join(packsDir, m.header.uuid), { recursive: true });
       return { pack_id: m.header.uuid, version: m.header.version };
     });
     writeFileSync(join(worldDir, "world_behavior_packs.json"), JSON.stringify(refs, null, 2));

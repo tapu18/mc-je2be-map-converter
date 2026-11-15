@@ -5,3 +5,5 @@ dist/
 *.tsbuildinfo
 servers/
 packages/bridge-pack/pack/scripts/
+poc/*/pack/scripts/
+poc/*/pack/structures/
