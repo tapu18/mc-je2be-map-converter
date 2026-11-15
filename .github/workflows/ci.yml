@@ -24,32 +24,74 @@ jobs:
       - run: npm ci
       - run: npm run check
 
+  # 実機テストはグループに分けて並列に動かす。割り当ては tools/server-test-groups.ts
+  # （どのグループにも当てはまらないテストは misc に入る）
   servers:
-    name: servers (Java版サーバーとBDSでの実機テスト)
-    needs: check
+    name: servers / ${{ matrix.group }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: bridge
+          - group: poc-a
+          - group: performance
+          - group: misc
     steps:
       - uses: actions/checkout@v4
+        with:
+          # performance の変更判定で base との差分を取るため
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: node tools/server-test-groups.ts --check
+      - name: 流すかどうかを決める
+        id: gate
+        env:
+          GROUP: ${{ matrix.group }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          # performance は約2分半かかるため、PR では関連する変更があるときだけ流す（main への push では常に流す）
+          run=true
+          if [ "$GROUP" = performance ] && [ "$EVENT" = pull_request ]; then
+            changed="$(git diff --name-only "origin/$BASE"...HEAD)"
+            if ! echo "$changed" | grep -qE '^(poc/repeat-performance/|packages/bridge|tools/servers\.json|package(-lock)?\.json|\.github/workflows/)'; then
+              run=false
+              echo "performance: 関連する変更がないため PR では省略（main への push で流す）"
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       - name: サーバーのダウンロードをキャッシュ
+        if: steps.gate.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/je2be
           key: servers-${{ hashFiles('tools/servers.json') }}
       # EULAへの同意はリポジトリの所有者が承認済み（CLAUDE.md 参照）
-      - run: npm run setup:servers
-      - run: npm run test:servers
+      - if: steps.gate.outputs.run == 'true'
+        run: npm run setup:servers
+      - name: 実機テスト（${{ matrix.group }}）
+        if: steps.gate.outputs.run == 'true'
+        env:
+          GROUP: ${{ matrix.group }}
+        run: |
+          files="$(node tools/server-test-groups.ts "$GROUP")"
+          # 空のまま vitest を呼ぶと全テストが流れるため、飛ばす
+          if [ -z "$files" ]; then echo "$GROUP: テストなし"; exit 0; fi
+          echo "$files" | tr ' ' '\n'
+          npm run build:pack
+          npx vitest run --config vitest.servers.config.ts $files
       - name: ログと実測結果を保存
-        if: always()
+        if: always() && steps.gate.outputs.run == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: server-logs
+          name: server-logs-${{ matrix.group }}
           path: |
             servers/*.log
-            poc/**/results.json
+            poc/**/results*.json
           if-no-files-found: ignore
