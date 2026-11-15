@@ -21,8 +21,8 @@ export interface StructureSpec {
   blockVersion?: number;
 }
 
-// 1.26.60 相当（major<<24 | minor<<16 | patch<<8）。実機で読み込みを確認済みの値に合わせて更新する
-export const DEFAULT_BLOCK_VERSION = (1 << 24) | (26 << 16) | (60 << 8);
+// BDS 1.26.63.1 が保存した値。製品バージョンから計算しない（poc/mcstructure-version/）。
+export const DEFAULT_BLOCK_VERSION = 18168865; // 0x01153c21
 
 function stateTag(v: BlockStateValue): NbtTag {
   if (typeof v === "string") return nbt.string(v);
@@ -118,7 +118,8 @@ const BLOCK_NAMES: Record<CommandBlockKind, string> = {
   repeat: "minecraft:repeating_command_block",
 };
 
-export const DEFAULT_COMMAND_BLOCK_VERSION = 42;
+// BDS が setblock で新規作成した3種類すべてで確認（poc/mcstructure-version/）。
+export const DEFAULT_COMMAND_BLOCK_VERSION = 55;
 
 export function commandBlock(spec: CommandBlockSpec): StructureBlock {
   const mode = spec.kind === "impulse" ? 0 : spec.kind === "repeat" ? 1 : 2;
