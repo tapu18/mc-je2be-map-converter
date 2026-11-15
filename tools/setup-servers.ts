@@ -3,7 +3,8 @@
 // 使い方: npm run setup:servers
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,21 +17,39 @@ interface ServersConfig {
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(readFileSync(join(root, "tools/servers.json"), "utf8")) as ServersConfig;
 const serversDir = join(root, "servers");
-const cacheDir = join(serversDir, ".download");
+// ダウンロードしたアーカイブは worktree をまたいで共有する
+const cacheDir = process.env.JE2BE_DOWNLOAD_CACHE ?? join(homedir(), ".cache", "je2be");
+
+/** 一時的なネットワーク障害（CIでのタイムアウトなど）に備えて数回やり直す。 */
+async function fetchWithRetry(url: string, attempts = 4): Promise<Buffer> {
+  for (let i = 1; ; i++) {
+    try {
+      // minecraft.net はUser-Agentなしの要求を拒否することがある
+      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)" } });
+      if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+      return Buffer.from(await res.arrayBuffer());
+    } catch (e) {
+      if (i >= attempts) throw e;
+      const wait = 2000 * 2 ** (i - 1);
+      console.log(`retry ${i}/${attempts - 1} in ${wait}ms: ${e instanceof Error ? e.message : String(e)}`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+}
 
 async function download(url: string, dest: string, hash?: { algo: "sha1" | "sha256"; value: string }): Promise<void> {
   if (existsSync(dest)) return;
   console.log(`download ${url}`);
-  // minecraft.net はUser-Agentなしの要求を拒否することがある
-  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)" } });
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  const buf = Buffer.from(await res.arrayBuffer());
+  const buf = await fetchWithRetry(url);
   if (hash) {
     const actual = createHash(hash.algo).update(buf).digest("hex");
     if (actual !== hash.value) throw new Error(`${url}: ${hash.algo} mismatch (${actual})`);
   }
   mkdirSync(dirname(dest), { recursive: true });
-  writeFileSync(dest, buf);
+  // 複数のworktreeから同時に取得しても壊れたファイルを残さないよう、書き終えてから置き換える
+  const tmp = `${dest}.${process.pid}.tmp`;
+  writeFileSync(tmp, buf);
+  renameSync(tmp, dest);
 }
 
 function extract(archive: string, destDir: string, kind: "tar" | "zip"): void {
@@ -53,7 +72,10 @@ async function main(): Promise<void> {
   }
 
   const javaDir = join(serversDir, `java-${config.java.version}`);
-  await download(config.java.url, join(javaDir, "server.jar"), { algo: "sha1", value: config.java.sha1 });
+  const jar = join(cacheDir, `server-${config.java.version}.jar`);
+  await download(config.java.url, jar, { algo: "sha1", value: config.java.sha1 });
+  mkdirSync(javaDir, { recursive: true });
+  if (!existsSync(join(javaDir, "server.jar"))) copyFileSync(jar, join(javaDir, "server.jar"));
   writeFileSync(join(javaDir, "eula.txt"), "eula=true\n");
 
   const bdsDir = join(serversDir, `bedrock-${config.bedrock.version}`);
