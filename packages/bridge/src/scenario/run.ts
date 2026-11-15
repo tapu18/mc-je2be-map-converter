@@ -1,12 +1,10 @@
 // シナリオを Java 版サーバーと BDS で実行し、観測結果をそろえた形で返す（#38）。
 // どちらもシナリオごとに新しいワールドで起動する（状態が混ざらないように）。
-import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { rmSync } from "node:fs";
 import { buildMcstructure, commandBlock, type Facing as BeFacing } from "@je2be/core";
 import { BedrockServer } from "../bedrock.ts";
 import { JavaServer } from "../java.ts";
+import { createDataPack, waitBedrockTicks } from "../poc-kit.ts";
 import { normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./normalize.ts";
 import type { Action, NormalizedState, Scenario, ScenarioCommandBlock, Vec3 } from "./types.ts";
 
@@ -79,9 +77,8 @@ export async function runJava(s: Scenario): Promise<{ state: NormalizedState; lo
 
 /** コマンドブロックを置く操作ごとに .mcstructure を作り、データだけのビヘイビアーパックにまとめる */
 function buildStructurePack(actions: Action[]): { dir: string; loads: Map<Action, { id: string; origin: Vec3 }> } {
-  const dir = mkdtempSync(join(tmpdir(), "je2be-scenario-pack-"));
+  const structures: Record<string, Uint8Array> = {};
   const loads = new Map<Action, { id: string; origin: Vec3 }>();
-  mkdirSync(join(dir, "structures", "je2be"), { recursive: true });
   actions.forEach((a, i) => {
     if (!("commandBlocks" in a)) return;
     const min = [0, 1, 2].map((k) => Math.min(...a.commandBlocks.map((c) => c.pos[k]!))) as Vec3;
@@ -98,28 +95,10 @@ function buildStructurePack(actions: Action[]): { dir: string; loads: Map<Action
     );
     const size = [0, 1, 2].map((k) => max[k]! - min[k]! + 1) as Vec3;
     // fillAir: false で、周りの既存ブロックを消さない
-    writeFileSync(join(dir, "structures", "je2be", `cb_${i}.mcstructure`), buildMcstructure({ size, blocks, fillAir: false }));
+    structures[`cb_${i}`] = buildMcstructure({ size, blocks, fillAir: false });
     loads.set(a, { id: `je2be:cb_${i}`, origin: min });
   });
-  writeFileSync(
-    join(dir, "manifest.json"),
-    JSON.stringify({
-      format_version: 2,
-      header: { name: "je2be scenario structures", description: "", uuid: randomUUID(), version: [0, 1, 0], min_engine_version: [1, 26, 60] },
-      modules: [{ type: "data", uuid: randomUUID(), version: [0, 1, 0] }],
-    }),
-  );
-  return { dir, loads };
-}
-
-async function bedrockTicks(bds: BedrockServer, n: number): Promise<void> {
-  const tick = async (): Promise<number> => (await bds.request<{ tick: number }>("ping")).result!.tick;
-  const start = await tick();
-  const deadline = Date.now() + 30_000 + n * 100;
-  while ((await tick()) < start + n) {
-    if (Date.now() > deadline) throw new ScenarioError(`bedrock: ${n} ticks did not pass`);
-    await new Promise((r) => setTimeout(r, 20));
-  }
+  return { dir: createDataPack(structures), loads };
 }
 
 export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Promise<{ state: NormalizedState; log: string[] }> {
@@ -137,7 +116,7 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
     for (const c of setup) await run(c);
     for (const a of actions) {
       if ("run" in a) await run(a.run);
-      else if ("ticks" in a) await bedrockTicks(bds, a.ticks);
+      else if ("ticks" in a) await waitBedrockTicks(bds, a.ticks);
       else {
         const load = pack.loads.get(a)!;
         const res = await bds.exec(`structure load ${load.id} ${load.origin.join(" ")}`);

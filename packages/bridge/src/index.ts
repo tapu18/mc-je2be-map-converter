@@ -2,3 +2,4 @@ export { BedrockServer, type BedrockResponse, type BedrockStartOptions } from ".
 export { JavaServer, type JavaStartOptions } from "./java.ts";
 export { dumpJavaWorld, type JavaBlock, type JavaDump, type JavaDumpRequest, type JavaEntity } from "./java-dump.ts";
 export { paths } from "./paths.ts";
+export * from "./poc-kit.ts";

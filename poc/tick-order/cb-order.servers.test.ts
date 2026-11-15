@@ -2,12 +2,12 @@
 // 置いた順と座標順をずらし、複数のチャンクにまたがって置く。再起動の前後で記録する。
 // poc/tick-order のパック（je2be:mark）とデータパック（poc:mark）を使う。
 // 結果は poc/tick-order/results.cb-order.json に書き出す。
-import { mkdirSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { buildMcstructure, commandBlock } from "@je2be/core";
-import { BedrockServer, JavaServer } from "@je2be/bridge";
+import { BedrockServer, JavaServer, jsonLines, relativeOrder as relative, tickOrders, waitForLog, writeStructure, type TickMark, type TickOrders as OrderSummary } from "@je2be/bridge";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packDir = join(here, "pack");
@@ -28,35 +28,8 @@ afterAll(() => {
   writeFileSync(join(here, "results.cb-order.json"), JSON.stringify(results, null, 2) + "\n");
 });
 
-/** 1tick分の並びを取り出し、何tick分あっても同じかを確かめる */
-interface OrderSummary {
-  ticks: number;
-  /** 出てきた並びと、その回数（多い順） */
-  orders: { order: string[]; count: number }[];
-}
-
-/** tickごとの並びを集計する（system.run の記録は除く） */
-function orderOf(seq: { tick: number; source: string }[]): OrderSummary {
-  const byTick = new Map<number, string[]>();
-  for (const m of seq) {
-    if (m.source.endsWith(".system_run")) continue;
-    byTick.set(m.tick, [...(byTick.get(m.tick) ?? []), m.source]);
-  }
-  const ticks = [...byTick.keys()].sort((a, b) => a - b).slice(1, -1);
-  const counts = new Map<string, number>();
-  for (const t of ticks) {
-    const k = byTick.get(t)!.join(",");
-    counts.set(k, (counts.get(k) ?? 0) + 1);
-  }
-  const orders = [...counts].sort((a, b) => b[1] - a[1]).map(([k, count]) => ({ order: k.split(","), count }));
-  return { ticks: ticks.length, orders };
-}
-
-/** 並びの中での a と b の前後が、全tickで同じか */
-function relative(summary: OrderSummary, a: string, b: string): "before" | "after" | "varies" {
-  const rel = new Set(summary.orders.map((o) => (o.order.indexOf(a) < o.order.indexOf(b) ? "before" : "after")));
-  return rel.size === 1 ? [...rel][0]! : "varies";
-}
+/** コマンドブロックの記録だけを数える（system.run の記録は除く） */
+const cbOnly = (src: string): boolean => src.startsWith("cb_") && !src.endsWith(".system_run");
 
 describe("cb order (bedrock)", () => {
   let bds: BedrockServer;
@@ -65,26 +38,14 @@ describe("cb order (bedrock)", () => {
   const record = async (): Promise<OrderSummary> => {
     const from = bds.log.length;
     bds.console(`scriptevent je2be:start ${RECORD_TICKS}`);
-    const deadline = Date.now() + 30_000;
-    while (!bds.log.slice(from).some((l) => l.includes("POC_DONE"))) {
-      if (Date.now() > deadline) throw new Error("recording did not finish");
-      await new Promise((r) => setTimeout(r, 100));
-    }
-    const seq = bds.log.slice(from).flatMap((l) => {
-      const i = l.indexOf("POC {");
-      if (i < 0) return [];
-      const m = JSON.parse(l.slice(i + 4)) as { tick: number; source: string };
-      return m.source.startsWith("cb_") ? [m] : [];
-    });
-    return orderOf(seq);
+    await waitForLog(bds.log, (l) => l.includes("POC_DONE"), 30_000, from);
+    return tickOrders(jsonLines<TickMark>(bds.log, "POC", from), cbOnly);
   };
 
   it("records before and after restart", async () => {
-    const dir = join(packDir, "structures", "je2be");
-    mkdirSync(dir, { recursive: true });
     for (const p of placements) {
       const cb = commandBlock({ pos: [0, 0, 0], kind: "repeat", command: `je2be:mark cb_${p.name}`, facing: 3, alwaysActive: true });
-      writeFileSync(join(dir, `cb_${p.name}.mcstructure`), buildMcstructure({ size: [1, 1, 1], blocks: [cb] }));
+      writeStructure(packDir, `cb_${p.name}`, buildMcstructure({ size: [1, 1, 1], blocks: [cb] }));
     }
     bds = await BedrockServer.start({ behaviorPacks: [packDir] });
     for (const p of placements) {
@@ -118,7 +79,7 @@ describe("cb order (java)", () => {
     const seq = [...text.matchAll(/\{s: "([^"]+)", t: (\d+)\}/g)]
       .map((m) => ({ source: m[1]!, tick: Number(m[2]) }))
       .filter((m) => m.source.startsWith("cb_"));
-    return orderOf(seq);
+    return tickOrders(seq, cbOnly);
   };
 
   it("records before and after restart", async () => {

@@ -1,12 +1,12 @@
 // tick内の実行順のPoC（docs/design.md 7章チェックリスト8項目目、#3）。
 // tick.json の関数、system.runInterval、system.run、リピートコマンドブロック、scriptevent の順序を記録する。
 // 結果は poc/tick-order/results.json に書き出す（根拠としてコミットする）。
-import { mkdirSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildMcstructure, commandBlock, type StructureBlock } from "@je2be/core";
-import { BedrockServer, JavaServer } from "@je2be/bridge";
+import { BedrockServer, JavaServer, jsonLines, tickOrders, waitForLog, writeStructure } from "@je2be/bridge";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packDir = join(here, "pack");
@@ -37,8 +37,7 @@ describe("tick order poc", () => {
   const results: Record<string, unknown> = {};
 
   beforeAll(async () => {
-    mkdirSync(join(packDir, "structures", "je2be"), { recursive: true });
-    writeFileSync(join(packDir, "structures", "je2be", "tick_order.mcstructure"), buildStructure());
+    writeStructure(packDir, "tick_order", buildStructure());
     bds = await BedrockServer.start({ behaviorPacks: [packDir] });
   });
 
@@ -52,28 +51,14 @@ describe("tick order poc", () => {
     // リピートブロックが動き始めるまで少し待ってから記録する
     await new Promise((r) => setTimeout(r, 1000));
     bds.console(`scriptevent je2be:start ${RECORD_TICKS}`);
-    const deadline = Date.now() + 30_000;
-    while (!bds.log.some((l) => l.includes("POC_DONE"))) {
-      if (Date.now() > deadline) throw new Error("recording did not finish");
-      await new Promise((r) => setTimeout(r, 100));
-    }
+    await waitForLog(bds.log, (l) => l.includes("POC_DONE"));
 
-    const marks: Mark[] = bds.log.flatMap((l) => {
-      const i = l.indexOf("POC {");
-      return i >= 0 ? [JSON.parse(l.slice(i + 4)) as Mark] : [];
-    });
-    const byTick = new Map<number, string[]>();
-    for (const m of marks.sort((a, b) => a.seq - b.seq)) {
-      const arr = byTick.get(m.tick) ?? [];
-      arr.push(m.source);
-      byTick.set(m.tick, arr);
-    }
-    // 記録の最初と最後のtickは途中から・途中までになるため除く
-    const ticks = [...byTick.keys()].sort((a, b) => a - b).slice(1, -1);
-    const orders = ticks.map((t) => byTick.get(t)!.join(" > "));
-    const distinct = [...new Set(orders)];
-    results.recordedTicks = ticks.length;
-    results.distinctOrders = distinct.map((o) => ({ order: o.split(" > "), ticks: orders.filter((x) => x === o).length }));
+    const marks = jsonLines<Mark>(bds.log, "POC").sort((a, b) => a.seq - b.seq);
+    const summary = tickOrders(marks);
+    const ticks = { length: summary.ticks };
+    const distinct = summary.orders.map((o) => o.order.join(" > "));
+    results.recordedTicks = summary.ticks;
+    results.distinctOrders = summary.orders.map((o) => ({ order: o.order, ticks: o.count }));
     // 記録開始（scriptevent je2be:start のハンドラ）の直後から並べた生データ。tickの区切りの位置を推定する手がかり
     results.firstMarks = marks.slice(0, 18).map((m) => `${m.tick - marks[0]!.tick}:${m.source}`);
     results.contentLog = bds.log.filter((l) => /ERROR|WARN/.test(l));
