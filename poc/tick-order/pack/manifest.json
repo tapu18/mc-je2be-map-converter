@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "je2be poc tick order",
+    "description": "tick内の実行順のPoC（tick.json、スクリプト、コマンドブロック）",
+    "uuid": "6093caaa-1310-4a1f-9812-bc61b275df2f",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 60]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "77205a0b-c6a3-4b72-9cd1-4916fb4a2092",
+      "version": [0, 1, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "2.12.0-beta" }
+  ]
+}

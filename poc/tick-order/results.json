@@ -1,0 +1,46 @@
+{
+  "recordedTicks": 19,
+  "distinctOrders": [
+    {
+      "order": [
+        "repeat_x0",
+        "repeat_x4",
+        "repeat_x8_head",
+        "repeat_x8_chain",
+        "function_a",
+        "function_b",
+        "runInterval",
+        "runInterval.system_run",
+        "repeat_x0.system_run",
+        "repeat_x4.system_run",
+        "repeat_x8_head.system_run",
+        "repeat_x8_chain.system_run",
+        "function_a.system_run",
+        "function_b.system_run",
+        "scriptevent:repeat_x12"
+      ],
+      "ticks": 19
+    }
+  ],
+  "firstMarks": [
+    "0:scriptevent:repeat_x12",
+    "1:repeat_x0",
+    "1:repeat_x4",
+    "1:repeat_x8_head",
+    "1:repeat_x8_chain",
+    "1:function_a",
+    "1:function_b",
+    "1:runInterval",
+    "1:runInterval.system_run",
+    "1:repeat_x0.system_run",
+    "1:repeat_x4.system_run",
+    "1:repeat_x8_head.system_run",
+    "1:repeat_x8_chain.system_run",
+    "1:function_a.system_run",
+    "1:function_b.system_run",
+    "1:scriptevent:repeat_x12",
+    "2:repeat_x0",
+    "2:repeat_x4"
+  ],
+  "contentLog": []
+}
