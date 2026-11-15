@@ -108,3 +108,26 @@ describe("restart keeps the world", () => {
     }
   });
 });
+
+describe("rcon long requests and responses", () => {
+  it("rejects too long commands, joins long responses, and serializes concurrent calls", async () => {
+    const java = await JavaServer.start();
+    try {
+      // コマンドは 1446 バイトまで。超えると送る前に失敗する（サーバーは接続を切るため）
+      await expect(java.exec(`say ${"x".repeat(1500)}`)).rejects.toThrow(/too long/);
+      // 約1,300文字の文字列を6個並べ、応答を 4096 文字より長くする
+      await java.exec("data modify storage je2be:long v set value []");
+      for (let i = 0; i < 6; i++) await java.exec(`data modify storage je2be:long v append value "${String(i).repeat(1300)}"`);
+      const text = await java.exec("data get storage je2be:long v");
+      expect(text.length).toBeGreaterThan(6 * 1300);
+      expect(text).toContain(`${"5".repeat(1300)}"]`);
+      // 続くコマンドの応答がずれないこと
+      expect(await java.exec("data get storage je2be:long v[0]")).toContain(`"${"0".repeat(1300)}"`);
+      // 同時に呼んでも、順に送られてそれぞれの応答が返る
+      const many = await Promise.all([1, 2, 3, 4, 5].map((i) => java.exec(`data get storage je2be:long v[${i}]`)));
+      expect(many.map((t) => /"(\d)\d*"/.exec(t)?.[1])).toEqual(["1", "2", "3", "4", "5"]);
+    } finally {
+      await java.stop();
+    }
+  });
+});
