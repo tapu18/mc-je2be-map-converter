@@ -12,6 +12,7 @@ interface ServersConfig {
   jre: { name: string; url: string; sha256: string };
   java: { version: string; url: string; sha1: string };
   bedrock: { version: string; url: string };
+  chunker: { version: string; url: string; sha256: string };
 }
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,7 +86,14 @@ async function main(): Promise<void> {
     extract(archive, bdsDir, "zip");
   }
 
-  console.log(`ok: ${jreDir}\nok: ${javaDir}\nok: ${bdsDir}`);
+  // 地形変換器 Chunker の CLI（第三者製。取得は所有者が許可済み、#6）
+  const chunkerJar = join(serversDir, "tools", `chunker-cli-${config.chunker.version}.jar`);
+  const chunkerCache = join(cacheDir, `chunker-cli-${config.chunker.version}.jar`);
+  await download(config.chunker.url, chunkerCache, { algo: "sha256", value: config.chunker.sha256 });
+  mkdirSync(dirname(chunkerJar), { recursive: true });
+  if (!existsSync(chunkerJar)) copyFileSync(chunkerCache, chunkerJar);
+
+  console.log(`ok: ${jreDir}\nok: ${javaDir}\nok: ${bdsDir}\nok: ${chunkerJar}`);
 }
 
 await main();

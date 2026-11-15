@@ -27,6 +27,16 @@
 | エンティティのタグは集合として保存され、付けた順にはならない | 同上 |
 | ブロックステートの値は Java が文字列、BE が数値・真偽値・文字列。両エディションのダンプを比べるときは型を合わせる必要がある | 同上、`bridge.servers.test.ts` |
 
+## 地形変換器（Chunker 1.21.0、Java 26.3 → BE 1.26.60 形式）
+
+| 事実 | 根拠 |
+| --- | --- |
+| コマンドブロックの種類・向き・条件付き・常時実行・レッドストーン必要・名前付きは運ばれ、BE でそのまま動く。コマンド文字列は変換されない | `poc/terrain-converter/chunker.servers.test.ts` |
+| 現行構文の `execute`（`if block`、`positioned`）を含むコマンドブロックは、変換後の BE で動く | 同上 |
+| エンティティは1体も運ばれない（防具立て、豚、marker、表示用エンティティ、interaction）。Java→Java 変換でも消え、旧来の `entities/` に置いても同じ | 同上、#6 のコメント |
+| スコアボードと command storage は運ばれない | 同上 |
+| CLI は `java -jar chunker-cli-1.21.0.jar -i <入力> -f BEDROCK_R26_60 -o <出力>`。小さなワールドで約1.6秒 | 同上 |
+
 ## Script API
 
 | 事実 | 根拠 |

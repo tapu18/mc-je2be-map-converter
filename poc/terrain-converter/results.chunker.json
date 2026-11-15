@@ -1,0 +1,269 @@
+{
+  "chunker": "1.21.0",
+  "javaScores": [
+    {
+      "objective": "t",
+      "scores": [
+        {
+          "participant": "r_modern_pos",
+          "score": 22
+        },
+        {
+          "participant": "r_chain_tail",
+          "score": 22
+        },
+        {
+          "participant": "r_up_head",
+          "score": 22
+        },
+        {
+          "participant": "r_modern",
+          "score": 22
+        },
+        {
+          "participant": "r_named",
+          "score": 22
+        },
+        {
+          "participant": "r_repeat",
+          "score": 22
+        },
+        {
+          "participant": "r_modern_block",
+          "score": 22
+        },
+        {
+          "participant": "r_up_tail",
+          "score": 22
+        },
+        {
+          "participant": "r_chain_head",
+          "score": 22
+        }
+      ]
+    },
+    {
+      "objective": "java_only",
+      "scores": [
+        {
+          "participant": "#kept",
+          "score": 7
+        }
+      ]
+    }
+  ],
+  "javaEntities": [
+    {
+      "type": "minecraft:armor_stand",
+      "tags": [
+        "probe"
+      ]
+    },
+    {
+      "type": "minecraft:marker",
+      "tags": [
+        "probe_marker"
+      ]
+    },
+    {
+      "type": "minecraft:text_display",
+      "tags": [
+        "probe_text"
+      ]
+    },
+    {
+      "type": "minecraft:block_display",
+      "tags": [
+        "probe_block"
+      ]
+    },
+    {
+      "type": "minecraft:item_display",
+      "tags": [
+        "probe_item"
+      ]
+    },
+    {
+      "type": "minecraft:interaction",
+      "tags": [
+        "probe_interaction"
+      ]
+    },
+    {
+      "type": "minecraft:pig",
+      "tags": [
+        "probe_pig"
+      ]
+    }
+  ],
+  "conversion": {
+    "ms": 1261,
+    "logTail": [
+      "83.93%",
+      "Compacting world, this may take a while...",
+      "Finished compacting world.",
+      "100.00%",
+      "Conversion complete! Took 0h 0m 0s 720ms"
+    ]
+  },
+  "bedrockBlocks": [
+    {
+      "pos": [
+        1,
+        -50,
+        0
+      ],
+      "type": "minecraft:repeating_command_block",
+      "states": {
+        "facing_direction": 3,
+        "conditional_bit": false
+      }
+    },
+    {
+      "pos": [
+        3,
+        -50,
+        0
+      ],
+      "type": "minecraft:repeating_command_block",
+      "states": {
+        "facing_direction": 3,
+        "conditional_bit": false
+      }
+    },
+    {
+      "pos": [
+        5,
+        -50,
+        0
+      ],
+      "type": "minecraft:repeating_command_block",
+      "states": {
+        "facing_direction": 3,
+        "conditional_bit": false
+      }
+    },
+    {
+      "pos": [
+        5,
+        -50,
+        1
+      ],
+      "type": "minecraft:chain_command_block",
+      "states": {
+        "facing_direction": 3,
+        "conditional_bit": false
+      }
+    },
+    {
+      "pos": [
+        7,
+        -50,
+        0
+      ],
+      "type": "minecraft:repeating_command_block",
+      "states": {
+        "facing_direction": 3,
+        "conditional_bit": false
+      }
+    },
+    {
+      "pos": [
+        7,
+        -50,
+        1
+      ],
+      "type": "minecraft:chain_command_block",
+      "states": {
+        "facing_direction": 3,
+        "conditional_bit": true
+      }
+    },
+    {
+      "pos": [
+        9,
+        -50,
+        0
+      ],
+      "type": "minecraft:repeating_command_block",
+      "states": {
+        "facing_direction": 3,
+        "conditional_bit": false
+      }
+    },
+    {
+      "pos": [
+        11,
+        -50,
+        0
+      ],
+      "type": "minecraft:repeating_command_block",
+      "states": {
+        "facing_direction": 1,
+        "conditional_bit": false
+      }
+    },
+    {
+      "pos": [
+        11,
+        -49,
+        0
+      ],
+      "type": "minecraft:chain_command_block",
+      "states": {
+        "facing_direction": 1,
+        "conditional_bit": false
+      }
+    },
+    {
+      "pos": [
+        13,
+        -50,
+        0
+      ],
+      "type": "minecraft:repeating_command_block",
+      "states": {
+        "facing_direction": 3,
+        "conditional_bit": false
+      }
+    }
+  ],
+  "bedrockScoresAtLoad": [],
+  "bedrockEntitiesAtLoad": [],
+  "bedrockEntitiesAfter3s": [],
+  "bedrockScoresAfter3s": [
+    {
+      "participant": "r_modern_pos",
+      "score": 62
+    },
+    {
+      "participant": "r_chain_tail",
+      "score": 62
+    },
+    {
+      "participant": "r_chain_head",
+      "score": 62
+    },
+    {
+      "participant": "r_up_head",
+      "score": 62
+    },
+    {
+      "participant": "r_repeat",
+      "score": 62
+    },
+    {
+      "participant": "r_up_tail",
+      "score": 62
+    },
+    {
+      "participant": "r_named",
+      "score": 62
+    },
+    {
+      "participant": "r_modern_block",
+      "score": 62
+    }
+  ],
+  "contentLog": []
+}
