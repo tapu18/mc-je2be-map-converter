@@ -143,7 +143,69 @@ JE の全 ID / 状態を母数に、`exact`（検証済み）、`approximate`（
 JE 旧版の正規化、コンポーネント変換、独自データパック定義はこの表とは別に対応状況を持つ。
 
 所有者が承認したのは Geyser を対応表の入手元にすることとライセンス表示。
-`design.md` 5.3・8章へこの判断を反映する。ゲームから抽出した生成データ全体の
-同梱まで承認されたとは解釈しない。次は取得・正規化・出典記録と、
-BE カタログ／地形比較の実機テストをそれぞれ実装する。
+`design.md` 5.3・8章へこの判断を反映した。ゲームから抽出した生成データ全体の
+同梱まで承認されたとは解釈しない。#56 でブロック・アイテム対応表の取得・正規化・
+参照と代表状態の BDS 検証を実装。BE カタログ全体や地形との比較は後続。
 実機検証前に「全種対応」とは表記しない。
+
+## 対応表の生成と利用（#56）
+
+```sh
+npm run setup:servers
+npm run setup:mappings
+```
+
+出力は `servers/mappings/` の次の3ファイル。このディレクトリは git 管理外。
+
+- `mappings.json`: スキーマ版、出典・コミット・JE/BE 版・元データの SHA-256 と、正規化した対応行
+- `LICENSE.geyser.txt`: 対応表と同じ固定版から取得・検証した MIT 許諾文
+- `NOTICE.txt`: 出典、著作権表示と同梱要件
+
+表を配布する変換器や生成パックには **3ファイルを一緒に含める**。パックの生成処理は
+まだ実装していないため、このコマンドがワールドやビヘイビアーパックを生成するわけではない。
+JSON にはブロック35,723状態とアイテム1,658件の ID・状態・必要なアイテム data 値だけを
+格納し、コンポーネント、形状、ネットワーク runtime ID 等のフィールドは除く。
+
+取得元は `packages/converter/src/geyser-source.ts` の固定コミットと SHA-256。
+`blocks.nbt`・`items.json`・`LICENSE` の3ファイルだけを `servers/geyser-source/` に取得する。
+JE の `blocks.json` も固定 SHA-256 と照合する。Geyser の配列位置と JE の数値状態 ID を
+誤って別版で結び付けないため、同じ件数だけでは受理しない。版を変えるときはソース固定値と
+JE レポートを一緒に検証し直す。JE 旧版のコマンドや保存状態は別途正規化が必要。
+
+取得済みのファイルだけで再生成する場合：
+
+```sh
+npm run setup:mappings -- --offline
+# 保存先や JE レポートを明示する場合
+npm run setup:mappings -- --offline --source-dir ./servers/geyser-source --blocks ./servers/reports-26.3/reports/blocks.json --out ./servers/mappings-copy
+```
+
+取り込み処理の `fetchGeyserSources` / `generateGeyserMappings` は `@je2be/converter`、
+型と `MappingLookup` は Node / DOM 非依存の `@je2be/core` から利用できる。
+ホストで読み込んだ JSON を `MappingTables` として渡す：
+
+```ts
+import { MappingLookup, type MappingTables } from "@je2be/core";
+
+function useMappings(tables: MappingTables) {
+  const lookup = new MappingLookup(tables);
+  return lookup.block("minecraft:oak_stairs", {
+    facing: "east", half: "top", shape: "straight", waterlogged: "false",
+  });
+}
+```
+
+`block` は JE の **完全な状態**でのみ照合する。既定値の省略や `execute if block` の部分条件を
+自動補完しない。未登録 ID は `unknown-block`、既知 ID の状態不足は `incomplete-state`、
+不正なキーや値は `unknown-state`。`item` の未登録は `unknown-item`。
+
+`mapped` は対応行の存在だけを表す。`verification` は常に `unverified` とし、
+この API だけで挙動の等価性を断定しない。`sharedBy` は同じ出力 ID・明示状態（アイテムは
+ID・data 値）の行数で、複数入力の集約を発見する手掛かり。等価性や損失の完全な分類ではない。
+ブロックの `waterlogged: true` は別レイヤーの水等を扱う必要がある入力を示すが、
+水を配置する処理自体は含まない。BE 側の `target.states` は明示された状態だけであり、
+サーバーが補う既定状態を網羅していないこともある。
+
+`packages/bridge/src/mappings.servers.test.ts` で、BDS 1.26.63.1 が代表16状態（石・レンガ、
+丸太3軸、スラブ3種、乾いた直線階段4方向×上下）を受理し、型と表で明示した状態を
+読み戻せることを確認する。階段の向きの意味、水没、全状態の挙動互換はこのテストの対象外。
