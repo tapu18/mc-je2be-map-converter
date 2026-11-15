@@ -51,7 +51,7 @@
 ### 3. PRを出してマージする
 
 1. `gh pr create` で PR を出す。本文に `Closes #<番号>` を書く（テンプレートあり）。
-2. CI（`check` と `servers`）が通るのを待つ。待つときは `tools/wait-pr-ci.sh <PR番号>` を使う（push 直後は CI が未登録で `gh pr checks --watch` がすぐ終わり、待ったつもりで素通りすることがあるため。#28 で発生）。失敗したら直す。
+2. CI（`check` と、グループごとの `servers / <グループ>`）が通るのを待つ。実機テストのグループ分けは `tools/server-test-groups.ts`（新しいテストは自動で `misc` に入る）。`performance` は時間がかかるため、PR では関連する変更があるときだけ流れ、main への push では常に流れる。待つときは `tools/wait-pr-ci.sh <PR番号>` を使う（push 直後は CI が未登録で `gh pr checks --watch` がすぐ終わり、待ったつもりで素通りすることがあるため。#28 で発生）。失敗したら直す。
 3. マージの条件：
    - CI が通っている
    - Issue の完了条件を満たしている
