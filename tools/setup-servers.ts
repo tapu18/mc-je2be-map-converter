@@ -20,13 +20,27 @@ const serversDir = join(root, "servers");
 // ダウンロードしたアーカイブは worktree をまたいで共有する
 const cacheDir = process.env.JE2BE_DOWNLOAD_CACHE ?? join(homedir(), ".cache", "je2be");
 
+/** 一時的なネットワーク障害（CIでのタイムアウトなど）に備えて数回やり直す。 */
+async function fetchWithRetry(url: string, attempts = 4): Promise<Buffer> {
+  for (let i = 1; ; i++) {
+    try {
+      // minecraft.net はUser-Agentなしの要求を拒否することがある
+      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)" } });
+      if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+      return Buffer.from(await res.arrayBuffer());
+    } catch (e) {
+      if (i >= attempts) throw e;
+      const wait = 2000 * 2 ** (i - 1);
+      console.log(`retry ${i}/${attempts - 1} in ${wait}ms: ${e instanceof Error ? e.message : String(e)}`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+}
+
 async function download(url: string, dest: string, hash?: { algo: "sha1" | "sha256"; value: string }): Promise<void> {
   if (existsSync(dest)) return;
   console.log(`download ${url}`);
-  // minecraft.net はUser-Agentなしの要求を拒否することがある
-  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)" } });
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  const buf = Buffer.from(await res.arrayBuffer());
+  const buf = await fetchWithRetry(url);
   if (hash) {
     const actual = createHash(hash.algo).update(buf).digest("hex");
     if (actual !== hash.value) throw new Error(`${url}: ${hash.algo} mismatch (${actual})`);
