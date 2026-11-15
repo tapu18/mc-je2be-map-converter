@@ -5,3 +5,4 @@ export * from "./bedrock/mcstructure.ts";
 export * from "./java/world.ts";
 export * from "./java/command-blocks.ts";
 export * from "./mappings/mappings.ts";
+export * from "./command/index.ts";

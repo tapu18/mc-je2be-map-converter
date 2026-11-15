@@ -9,5 +9,5 @@
     "types": ["node"]
   },
   "include": ["**/*.ts"],
-  "references": [{ "path": "../packages/converter" }]
+  "references": [{ "path": "../packages/core" }, { "path": "../packages/converter" }, { "path": "../packages/bridge" }]
 }
