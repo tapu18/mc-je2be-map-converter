@@ -1,0 +1,13 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "mcstructure version PoC",
+    "description": "Generated command blocks for version verification",
+    "uuid": "faf071eb-386e-4b18-97cd-a7299af4730d",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 0]
+  },
+  "modules": [
+    { "type": "data", "uuid": "0e871e11-66a7-4293-88aa-a1cc383800d0", "version": [1, 0, 0] }
+  ]
+}
