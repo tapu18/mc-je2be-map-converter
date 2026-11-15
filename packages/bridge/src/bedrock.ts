@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { nbt, readBedrockLevelDat, writeBedrockLevelDat, type NbtTag } from "@je2be/core";
 import { paths } from "./paths.ts";
 import { ServerProcess } from "./process.ts";
+import { DirLock, freeUdpPort } from "./resources.ts";
 
 export interface BedrockStartOptions {
   /** 追加で読み込むビヘイビアーパックのディレクトリ（manifest.json を含む） */
@@ -34,7 +35,7 @@ function readManifest(dir: string): Manifest {
   return JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as Manifest;
 }
 
-function writeProperties(dir: string, level: string): void {
+async function writeProperties(dir: string, level: string): Promise<void> {
   const file = join(dir, "server.properties");
   let text = readFileSync(file, "utf8");
   const set = (key: string, value: string): void => {
@@ -48,6 +49,9 @@ function writeProperties(dir: string, level: string): void {
   set("enable-lan-visibility", "false");
   set("content-log-console-output-enabled", "true");
   set("content-log-level", "info");
+  // 同じマシンで複数のBDSを動かせるよう、毎回空きポートを使う
+  set("server-port", String(await freeUdpPort("udp4")));
+  set("server-portv6", String(await freeUdpPort("udp6").catch(() => freeUdpPort("udp4"))));
   writeFileSync(file, text);
 }
 
@@ -56,9 +60,11 @@ export class BedrockServer {
   private pending = new Map<number, (res: BedrockResponse) => void>();
   private parts = new Map<number, string[]>();
   private readonly proc: ServerProcess;
+  private readonly lock: DirLock;
 
-  private constructor(proc: ServerProcess) {
+  private constructor(proc: ServerProcess, lock: DirLock) {
     this.proc = proc;
+    this.lock = lock;
     proc.onLine((line) => this.onLine(line));
   }
 
@@ -67,7 +73,7 @@ export class BedrockServer {
     const dir = paths.bedrockServer;
     const template = join(dir, "worlds", TEMPLATE);
     if (existsSync(join(template, "level.dat"))) return template;
-    writeProperties(dir, TEMPLATE);
+    await writeProperties(dir, TEMPLATE);
     const proc = new ServerProcess("./bedrock_server", [], {
       cwd: dir,
       env: { LD_LIBRARY_PATH: "." },
@@ -86,6 +92,17 @@ export class BedrockServer {
   }
 
   static async start(opts: BedrockStartOptions = {}): Promise<BedrockServer> {
+    const lock = new DirLock(paths.bedrockServer);
+    lock.acquire();
+    try {
+      return await BedrockServer.launch(opts, lock);
+    } catch (e) {
+      lock.release();
+      throw e;
+    }
+  }
+
+  private static async launch(opts: BedrockStartOptions, lock: DirLock): Promise<BedrockServer> {
     const dir = paths.bedrockServer;
     const base = opts.world ?? (await BedrockServer.ensureTemplate());
     const worldDir = join(dir, "worlds", LEVEL);
@@ -119,24 +136,29 @@ export class BedrockServer {
     root.set("commandblocksenabled", nbt.byte(1));
     writeFileSync(datPath, writeBedrockLevelDat(dat));
 
-    writeProperties(dir, LEVEL);
+    await writeProperties(dir, LEVEL);
     const proc = new ServerProcess("./bedrock_server", [], {
       cwd: dir,
       env: { LD_LIBRARY_PATH: "." },
       logFile: join(paths.servers, "bedrock-last.log"),
     });
-    const server = new BedrockServer(proc);
-    await proc.waitFor((l) => l.includes("Server started"), 120_000, "bedrock server start");
-    await proc.waitFor((l) => l.includes("JE2BE_READY"), 60_000, "bridge pack ready");
+    const server = new BedrockServer(proc, lock);
+    try {
+      await proc.waitFor((l) => l.includes("Server started"), 120_000, "bedrock server start");
+      await proc.waitFor((l) => l.includes("JE2BE_READY"), 60_000, "bridge pack ready");
 
-    const [x0, z0, x1, z1] = opts.tickingArea ?? [0, 0, 63, 63];
-    proc.write(`tickingarea add ${x0} 0 ${z0} ${x1} 0 ${z1} je2be`);
-    const deadline = Date.now() + 60_000;
-    while (!(await server.request<boolean>("loaded", { pos: [x0, 0, z0] })).result) {
-      if (Date.now() > deadline) throw new Error("ticking area did not load");
-      await new Promise((r) => setTimeout(r, 250));
+      const [x0, z0, x1, z1] = opts.tickingArea ?? [0, 0, 63, 63];
+      proc.write(`tickingarea add ${x0} 0 ${z0} ${x1} 0 ${z1} je2be`);
+      const deadline = Date.now() + 60_000;
+      while (!(await server.request<boolean>("loaded", { pos: [x0, 0, z0] })).result) {
+        if (Date.now() > deadline) throw new Error("ticking area did not load");
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      return server;
+    } catch (e) {
+      proc.kill();
+      throw e;
     }
-    return server;
   }
 
   /** 検証パックに要求を送る。 */
@@ -169,6 +191,7 @@ export class BedrockServer {
     const timer = setTimeout(() => this.proc.kill(), 30_000);
     await this.proc.exited;
     clearTimeout(timer);
+    this.lock.release();
   }
 
   private onLine(line: string): void {
