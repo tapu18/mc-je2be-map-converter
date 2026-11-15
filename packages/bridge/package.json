@@ -1,0 +1,12 @@
+{
+  "name": "@je2be/bridge",
+  "private": true,
+  "type": "module",
+  "description": "検証ブリッジ。Java版サーバーとBDSを同じ形で起動・操作する（Node専用）",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@je2be/core": "*"
+  }
+}

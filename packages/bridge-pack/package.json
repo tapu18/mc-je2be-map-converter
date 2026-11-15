@@ -1,0 +1,10 @@
+{
+  "name": "@je2be/bridge-pack",
+  "private": true,
+  "type": "module",
+  "description": "BDS用の検証パック。ブリッジからのscripteventを受けてコマンド実行や状態ダンプを行い、結果をコンソールに出す",
+  "dependencies": {
+    "@minecraft/server": "2.12.0-beta.1.26.63-stable",
+    "@minecraft/server-gametest": "1.0.0-beta.1.26.63-stable"
+  }
+}
