@@ -5,6 +5,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 - 設計の正本: `docs/design.md`（`docs/design-notes.md` は初期の検討メモ。食い違えば design.md を優先）
 - 実測で判明した事実: `docs/findings.md`
 - 正解データのシナリオの書き方: `docs/scenarios.md`
+- PoC の書き方と共通の小道具: `docs/poc.md`
 - 作業の管理: GitHub の Issue・マイルストーン・PR（https://github.com/tapu18/mc-je2be-map-converter）。手順は `docs/workflow.md`
 - 開発は複数のAIエージェントが並行して進める。人は `needs-approval` の判断、段階の関門での承認、実クライアントでのプレイ確認を担う
 
