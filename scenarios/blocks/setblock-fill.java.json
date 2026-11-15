@@ -1,0 +1,16 @@
+{
+  "java": "26.3",
+  "state": {
+    "blocks": {
+      "10,-50,10": "minecraft:iron_block",
+      "10,-50,11": "minecraft:iron_block",
+      "10,-50,12": "minecraft:iron_block",
+      "11,-50,10": "minecraft:iron_block",
+      "11,-50,11": "minecraft:diamond_block",
+      "11,-50,12": "minecraft:iron_block",
+      "12,-50,10": "minecraft:iron_block",
+      "12,-50,11": "minecraft:iron_block",
+      "12,-50,12": "minecraft:air"
+    }
+  }
+}

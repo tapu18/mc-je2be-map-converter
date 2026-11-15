@@ -1,0 +1,11 @@
+{
+  "description": "setblock と fill、fill の replace",
+  "setup": [],
+  "actions": [
+    { "run": "fill 10 -50 10 12 -50 12 gold_block" },
+    { "run": "setblock 11 -50 11 diamond_block" },
+    { "run": "fill 10 -50 10 12 -50 12 iron_block replace gold_block" },
+    { "run": "setblock 12 -50 12 air" }
+  ],
+  "observe": { "blocks": [{ "from": [10, -50, 10], "to": [12, -50, 12] }] }
+}
