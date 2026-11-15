@@ -1,0 +1,24 @@
+name: タスク
+description: 実装・PoC・調査など、1つのPRで完了できる単位の作業
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜ必要か。関連する design.md の節や Issue
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了条件
+      description: 機械的に確かめられる条件をチェックリストで。確かめられないものは「人の確認」と明記する
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: メモ
+      description: 手がかり、依存する Issue、注意点
