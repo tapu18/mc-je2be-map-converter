@@ -1,0 +1,242 @@
+{
+  "cases": {
+    "summon/int": {
+      "be": [
+        2.5,
+        9.5
+      ],
+      "java": [
+        2.5,
+        9.5
+      ]
+    },
+    "positioned/int": {
+      "be": [
+        7.5,
+        9.5
+      ],
+      "java": [
+        7.5,
+        9.5
+      ]
+    },
+    "positionedOffset/int": {
+      "be": [
+        13.5,
+        9.5
+      ],
+      "java": [
+        13.5,
+        9.5
+      ]
+    },
+    "summon/dot0": {
+      "be": [
+        17,
+        9
+      ],
+      "java": [
+        17,
+        9
+      ]
+    },
+    "positioned/dot0": {
+      "be": [
+        22,
+        9
+      ],
+      "java": [
+        22,
+        9
+      ]
+    },
+    "positionedOffset/dot0": {
+      "be": [
+        28,
+        9
+      ],
+      "java": [
+        28,
+        9
+      ]
+    },
+    "summon/half": {
+      "be": [
+        32.5,
+        9.5
+      ],
+      "java": [
+        32.5,
+        9.5
+      ]
+    },
+    "positioned/half": {
+      "be": [
+        37.5,
+        9.5
+      ],
+      "java": [
+        37.5,
+        9.5
+      ]
+    },
+    "positionedOffset/half": {
+      "be": [
+        43.5,
+        9.5
+      ],
+      "java": [
+        43.5,
+        9.5
+      ]
+    },
+    "summon/quarter": {
+      "be": [
+        47.25,
+        9.25
+      ],
+      "java": [
+        47.25,
+        9.25
+      ]
+    },
+    "positioned/quarter": {
+      "be": [
+        52.25,
+        9.25
+      ],
+      "java": [
+        52.25,
+        9.25
+      ]
+    },
+    "positionedOffset/quarter": {
+      "be": [
+        58.25,
+        9.25
+      ],
+      "java": [
+        58.25,
+        9.25
+      ]
+    },
+    "tp/int": {
+      "be": [
+        2.5,
+        20.5
+      ],
+      "java": [
+        2.5,
+        20.5
+      ]
+    },
+    "tp/dot0": {
+      "be": [
+        7,
+        20
+      ],
+      "java": [
+        7,
+        20
+      ]
+    },
+    "tp/half": {
+      "be": [
+        12.5,
+        20.5
+      ],
+      "java": [
+        12.5,
+        20.5
+      ]
+    },
+    "tp/quarter": {
+      "be": [
+        17.25,
+        20.25
+      ],
+      "java": [
+        17.25,
+        20.25
+      ]
+    }
+  },
+  "selectors": {
+    "int/corner": {
+      "be": true,
+      "java": true
+    },
+    "dot0/corner": {
+      "be": true,
+      "java": true
+    },
+    "int/center": {
+      "be": false,
+      "java": false
+    },
+    "dot0/center": {
+      "be": false,
+      "java": false
+    }
+  },
+  "setblock": {
+    "setblock/decimal": {
+      "be": {
+        "ok": true,
+        "at": [
+          [
+            3,
+            35
+          ]
+        ]
+      },
+      "java": {
+        "ok": false,
+        "message": "Invalid integer '3.9'setblock 3.9 -50 35.9 minecraft:stone<--[HERE]",
+        "at": []
+      }
+    },
+    "setblock/positioned~": {
+      "be": {
+        "ok": true,
+        "at": [
+          [
+            8,
+            35
+          ]
+        ]
+      },
+      "java": {
+        "ok": true,
+        "message": "Changed the block at 8, -50, 35",
+        "at": [
+          [
+            8,
+            35
+          ]
+        ]
+      }
+    },
+    "setblock/positioned~0.5": {
+      "be": {
+        "ok": true,
+        "at": [
+          [
+            14,
+            36
+          ]
+        ]
+      },
+      "java": {
+        "ok": true,
+        "message": "Changed the block at 14, -50, 36",
+        "at": [
+          [
+            14,
+            36
+          ]
+        ]
+      }
+    }
+  }
+}

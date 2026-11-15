@@ -124,6 +124,9 @@ flowchart TD
 - テキストコンポーネント → rawtext。クリックとホバーはBEにないため、UI再設計（5.9）へ回す。
 - マクロ展開後のコマンドにも同じ変換をかけるため、対応表はパックに同梱する。
 
+- 座標：整数座標の中心寄せ、セレクタの `x=,y=,z=`、`~` の扱いは BE と Java で一致するため、書き換えない（#10）。ただしブロック座標に小数を直接書いたコマンドは、Java では構文エラーで動かないが BE では動く。そのまま移さず、レポートに出す
+- ディメンションIDの対応（`the_nether` → `nether`）。`execute in` での座標の 1/8 換算は両エディションで同じ（#8）
+
 ### 5.4 出力先の決定
 
 **コマンド単位**
@@ -246,7 +249,7 @@ Animated Javaなどの機械生成アニメーションは、1行ずつ解釈実
   - `execute` を挟まなければ `sourceBlock` で取れる。挟むと発生元が `Server` になり失われる。カスタムコマンドの引数で `~ ~ ~`（位置）、`^ ^ ^1`（向き）、`@s`（実行者）を渡せば復元できる
   - `execute in` を挟んだ場合も、発生元は `Server` になり、ディメンションはわからない。ディメンションも引数で渡す必要がある（5.5）
   - ネザーのIDは BE が `nether`、Java が `the_nether`。Java のIDのままだと構文エラーになる。`execute in` で x・z が 1/8 になるのは両エディションで同じ（#8、`poc/launcher/dimension.servers.test.ts`）
-  - BEでは整数座標のx・zが中心に寄る（`positioned 7 8 9` → 7.5, 8, 9.5。JEでは 7.0, 8.0, 9.0）。変換時の補正が必要
+  - 整数座標のx・zは中心に寄る（`positioned 7 8 9` → 7.5, 8, 9.5）。Javaも同じで、補正は不要（#10、`poc/coordinates/`）
   - 根拠：`poc/launcher/launcher.servers.test.ts`、`poc/launcher/results.json`（BDS 1.26.63.1、2026-11-15）
 - [x] `tick.json`、スクリプト、コマンドブロックのtick内の実行順
   - BE：毎tick「リピートコマンドブロック（チェーン含む） → `tick.json` の関数（記載順） → `system.runInterval` → `system.run` で積んだ処理 → `scriptevent` のハンドラ」。`system.run` は、スクリプトの処理中に積んだもの（`runInterval` 内）が、コマンドブロックの処理中に積んだものより先に動く
