@@ -1,0 +1,17 @@
+{
+  "description": "条件付きチェーン：前のブロックが失敗すると止まり、成功すると進む",
+  "setup": ["scoreboard objectives add t dummy"],
+  "actions": [
+    {
+      "commandBlocks": [
+        { "pos": [2, -50, 2], "kind": "impulse", "facing": "south", "command": "scoreboard players set #ok t 1" },
+        { "pos": [2, -50, 3], "kind": "chain", "facing": "south", "command": "scoreboard players set #after_ok t 1", "conditional": true },
+        { "pos": [4, -50, 2], "kind": "impulse", "facing": "south", "command": "scoreboard players add #nobody missing_objective 1" },
+        { "pos": [4, -50, 3], "kind": "chain", "facing": "south", "command": "scoreboard players set #after_fail t 1", "conditional": true },
+        { "pos": [4, -50, 4], "kind": "chain", "facing": "south", "command": "scoreboard players set #unconditional t 1" }
+      ]
+    },
+    { "ticks": 5 }
+  ],
+  "observe": { "scores": ["t"] }
+}

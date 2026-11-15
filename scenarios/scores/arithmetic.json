@@ -1,0 +1,77 @@
+{
+  "description": "スコアの演算（負の数の除算と剰余、比較、入れ替えを含む）",
+  "setup": [
+    "scoreboard objectives add t dummy"
+  ],
+  "actions": [
+    {
+      "run": "scoreboard players set #a t 7"
+    },
+    {
+      "run": "scoreboard players set #b t -2"
+    },
+    {
+      "run": "scoreboard players set #div t 7"
+    },
+    {
+      "run": "scoreboard players operation #div t /= #b t"
+    },
+    {
+      "run": "scoreboard players set #mod t 7"
+    },
+    {
+      "run": "scoreboard players operation #mod t %= #b t"
+    },
+    {
+      "run": "scoreboard players set #negdiv t -7"
+    },
+    {
+      "run": "scoreboard players set #two t 2"
+    },
+    {
+      "run": "scoreboard players operation #negdiv t /= #two t"
+    },
+    {
+      "run": "scoreboard players set #negmod t -7"
+    },
+    {
+      "run": "scoreboard players operation #negmod t %= #two t"
+    },
+    {
+      "run": "scoreboard players set #min t 5"
+    },
+    {
+      "run": "scoreboard players operation #min t < #b t"
+    },
+    {
+      "run": "scoreboard players set #max t 5"
+    },
+    {
+      "run": "scoreboard players operation #max t > #a t"
+    },
+    {
+      "run": "scoreboard players set #x t 1"
+    },
+    {
+      "run": "scoreboard players set #y t 2"
+    },
+    {
+      "run": "scoreboard players operation #x t >< #y t"
+    },
+    {
+      "run": "scoreboard players add #a t 2147483647"
+    }
+  ],
+  "observe": {
+    "scores": [
+      "t"
+    ]
+  },
+  "knownDiffs": {
+    "scores.t.#div": "Java の /= は負の無限大方向に切り捨てる（7 / -2 = -4）。BE は 0 方向（-3）。BE コマンドにそのまま置き換えられない",
+    "scores.t.#negdiv": "同上（-7 / 2：Java -4、BE -3）",
+    "scores.t.#mod": "Java の %= は割る数と同じ符号（7 % -2 = -1）。BE は割られる数と同じ符号（1）",
+    "scores.t.#negmod": "同上（-7 % 2：Java 1、BE -1）",
+    "scores.t.#a": "Java の add は int のあふれで折り返す（7 + 2147483647 = -2147483642）。BE は加算が失敗して値が変わらない"
+  }
+}

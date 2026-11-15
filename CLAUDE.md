@@ -4,6 +4,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 
 - 設計の正本: `docs/design.md`（`docs/design-notes.md` は初期の検討メモ。食い違えば design.md を優先）
 - 実測で判明した事実: `docs/findings.md`
+- 正解データのシナリオの書き方: `docs/scenarios.md`
 - 作業の管理: GitHub の Issue・マイルストーン・PR（https://github.com/tapu18/mc-je2be-map-converter）。手順は `docs/workflow.md`
 - 開発は複数のAIエージェントが並行して進める。人は `needs-approval` の判断、段階の関門での承認、実クライアントでのプレイ確認を担う
 
@@ -14,6 +15,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 | `packages/core` | Minecraft非依存の中核（NBT、今後パーサ・中間表現・ランタイム中核）。ゲーム内でも動かすため Node / DOM のAPIを使わない |
 | `packages/bridge` | 検証ブリッジ（Node専用）。Java版サーバー（RCON）とBDS（検証パック経由）を起動・操作する。`JavaServer.dump()` で保存データからブロック・スコア・storage・エンティティを取り出す |
 | `packages/bridge-pack` | BDSに入れる検証用ビヘイビアーパック。`scriptevent je2be:req <JSON>` を受け、`JE2BE_RES <JSON>` をコンソールに出す |
+| `scenarios/` | 正解データのシナリオと、Java で記録した結果（`docs/scenarios.md`）。機能は先にシナリオを書いてから作る |
 | `poc/` | PoC（実機での検証）。各ディレクトリにパック、テスト、実測結果（`results.json`） |
 | `tools/` | 開発用スクリプト。`servers.json` に検証用サーバーの固定バージョン |
 | `scripts/` | コーパス調査用のPythonスクリプト（`sample-map/` を読む） |

@@ -1,0 +1,12 @@
+{
+  "java": "26.3",
+  "state": {
+    "scores": {
+      "t": {
+        "#unconditional": 1,
+        "#after_ok": 1,
+        "#ok": 1
+      }
+    }
+  }
+}

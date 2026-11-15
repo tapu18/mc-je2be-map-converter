@@ -12,6 +12,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** グループ名 → 対象のパス（先頭一致）。所要時間（CI、2026-11-15）がおおむね揃うように分ける */
 export const GROUPS: Record<string, string[]> = {
+  // 正解データのシナリオ（1本あたり十数秒。増えたらさらに分ける）
+  scenarios: ["packages/bridge/src/scenario/"],
   // 約47秒
   bridge: ["packages/"],
   // 約73秒

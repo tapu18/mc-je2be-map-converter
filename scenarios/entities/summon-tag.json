@@ -1,0 +1,23 @@
+{
+  "description": "エンティティの召喚とタグ付け、kill。BE は summon で NBT を渡せないため tag コマンドで付ける",
+  "setup": [],
+  "actions": [
+    { "run": "summon minecraft:armor_stand 20.5 -60 20.5 {Tags:[\"probe\",\"keep\"],NoGravity:1b}" },
+    { "run": "summon minecraft:armor_stand 22.5 -60 20.5 {Tags:[\"probe\",\"gone\"],NoGravity:1b}" },
+    { "run": "kill @e[tag=gone]" },
+    { "run": "tag @e[tag=keep] add added" }
+  ],
+  "bedrock": {
+    "actions": [
+      { "run": "summon armor_stand 20.5 -60 20.5" },
+      { "run": "summon armor_stand 22.5 -60 20.5" },
+      { "run": "tag @e[type=armor_stand,x=20,y=-61,z=20,dx=1,dy=2,dz=1] add probe" },
+      { "run": "tag @e[type=armor_stand,x=20,y=-61,z=20,dx=1,dy=2,dz=1] add keep" },
+      { "run": "tag @e[type=armor_stand,x=22,y=-61,z=20,dx=1,dy=2,dz=1] add probe" },
+      { "run": "tag @e[type=armor_stand,x=22,y=-61,z=20,dx=1,dy=2,dz=1] add gone" },
+      { "run": "kill @e[tag=gone]" },
+      { "run": "tag @e[tag=keep] add added" }
+    ]
+  },
+  "observe": { "entityTags": ["probe"] }
+}
