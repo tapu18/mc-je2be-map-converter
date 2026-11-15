@@ -13,5 +13,11 @@
   "bedrock": {
     "version": "1.26.63.1",
     "url": "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.63.1.zip"
+  },
+  "chunker": {
+    "version": "1.21.0",
+    "url": "https://github.com/HiveGamesOSS/Chunker/releases/download/1.21.0/chunker-cli-1.21.0.jar",
+    "sha256": "63148e587f5ee5a2ca7ebae1079b235c82ae4d1eff8f7a8a8a3398332513dda6",
+    "$comment": "地形変換器（MIT、HiveGamesOSS/Chunker）。取得は所有者が2026-11-15に許可（#6）"
   }
 }

@@ -24,7 +24,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 
 ```sh
 npm install
-npm run setup:servers   # JRE 25、Java版サーバー、BDSを servers/ に取得（EULA同意済みとして扱う。ユーザー承認済み）
+npm run setup:servers   # JRE 25、Java版サーバー、BDS、Chunker（地形変換器）を servers/ に取得（EULA同意済みとして扱う。ユーザー承認済み）
 npm run check           # 型チェック＋Nodeだけのテスト。変更のたびに通す
 npm run test:servers    # 実サーバーを起動するテスト（*.servers.test.ts）。数十秒かかる
 ```
