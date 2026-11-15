@@ -79,6 +79,17 @@ async function main(): Promise<void> {
   if (!existsSync(join(javaDir, "server.jar"))) copyFileSync(jar, join(javaDir, "server.jar"));
   writeFileSync(join(javaDir, "eula.txt"), "eula=true\n");
 
+  // データ生成のレポート（commands.json、blocks.json、registries.json）。ブロックの既定の状態などに使う。
+  // Mojang のデータなのでリポジトリには含めず、ここで作る
+  const reportsDir = join(serversDir, `reports-${config.java.version}`);
+  if (!existsSync(join(reportsDir, "reports", "blocks.json"))) {
+    console.log("generate reports");
+    execFileSync(join(jreDir, "bin", "java"), ["-DbundlerMainClass=net.minecraft.data.Main", "-jar", "server.jar", "--reports", "--output", reportsDir], {
+      cwd: javaDir,
+      stdio: "ignore",
+    });
+  }
+
   const bdsDir = join(serversDir, `bedrock-${config.bedrock.version}`);
   if (!existsSync(join(bdsDir, "bedrock_server"))) {
     const archive = join(cacheDir, `bedrock-server-${config.bedrock.version}.zip`);
@@ -93,7 +104,7 @@ async function main(): Promise<void> {
   mkdirSync(dirname(chunkerJar), { recursive: true });
   if (!existsSync(chunkerJar)) copyFileSync(chunkerCache, chunkerJar);
 
-  console.log(`ok: ${jreDir}\nok: ${javaDir}\nok: ${bdsDir}\nok: ${chunkerJar}`);
+  console.log(`ok: ${jreDir}\nok: ${javaDir}\nok: ${bdsDir}\nok: ${chunkerJar}\nok: ${reportsDir}`);
 }
 
 await main();

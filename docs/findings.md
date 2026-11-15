@@ -25,6 +25,7 @@
 | ブロックのパレットは型の混ざったリストで、状態のないブロックは文字列、状態のあるブロックは `{id, properties}`。文字列の要素はキーが空文字の compound `{"": "minecraft:stone"}` で包んで保存される | 同上、`packages/core/src/java/world.ts` |
 | スコアは `data/minecraft/scoreboard.dat`、storage は `data/<名前空間>/command_storage.dat`（どちらも gzip の NBT） | 同上 |
 | エンティティのタグは集合として保存され、付けた順にはならない | 同上 |
+| 状態がすべて既定値のブロックは、状態なしの文字列としてパレットに保存される。たとえば既定の向き（`facing=north`、`conditional=false`）のコマンドブロックは `"minecraft:command_block"` だけになる。既定値はデータ生成の `blocks.json` で補う | `packages/bridge/src/extract.servers.test.ts`、配布マップで36個 |
 | ブロックステートの値は Java が文字列、BE が数値・真偽値・文字列。両エディションのダンプを比べるときは型を合わせる必要がある | 同上、`bridge.servers.test.ts` |
 
 ## 地形変換器（Chunker 1.21.0、Java 26.3 → BE 1.26.60 形式）

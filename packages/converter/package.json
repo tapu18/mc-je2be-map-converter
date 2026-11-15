@@ -1,0 +1,12 @@
+{
+  "name": "@je2be/converter",
+  "private": true,
+  "type": "module",
+  "description": "変換器（Node）。Javaワールドからの抽出、コマンドの書き換え、地形変換器の呼び出し、BEワールドの出力",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@je2be/core": "*"
+  }
+}

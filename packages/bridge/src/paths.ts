@@ -17,4 +17,6 @@ export const paths = {
   javaServer: join(repoRoot, "servers", `java-${config.java.version}`),
   bedrockServer: join(repoRoot, "servers", `bedrock-${config.bedrock.version}`),
   bridgePack: join(repoRoot, "packages", "bridge-pack", "pack"),
+  /** データ生成の blocks.json（npm run setup:servers で作る） */
+  blocksReport: join(repoRoot, "servers", `reports-${config.java.version}`, "reports", "blocks.json"),
 };
