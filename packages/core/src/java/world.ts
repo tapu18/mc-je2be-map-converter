@@ -76,8 +76,23 @@ export interface BlockState {
   properties: Record<string, string>;
 }
 
-/** パレットの要素を正規化する。旧形式 Name/Properties、新形式 id/properties、文字列、空キーで包んだ文字列に対応 */
-export function paletteEntry(tag: NbtTag): BlockState {
+/**
+ * ブロックの既定の状態を返す関数。26.x では、状態がすべて既定値のブロックは状態なしの文字列として保存されるため、
+ * これで補う（既定値は Java 版サーバーのデータ生成の blocks.json から作る。docs/findings.md）。
+ */
+export type BlockDefaults = (name: string) => Record<string, string> | undefined;
+
+/**
+ * パレットの要素を正規化する。旧形式 Name/Properties、新形式 id/properties、文字列、空キーで包んだ文字列に対応。
+ * defaults を渡すと、省かれた状態を既定値で補う。
+ */
+export function paletteEntry(tag: NbtTag, defaults?: BlockDefaults): BlockState {
+  const s = rawPaletteEntry(tag);
+  const d = defaults?.(s.name);
+  return d ? { name: s.name, properties: { ...d, ...s.properties } } : s;
+}
+
+function rawPaletteEntry(tag: NbtTag): BlockState {
   const t = unwrapListElement(tag);
   if (t.type === "string") {
     const [name, rest] = t.value.split("[", 2) as [string, string | undefined];
@@ -98,7 +113,7 @@ export function paletteEntry(tag: NbtTag): BlockState {
 }
 
 /** チャンクの NBT から、ワールド座標のブロックを読む。範囲外や未生成なら undefined */
-export function blockAt(chunk: NbtCompound, x: number, y: number, z: number): BlockState | undefined {
+export function blockAt(chunk: NbtCompound, x: number, y: number, z: number, defaults?: BlockDefaults): BlockState | undefined {
   const sections = child(chunk, "sections");
   if (sections?.type !== "list") return undefined;
   const sy = Math.floor(y / 16);
@@ -109,7 +124,7 @@ export function blockAt(chunk: NbtCompound, x: number, y: number, z: number): Bl
   const states = child(section, "block_states");
   const palette = child(states, "palette");
   if (palette?.type !== "list" || palette.value.length === 0) return undefined;
-  if (palette.value.length === 1) return paletteEntry(palette.value[0]!);
+  if (palette.value.length === 1) return paletteEntry(palette.value[0]!, defaults);
   const data = child(states, "data");
   if (data?.type !== "longArray") throw new Error("block_states without data");
   // 1.16 以降は、1つの long をまたいで詰めない
@@ -120,7 +135,7 @@ export function blockAt(chunk: NbtCompound, x: number, y: number, z: number): Bl
   const v = Number((word >> BigInt((index % perLong) * bits)) & ((1n << BigInt(bits)) - 1n));
   const entry = palette.value[v];
   if (!entry) throw new Error(`palette index ${v} out of range`);
-  return paletteEntry(entry);
+  return paletteEntry(entry, defaults);
 }
 
 export function blockEntities(chunk: NbtCompound): NbtCompound[] {

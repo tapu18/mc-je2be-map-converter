@@ -35,6 +35,14 @@ describe("java world", () => {
     });
   });
 
+  it("fills omitted properties with defaults", () => {
+    const defaults = (name: string): Record<string, string> | undefined =>
+      name === "minecraft:command_block" ? { conditional: "false", facing: "north" } : undefined;
+    expect(paletteEntry(wrapped("minecraft:command_block"), defaults)).toEqual({ name: "minecraft:command_block", properties: { conditional: "false", facing: "north" } });
+    expect(paletteEntry(withProps("minecraft:command_block", { facing: "up" }), defaults).properties).toEqual({ conditional: "false", facing: "up" });
+    expect(paletteEntry(wrapped("minecraft:stone"), defaults)).toEqual({ name: "minecraft:stone", properties: {} });
+  });
+
   it("reads blocks from packed section data (5 bits per entry)", () => {
     const palette = Array.from({ length: 17 }, (_, i) => wrapped(`minecraft:b${i}`));
     // index = (y*16 + z)*16 + x

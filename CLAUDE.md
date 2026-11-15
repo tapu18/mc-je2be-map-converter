@@ -15,6 +15,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 | パス | 内容 |
 | --- | --- |
 | `packages/core` | Minecraft非依存の中核（NBT、今後パーサ・中間表現・ランタイム中核）。ゲーム内でも動かすため Node / DOM のAPIを使わない |
+| `packages/converter` | 変換器（Node）。Java ワールドの読み込みと抽出（`extract`）。CLI は `node packages/converter/src/cli.ts extract <ワールド> --summary` |
 | `packages/bridge` | 検証ブリッジ（Node専用）。Java版サーバー（RCON）とBDS（検証パック経由）を起動・操作する。`JavaServer.dump()` で保存データからブロック・スコア・storage・エンティティを取り出す |
 | `packages/bridge-pack` | BDSに入れる検証用ビヘイビアーパック。`scriptevent je2be:req <JSON>` を受け、`JE2BE_RES <JSON>` をコンソールに出す |
 | `scenarios/` | 正解データのシナリオと、Java で記録した結果（`docs/scenarios.md`）。機能は先にシナリオを書いてから作る |
@@ -28,7 +29,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 
 ```sh
 npm install
-npm run setup:servers   # JRE 25、Java版サーバー、BDS、Chunker（地形変換器）を servers/ に取得（EULA同意済みとして扱う。ユーザー承認済み）
+npm run setup:servers   # JRE 25、Java版サーバー、BDS、Chunker（地形変換器）を servers/ に取得し、データ生成のレポート（blocks.json など）を作る（EULA同意済みとして扱う。ユーザー承認済み）
 npm run check           # 型チェック＋Nodeだけのテスト。変更のたびに通す
 npm run test:servers    # 実サーバーを起動するテスト（*.servers.test.ts）。数十秒かかる
 ```

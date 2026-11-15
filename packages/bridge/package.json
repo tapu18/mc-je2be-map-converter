@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@je2be/core": "*"
+    "@je2be/core": "*",
+    "@je2be/converter": "*"
   }
 }

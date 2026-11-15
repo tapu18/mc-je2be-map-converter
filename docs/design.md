@@ -112,7 +112,7 @@ flowchart TD
 - JEワールドから、コマンドブロック（種類、向き、条件付き、常時実行、コマンド本文）、看板、本、エンティティ、スコアボード、storage、forceload範囲を取り出す。
 - データパックから、関数、タグ（`load` / `tick`）、進捗、`predicate`、ルートテーブルなどを読む。ZIP形式のパックと、ワールドなしのデータパック単体配布も扱う。
 - 26.x系の保存形式に対応する。JE側の形式は変わり続けるため、最新版への追従を前提にする。
-- `scripts/extract_command_blocks.py` が試作にあたる。
+- TypeScript で実装した（`packages/converter`、#12）。配布マップ19本で Python の試作（`scripts/extract_command_blocks.py`）と件数が一致し、試作が種類を判定できなかった29個も判定できる。26.x では既定値の状態が省かれるため、データ生成の `blocks.json` で補う。
 
 ### 5.2 コンパイラ前段（パーサと中間表現）
 
