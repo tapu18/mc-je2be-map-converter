@@ -8,6 +8,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 - Java コマンドの追加検証と警告レポート: `docs/command-validation.md`
 - 版別コマンド文法の生成・選択と実測: `docs/command-versions.md`
 - PoC の書き方と共通の小道具: `docs/poc.md`
+- 配布マップの静的な出力可否と設計上の経路: `docs/static-coverage.md`（`npm run coverage:corpus`。実行成功率ではない）
 - 配布マップのコマンドの型の頻度と、M1 の検証用マップに入れる型: `docs/corpus-patterns.md`
 - ID対応表の入手元・ライセンス比較と検証案: `docs/id-mapping-sources.md`（Geyser 採用承認済み。表示は `THIRD_PARTY_NOTICES.md`）
 - 作業の管理: GitHub の Issue・マイルストーン・PR（https://github.com/tapu18/mc-je2be-map-converter）。手順は `docs/workflow.md`
