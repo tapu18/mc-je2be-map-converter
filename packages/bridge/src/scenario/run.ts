@@ -1,9 +1,13 @@
 // シナリオを Java 版サーバーと BDS で実行し、観測結果をそろえた形で返す（#38）。
 // どちらもシナリオごとに新しいワールドで起動する（状態が混ざらないように）。
-import { rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { buildMcstructure, commandBlock, type Facing as BeFacing } from "@je2be/core";
+import { convertWorld, INIT_LOG_MARK, type ConvertReport } from "@je2be/converter";
 import { BedrockServer } from "../bedrock.ts";
 import { JavaServer } from "../java.ts";
+import { paths, repoRoot } from "../paths.ts";
 import { createDataPack, waitBedrockTicks } from "../poc-kit.ts";
 import { normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./normalize.ts";
 import type { Action, NormalizedState, Scenario, ScenarioCommandBlock, Vec3 } from "./types.ts";
@@ -58,6 +62,7 @@ export async function runJava(s: Scenario): Promise<{ state: NormalizedState; lo
     await java.exec("tick freeze");
     for (const c of s.setup) await javaAction(java, { run: c }, log);
     for (const a of s.actions) await javaAction(java, a, log);
+    for (const a of s.play ?? []) await javaAction(java, a, log);
     const dump = await java.dump({
       scores: !!s.observe.scores,
       entities: !!s.observe.entityTags,
@@ -70,6 +75,40 @@ export async function runJava(s: Scenario): Promise<{ state: NormalizedState; lo
     return { state: normalizeJava(s.observe, { ...(dump.scores ? { scores: dump.scores } : {}), blocks, ...(dump.entities ? { entities: dump.entities } : {}) }), log };
   } finally {
     await java.stop();
+  }
+}
+
+// ---- 変換 ----
+
+const chunkerJar = (): string => {
+  const servers = JSON.parse(readFileSync(join(repoRoot, "tools/servers.json"), "utf8")) as { chunker: { version: string } };
+  return join(paths.servers, "tools", `chunker-cli-${servers.chunker.version}.jar`);
+};
+
+/**
+ * Java で setup と actions まで行ったワールドを保存し、変換器に通す。変換後の BE ワールドのディレクトリを返す。
+ * 呼び出し側で work を消すこと
+ */
+export async function buildConvertedWorld(s: Scenario, log: string[]): Promise<{ work: string; world: string; report: ConvertReport }> {
+  const java = await JavaServer.start();
+  const work = mkdtempSync(join(tmpdir(), "je2be-scenario-convert-"));
+  try {
+    try {
+      await java.exec("tick freeze");
+      for (const c of s.setup) await javaAction(java, { run: c }, log);
+      for (const a of s.actions) await javaAction(java, a, log);
+      await java.dump({});
+    } finally {
+      await java.stop();
+    }
+    cpSync(join(paths.javaServer, "je2be-test"), join(work, "java"), { recursive: true });
+    const world = join(work, "bedrock");
+    const report = convertWorld(join(work, "java"), world, { java: paths.java, chunkerJar: chunkerJar() });
+    log.push(`convert: ${JSON.stringify(report)}`);
+    return { work, world, report };
+  } catch (e) {
+    rmSync(work, { recursive: true, force: true });
+    throw e;
   }
 }
 
@@ -103,11 +142,26 @@ function buildStructurePack(actions: Action[]): { dir: string; loads: Map<Action
 
 export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Promise<{ state: NormalizedState; log: string[] }> {
   const log: string[] = [];
-  const setup = s.bedrock?.setup ?? s.setup;
-  const actions = s.bedrock?.actions ?? s.actions;
+  if (s.play && s.bedrock) throw new ScenarioError(`${s.id}: play（変換を通す）と bedrock は併用できない`);
+  const converted = s.play ? await buildConvertedWorld(s, log) : undefined;
+  // 変換を通すときは、setup と actions は変換前の Java ワールドで済んでいる
+  const setup = converted ? [] : (s.bedrock?.setup ?? s.setup);
+  const actions = converted ? (s.play ?? []) : (s.bedrock?.actions ?? s.actions);
   const pack = buildStructurePack(actions);
-  const bds = await BedrockServer.start({ behaviorPacks: [pack.dir] });
+  let bds: BedrockServer;
   try {
+    bds = await BedrockServer.start({ behaviorPacks: [pack.dir], ...(converted ? { world: converted.world } : {}) });
+  } catch (e) {
+    rmSync(pack.dir, { recursive: true, force: true });
+    if (converted) rmSync(converted.work, { recursive: true, force: true });
+    throw e;
+  }
+  try {
+    if (converted) {
+      // 初期化パックがスコアを書き込み終えるのを待つ（初回読み込み時に1度だけ動く）
+      const line = await bds.waitForLog((l) => l.includes(INIT_LOG_MARK), 30_000, "init pack");
+      log.push(line);
+    }
     const run = async (c: string): Promise<void> => {
       const res = await bds.exec(c);
       log.push(`> ${c}\n${JSON.stringify(res.ok ? res.result : res.error)}`);
@@ -135,5 +189,6 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
   } finally {
     await bds.stop();
     rmSync(pack.dir, { recursive: true, force: true });
+    if (converted) rmSync(converted.work, { recursive: true, force: true });
   }
 }

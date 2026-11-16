@@ -105,3 +105,11 @@
 | 独自 fixture の predicate・loot_table・item_modifier・ブロックタグを参照する4コマンドは、バニラだけの判定では全て拒否され、定義を含むパックを同時に読み込むと全て受理された。旧 `minecraft:generic.max_health` と `custom_model_data=1` は同じパック構成でも拒否された | `packages/bridge/src/java-validation.servers.test.ts`、2026-11-16（#59） |
 | 存在しない predicate の型をパックに定義すると、Java 26.3 は `Failed to load datapacks` として起動を中止した。この場合はコマンドの合否を取れない | 同テストの `reports an unreadable registry context ...` |
 | 判定用コピーの関数本文を空にして元の load タグと関数 ID を残した状態で起動し、load 関数と判定対象に書いたスコア目標追加のどちらも実行されず、保存後のスコア目標は空だった。元パックの関数本文は変化しなかった | 同テストの `does not execute ...`。`JavaWorld.scoreboard()` で保存データを確認 |
+
+## 変換の通し（Java 26.3 → Chunker 1.21.0 → BDS 1.26.63.1）
+
+| 事実 | 根拠 |
+| --- | --- |
+| 変換後のワールドに入れたビヘイビアーパックの `world.afterEvents.worldLoad` で `scoreboard.addObjective` と `setScore` を呼ぶと、スコアを書き込める。`BedrockServer.start` が戻った時点（検証パックの準備完了と読み込み範囲の読み込みの後）では書き込みは終わっていた | `scenarios/convert/scores-chain.json`（`packages/bridge/src/scenario/scenarios.servers.test.ts`、3回連続成功、#61） |
+| Java の偽プレイヤー名（`#a`、`$b`、`kept` などの英数字の名前）を `setScore` に文字列で渡すと、BE で同じ名前の `FakePlayer` になり、BE のコマンド（`scoreboard players operation #a t += #b t`）から同じ名前で参照できる | 同上 |
+| Java で `auto:0b`（レッドストーン必要）にしたインパルスとチェーンは、Chunker で変換した後、BE で隣にレッドストーンブロックを置くと動く。条件付きチェーンの成否、`~` を使う `setblock`、`fill`、`clone` の結果は Java と一致した | `scenarios/convert/redstone-block-ops.json`、`scores-chain.json`（同上） |
