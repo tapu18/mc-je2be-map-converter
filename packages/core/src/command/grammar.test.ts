@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { selectCommandGrammar, type CommandGrammar } from "./grammar.ts";
 import { textFormatFor } from "./version.ts";
+import { ARGUMENT_PARSERS } from "./arguments.ts";
+import { StringReader } from "./reader.ts";
 
 const catalog: CommandGrammar[] = [
   { version: "1.20.5", dataVersion: 3837, packFormat: 41, textFormat: "json", commandsSha256: "same" },
@@ -26,5 +28,16 @@ describe("versioned command grammar selection", () => {
     expect(textFormatFor(undefined, 61)).toBe("json");
     expect(textFormatFor(undefined, 71)).toBe("snbt");
     expect(textFormatFor(4189, 121)).toBe("json");
+  });
+  it("reads JSON escapes and nested values without consuming a following argument", () => {
+    const reader = new StringReader(String.raw`  {"text":"a\/b","extra":[{"text":"x}y"}]} next`);
+    const result = ARGUMENT_PARSERS["minecraft:component"]!(reader, undefined, { textFormat: "json" });
+    expect(result.kind).toBe("text");
+    if (result.kind !== "text" || result.value.type !== "compound") throw new Error("expected text compound");
+    expect(result.value.value.get("text")).toEqual({ type: "string", value: "a/b" });
+    expect(reader.remaining()).toBe(" next");
+    for (const input of ["{text:'x'}", '{"text":"x",}', '{"text":"x"']) {
+      expect(() => ARGUMENT_PARSERS["minecraft:component"]!(new StringReader(input), undefined, { textFormat: "json" })).toThrow();
+    }
   });
 });

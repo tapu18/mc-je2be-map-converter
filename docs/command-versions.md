@@ -75,6 +75,7 @@ node tools/parse-corpus.ts /tmp/commands.jsonl --java
 | --- | --- | --- | --- |
 | `tellraw @a {"text":"x"}` | 受理 | 受理 | 受理 |
 | `tellraw @a {text:'x'}`・`{text:"x",bold:1b}` | 拒否 | 受理 | 受理 |
+| JSON のスラッシュのエスケープを含むテキスト | 受理 | 拒否 | 拒否 |
 | `gamerule keepInventory true` | 受理 | 受理 | 拒否 |
 | `gamerule keep_inventory true` | 拒否 | 拒否 | 受理 |
 | `setworldspawn 0 64 0 ~15` | 受理 | 受理 | 拒否 |
@@ -82,7 +83,9 @@ node tools/parse-corpus.ts /tmp/commands.jsonl --java
 
 テキスト形式の境目は安定リリース1.21.4と1.21.5で確認した。`textFormatFor` は
 DataVersion 4325、パック形式71を境にする。スナップショットでの最初の導入版は対象外。
-JSON 指定時は SNBT と共通の値の読み取り後に JSON 構文も検証し、SNBT 専用表記を受理しない。
+JSON 指定時は JSON の文字列・配列・複合値の終端を読み、JSON 構文を検証してから
+既存のテキスト中間表現へ正規化する。JSON 固有のエスケープを SNBT として先に拒否せず、
+逆に SNBT 専用表記を JSON として受理することも防ぐ。
 
 書き換えの候補は、旧 gamerule 名、旧 `minecraft:angle`（単一の角度）から新しい回転引数への対応、
 JSON / SNBT のテキストから BE rawtext への変換（#62）。ゲームルール名が変わった最初の

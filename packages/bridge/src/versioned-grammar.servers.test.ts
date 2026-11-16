@@ -11,6 +11,7 @@ const CASES = [
   "gamerule keepInventory true", "gamerule keep_inventory true",
   "team modify t color blue", "team modify t color reset", "team modify t color bold",
   "setworldspawn 0 64 0 ~15", "setworldspawn 0 64 0 90 0",
+  String.raw`tellraw @a {"text":"a\/b"}`,
 ];
 
 describe("versioned command grammars", () => {
@@ -32,7 +33,7 @@ describe("versioned command grammars", () => {
       } });
       const snbt = ["1.21.5", "1.21.11", "26.3"].includes(source.version);
       const modernRule = ["1.21.11", "26.3"].includes(source.version);
-      const expected = [true, true, snbt, snbt, snbt, snbt, !modernRule, modernRule, true, true, false, !modernRule, modernRule];
+      const expected = [true, true, snbt, snbt, snbt, snbt, !modernRule, modernRule, true, true, false, !modernRule, modernRule, !snbt];
       expect(actual.map((r) => r.ok), JSON.stringify(actual)).toEqual(expected);
       expect(CASES.map((command) => parser.parse(command).ok)).toEqual(expected);
       expect(selectCommandGrammar([grammar], { dataVersion: grammar.dataVersion })).toMatchObject({ ok: true, grammar: { version: source.version } });
