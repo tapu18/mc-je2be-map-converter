@@ -39,6 +39,27 @@ describe("mapping lookup", () => {
     expect(blockStateKey({ id: "minecraft:stone", states: { bit: true } })).not.toBe(blockStateKey({ id: "minecraft:stone", states: { bit: "true" } }));
   });
 
+  it("maps partial block predicates only when the BE predicate selects exactly the same rows", () => {
+    const t = tables();
+    t.blocks.push(
+      ...["false", "true"].map((waterlogged) => ({
+        java: { id: "minecraft:oak_stairs", states: { facing: "west", half: "top", waterlogged } },
+        bedrock: { id: "minecraft:oak_stairs", states: { weirdo_direction: 1, upside_down_bit: true } },
+      })),
+      { java: { id: "minecraft:smooth_stone", states: {} }, bedrock: { id: "minecraft:stone", states: { stone_type: "smooth" } } },
+    );
+    t.blocks[2] = { java: { id: "minecraft:stone", states: {} }, bedrock: { id: "minecraft:stone", states: { stone_type: "stone" } } };
+    const lookup = new MappingLookup(t);
+    expect(lookup.blockPredicate("minecraft:oak_stairs")).toEqual({ status: "mapped", target: { id: "minecraft:oak_stairs", states: { upside_down_bit: true } }, verification: "unverified" });
+    expect(lookup.blockPredicate("minecraft:oak_stairs", { facing: "west" })).toMatchObject({ target: { states: { weirdo_direction: 1, upside_down_bit: true } } });
+    // waterlogged は BE の状態にないため、片方だけの条件は書けない
+    expect(lookup.blockPredicate("minecraft:oak_stairs", { waterlogged: "true" })).toEqual({ status: "inexact" });
+    expect(lookup.blockPredicate("minecraft:stone")).toMatchObject({ status: "mapped", target: { states: { stone_type: "stone" } } });
+    expect(lookup.blockPredicate("minecraft:oak_stairs", { facing: "south" })).toEqual({ status: "unknown-state" });
+    expect(lookup.blockPredicate("minecraft:oak_stairs", { color: "red" })).toEqual({ status: "unknown-state" });
+    expect(lookup.blockPredicate("custom:x")).toEqual({ status: "unknown-block" });
+  });
+
   it("keeps item data and distinguishes variants while reporting shared targets", () => {
     const lookup = new MappingLookup(tables());
     expect(lookup.item("minecraft:arrow")).toMatchObject({ sharedBy: 2, verification: "unverified" });
