@@ -3,4 +3,5 @@ export { decompress, JavaWorld, readGzipNbt } from "./java-world.ts";
 export { loadBlockDefaults } from "./block-defaults.ts";
 export { GEYSER_SOURCE } from "./geyser-source.ts";
 export { fetchGeyserSources, generateGeyserMappings } from "./geyser.ts";
+export * from "./command-validation.ts";
 export { convertWorld, initScript, selectScores, writeInitPack, DEFAULT_CHUNKER_FORMAT, INIT_LOG_MARK, INIT_PROPERTY, SCRIPT_API_VERSION, type ConvertOptions, type ConvertReport, type SkippedScore } from "./convert.ts";

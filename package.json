@@ -16,6 +16,7 @@
     "test:servers": "npm run build:pack && vitest run --config vitest.servers.config.ts",
     "setup:servers": "node tools/setup-servers.ts",
     "setup:mappings": "node tools/setup-mappings.ts",
+    "validate:commands": "node tools/validate-commands.ts",
     "scenarios:record": "npm run build:pack && JE2BE_RECORD=1 vitest run --config vitest.servers.config.ts packages/bridge/src/scenario -t java"
   },
   "devDependencies": {
