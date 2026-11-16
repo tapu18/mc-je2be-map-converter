@@ -106,7 +106,7 @@
 | 存在しない predicate の型をパックに定義すると、Java 26.3 は `Failed to load datapacks` として起動を中止した。この場合はコマンドの合否を取れない | 同テストの `reports an unreadable registry context ...` |
 | 判定用コピーの関数本文を空にして元の load タグと関数 ID を残した状態で起動し、load 関数と判定対象に書いたスコア目標追加のどちらも実行されず、保存後のスコア目標は空だった。元パックの関数本文は変化しなかった | 同テストの `does not execute ...`。`JavaWorld.scoreboard()` で保存データを確認 |
 | 安定リリース1.20.5 / 1.20.6 / 1.21.4 は `tellraw @a {text:'x'}` と `{text:"x",bold:1b}` を拒否し、1.21.5 / 1.21.11 / 26.3 は受理した。引用符付きキーの JSON `{"text":"x"}` は全6版で受理された。JSON のスラッシュのエスケープを含む文字列は前者3版で受理、後者3版で拒否された。1.21.5 の配布物の `version.json` は DataVersion 4325・データパック形式71だった | `packages/bridge/src/versioned-grammar.servers.test.ts`、各版の配布物と生成文法。6版×14ケースの比較を3回連続成功（2026-11-16、#58） |
-| `gamerule keepInventory true` は1.20.5 / 1.20.6 / 1.21.4 / 1.21.5で受理、1.21.11 / 26.3で拒否。`keep_inventory` は逆だった。また `setworldspawn 0 64 0 ~15` は前者4版でのみ受理、`setworldspawn 0 64 0 90 0` は後者2版でのみ受理。変化した最初の中間リリースは未測定 | 同テスト。記載した6版でのみ確認 |
+| `gamerule keepInventory true` は1.20.5 / 1.20.6 / 1.21.4 / 1.21.5で受理、1.21.11 / 26.3で拒否。`keep_inventory` は逆だった。また `setworldspawn 0 64 0 ~15` は前者4版でのみ受理、`setworldspawn 0 64 0 90 0` は後者2版でのみ受理。中間リリースの追加測定は後掲の #70 の節を参照 | 同テスト。記載した6版でのみ確認 |
 | 旧5版と26.3の全6版で、`team modify t color blue` と `reset` は受理され、`bold` は色として拒否された。版別文法のパーサも同じ結果になった | 同テスト |
 | 同じ定義をディレクトリと ZIP から判定用コピーにした場合、Java 26.3 は通常の predicate と有効オーバーレイの predicate をどちらも受理し、未提供の predicate をどちらも拒否した。ZIP のバイト列と元関数本文は変化せず、通常・オーバーレイの load 関数に書いたスコア目標追加は実行されなかった（保存後のスコア目標は空） | `packages/bridge/src/validation-context.servers.test.ts`、2026-11-16（#63） |
 | Java 26.3 で保存した `Data.DataPacks.Enabled` の順序を新規判定ワールドの有効順へ渡すと、その順序で有効化された。`Disabled` のパックが持つ predicate は判定に混入せず、その参照は拒否された | 同テスト。保存された `level.dat` と RCON の `datapack list enabled`、関数読み込み結果で確認 |
@@ -130,3 +130,13 @@
 | 書き換えた BE のコマンド（セレクタの `r`・`rm`・`c`・`l`・`lm`・`m`・`rx`・`ry`、状態つきのブロック、rawtext の `tellraw`・`titleraw`、`execute in nether` など、同テストの一覧）は BDS が構文として受理する。見た目（rawtext の書式）の一致は未確認 | 同テストの `produces commands that BDS accepts` |
 | 変換を通したワールドで、`distance=..9` → `r=9`、`distance=9..16` → `rm=9,r=16`、`sort=nearest,limit=2` → `c=2`、`sort=furthest,limit=1` → `c=-1`、`@n` → `@e[c=1]`、`dx/dy/dz` の範囲は、コマンドブロックから Java と同じ防具立てを選んだ（距離は境界から1ブロック以上離した配置で確かめた） | `scenarios/convert/selectors.json`（3回連続成功、#62） |
 | 状態つきの `setblock`・`execute if block`（一致・不一致）、`fill ... replace minecraft:air`、偽プレイヤー名 `#a`・`$b` の比較と演算は、書き換えた後の BE で Java と同じ結果になった | `scenarios/convert/block-predicates.json`（同上） |
+
+## 安定リリースの版別文法の拡充（#70）
+
+| 事実 | 根拠 |
+| --- | --- |
+| 1.20.5 / 1.20.6、1.21〜1.21.11の全12安定版、26.1 / 26.2 / 26.3の全17版で、テキスト・gamerule・色・回転引数の14ケースについて、当該版の実サーバーとパーサの受理結果が一致した | `packages/bridge/src/versioned-grammar.servers.test.ts`。各版のDataVersion・パック形式は `docs/command-versions.md` |
+| `setworldspawn 0 64 0 ~15` を拒否し、`setworldspawn 0 64 0 90 0` を受理する最初の対象安定版は1.21.9。1.21.8までは逆だった | 同テスト、1.21.8 / 1.21.9を含む実サーバー比較 |
+| `gamerule keepInventory true` を拒否し、`gamerule keep_inventory true` を受理する最初の対象安定版は1.21.11。1.21.10までは逆だった | 同テスト |
+| 同じパック形式を共有する41（1.20.5 / .6）、48（1.21 / .1）、57（1.21.2 / .3）、81（1.21.7 / .8）、88（1.21.9 / .10）の各組で、生成文法のSHA-256が一致した | `npm run setup:grammars` が生成した各版の `grammar.json` の `commandsSha256` |
+| 19本115,487行の同じローカルコーパスで、文法なしが26,903から18,924へ減った。追加対象のDataVersion 3953は5,474行すべて、4903は2,505行すべてを判定でき、パース成功はそれぞれ5,470行と2,500行だった | `tools/parse-corpus.ts`、2026-11-16。詳細・未判定の内訳は `docs/command-versions.md`。構文の集計であり、BEでの実行成功率ではない |

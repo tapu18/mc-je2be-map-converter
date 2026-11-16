@@ -31,9 +31,11 @@ describe("versioned command grammars", () => {
         java: grammar.java, serverDirectory: grammar.serverDirectory, packFormat: grammar.packFormat,
         packMinor: grammar.packMinor, functionDirectory: grammar.source.functionDirectory,
       } });
-      const snbt = ["1.21.5", "1.21.11", "26.3"].includes(source.version);
-      const modernRule = ["1.21.11", "26.3"].includes(source.version);
-      const expected = [true, true, snbt, snbt, snbt, snbt, !modernRule, modernRule, true, true, false, !modernRule, modernRule, !snbt];
+      // 全17版の実サーバーとの比較で確認した、安定リリースでの変更境界。
+      const snbt = !["1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4"].includes(source.version);
+      const modernRule = ["1.21.11", "26.1", "26.2", "26.3"].includes(source.version);
+      const rotation = modernRule || ["1.21.9", "1.21.10"].includes(source.version);
+      const expected = [true, true, snbt, snbt, snbt, snbt, !modernRule, modernRule, true, true, false, !rotation, rotation, !snbt];
       expect(actual.map((r) => r.ok), JSON.stringify(actual)).toEqual(expected);
       expect(CASES.map((command) => parser.parse(command).ok)).toEqual(expected);
       expect(selectCommandGrammar([grammar], { dataVersion: grammar.dataVersion })).toMatchObject({ ok: true, grammar: { version: source.version } });
