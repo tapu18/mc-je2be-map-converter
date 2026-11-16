@@ -102,3 +102,11 @@
 | 26.3 で読めないもの：アイテムの `id{NBT}`（1.20.5 より前の書き方）、旧形式の `particle dust 1 0 0 1 ...`、`gamerule` の旧名（`keepInventory`）、`@e[limit=0]`、セレクタの `x=~1`、`^` と `~` の混在、`~~1~` のような区切りのない座標、ブロック座標の小数、引数の間の空白2つ、区切りのない SNBT（`{a:1 b:2}`） | 同上 |
 | 配布マップ19本のコマンド（コマンドブロック 3,541、関数の行 111,946。うちマクロ行 3,630 は除く）を 26.3 の文法でパースすると 97.8% が読めた（コマンドブロック 98.4%、関数 97.8%）。DataVersion 別では、1.20.4 のマップ（対象外）が 85.5%（旧形式の `particle` が大半）、1.20.5 以降は 99.0〜100% | `tools/parse-corpus.ts`（集計値のみ。2026-11-16、#13） |
 | 重複を除いた 100,182 件を Java 26.3 にも読ませると、Java が読めてパーサが読めないものは 0 件、両方読めないものは 2,186 件、パーサだけが読めたものは 1,399 件。後者はすべてレジストリ・データパック内の参照・値の形の検証によるもので、文法の違いではない（#59） | `tools/parse-corpus.ts --java`（同上） |
+
+## 変換の通し（Java 26.3 → Chunker 1.21.0 → BDS 1.26.63.1）
+
+| 事実 | 根拠 |
+| --- | --- |
+| 変換後のワールドに入れたビヘイビアーパックの `world.afterEvents.worldLoad` で `scoreboard.addObjective` と `setScore` を呼ぶと、スコアを書き込める。`BedrockServer.start` が戻った時点（検証パックの準備完了と読み込み範囲の読み込みの後）では書き込みは終わっていた | `scenarios/convert/scores-chain.json`（`packages/bridge/src/scenario/scenarios.servers.test.ts`、3回連続成功、#61） |
+| Java の偽プレイヤー名（`#a`、`$b`、`kept` などの英数字の名前）を `setScore` に文字列で渡すと、BE で同じ名前の `FakePlayer` になり、BE のコマンド（`scoreboard players operation #a t += #b t`）から同じ名前で参照できる | 同上 |
+| Java で `auto:0b`（レッドストーン必要）にしたインパルスとチェーンは、Chunker で変換した後、BE で隣にレッドストーンブロックを置くと動く。条件付きチェーンの成否、`~` を使う `setblock`、`fill`、`clone` の結果は Java と一致した | `scenarios/convert/redstone-block-ops.json`、`scores-chain.json`（同上） |
