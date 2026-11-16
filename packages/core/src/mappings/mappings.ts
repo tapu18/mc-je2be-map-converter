@@ -46,13 +46,13 @@ export type BlockMappingResult =
 
 /**
  * ブロックの条件（`execute if block` などの部分的な状態）の対応。
- * BE の条件（指定した状態だけを比べる。BDS 1.26.63.1 で実測、#62）が、Java の条件に一致する状態の集合と
- * ちょうど同じ集合（表の上で）に一致するときだけ mapped にする。
+ * BE の条件（指定した状態だけを比べる。BDS 1.26.63.1 で実測、#62）が、同じ Java のブロックのうち
+ * Java の条件に一致する状態だけ（表の上で）に一致するときに mapped にする。
  */
 export type BlockPredicateMappingResult =
   | { status: "mapped"; target: BedrockBlockState; verification: "unverified" }
   | { status: "unknown-block" | "unknown-state" }
-  /** BE の条件で書くと、Java の条件に一致しない状態（別の ID や状態）まで一致してしまう */
+  /** BE の条件で書くと、同じ Java のブロックの、Java の条件に一致しない状態まで一致してしまう */
   | { status: "inexact" };
 
 export type ItemMappingResult =
@@ -123,8 +123,9 @@ export class MappingLookup {
     // 一致するすべての状態に共通する BE の状態だけを条件にする
     const common: BedrockBlockState["states"] = {};
     for (const [k, v] of Object.entries(first.states)) if (matches.every((r) => r.bedrock.states[k] === v)) common[k] = v;
-    // その BE の条件が、Java の条件に一致しない行まで拾わないか
-    const picked = (this.rowsByBedrock.get(first.id) ?? []).filter((r) => Object.entries(common).every(([k, v]) => r.bedrock.states[k] === v));
+    // その BE の条件が、同じ Java のブロックの、Java の条件に一致しない状態まで拾わないか。
+    // 別の Java のブロックが同じ BE のブロックになるもの（cave_air → air など）は、変換後の BE では見分けられないため問わない
+    const picked = (this.rowsByBedrock.get(first.id) ?? []).filter((r) => r.java.id === id && Object.entries(common).every(([k, v]) => r.bedrock.states[k] === v));
     const wanted = new Set(matches);
     if (picked.some((r) => !wanted.has(r))) return { status: "inexact" };
     return { status: "mapped", target: { id: first.id, states: common }, verification: "unverified" };

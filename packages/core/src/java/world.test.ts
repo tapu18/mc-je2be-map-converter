@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nbt, writeNbt, type NbtCompound, type NbtTag } from "../nbt/nbt.ts";
-import { blockAt, nbtToPlain, paletteEntry, readCommandStorage, readScoreboard, RegionFile } from "./world.ts";
+import { blockAt, nbtToPlain, paletteEntry, readCommandStorage, readScoreboard, RegionFile, rewriteRegion } from "./world.ts";
 
 /** パレットと、各位置のパレット番号からセクションを作る（Java の詰め方：long をまたがない） */
 function section(y: number, palette: NbtTag[], indexAt: (i: number) => number): NbtCompound {
@@ -74,6 +74,29 @@ describe("java world", () => {
     const file = new RegionFile(region, () => { throw new Error("not compressed"); });
     expect(nbtToPlain(file.chunk(1, 2)!)).toEqual({ xPos: 1, zPos: 2 });
     expect(file.chunk(0, 0)).toBeUndefined();
+  });
+
+  it("rewrites only the edited chunks of a region and keeps the others byte for byte", () => {
+    const region = new Uint8Array(8192 + 2 * 4096);
+    const view = new DataView(region.buffer);
+    const put = (idx: number, sector: number, tag: ReturnType<typeof nbt.compound>): void => {
+      const body = writeNbt({ name: "", tag }, "java");
+      view.setUint32(idx * 4, (sector << 8) | 1);
+      view.setUint32(4096 + idx * 4, 1234); // 更新時刻
+      view.setUint32(sector * 4096, body.length + 1);
+      region[sector * 4096 + 4] = 3;
+      region.set(body, sector * 4096 + 5);
+    };
+    put(0, 2, nbt.compound({ v: nbt.int(1) }));
+    put(33, 3, nbt.compound({ v: nbt.int(2) }));
+    const identity = (_k: "gzip" | "zlib", d: Uint8Array): Uint8Array => d;
+    expect(rewriteRegion(region, identity, (d) => d, () => undefined)).toBeUndefined();
+    const out = rewriteRegion(region, identity, (d) => d, (c) => (nbtToPlain(c) as { v: number }).v === 2 ? nbt.compound({ v: nbt.int(3) }) : undefined)!;
+    const file = new RegionFile(out, identity);
+    expect(nbtToPlain(file.chunk(0, 0)!)).toEqual({ v: 1 });
+    expect(nbtToPlain(file.chunk(1, 1)!)).toEqual({ v: 3 });
+    expect(new DataView(out.buffer).getUint32(4096 + 33 * 4)).toBe(1234);
+    expect(out[3 * 4096 + 4]).toBe(2); // 書き換えたチャンクは zlib（ここでは恒等の圧縮）
   });
 
   it("reads scoreboard and command storage", () => {

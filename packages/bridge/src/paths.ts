@@ -19,4 +19,8 @@ export const paths = {
   bridgePack: join(repoRoot, "packages", "bridge-pack", "pack"),
   /** データ生成の blocks.json（npm run setup:servers で作る） */
   blocksReport: join(repoRoot, "servers", `reports-${config.java.version}`, "reports", "blocks.json"),
+  /** データ生成の commands.json（同上） */
+  commandsReport: join(repoRoot, "servers", `reports-${config.java.version}`, "reports", "commands.json"),
+  /** Geyser の固定の対応表（npm run setup:mappings で作る） */
+  mappings: join(repoRoot, "servers", "mappings", "mappings.json"),
 };

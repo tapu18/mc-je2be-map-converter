@@ -116,3 +116,14 @@
 | 変換後のワールドに入れたビヘイビアーパックの `world.afterEvents.worldLoad` で `scoreboard.addObjective` と `setScore` を呼ぶと、スコアを書き込める。`BedrockServer.start` が戻った時点（検証パックの準備完了と読み込み範囲の読み込みの後）では書き込みは終わっていた | `scenarios/convert/scores-chain.json`（`packages/bridge/src/scenario/scenarios.servers.test.ts`、3回連続成功、#61） |
 | Java の偽プレイヤー名（`#a`、`$b`、`kept` などの英数字の名前）を `setScore` に文字列で渡すと、BE で同じ名前の `FakePlayer` になり、BE のコマンド（`scoreboard players operation #a t += #b t`）から同じ名前で参照できる | 同上 |
 | Java で `auto:0b`（レッドストーン必要）にしたインパルスとチェーンは、Chunker で変換した後、BE で隣にレッドストーンブロックを置くと動く。条件付きチェーンの成否、`~` を使う `setblock`、`fill`、`clone` の結果は Java と一致した | `scenarios/convert/redstone-block-ops.json`、`scores-chain.json`（同上） |
+
+## コマンドの書き換え（Java 26.3 → BDS 1.26.63.1）
+
+| 事実 | 根拠 |
+| --- | --- |
+| BE は引用符なしの偽プレイヤー名 `#a` を `scoreboard players set` では読むが、`execute if score` では構文エラーにする。`$b` はどちらでも構文エラー。`"#a"`・`"$b"` と引用符で囲めばどちらでも読める | `packages/bridge/src/rewrite.servers.test.ts` の `needs quotes for fake player names ...`（#62） |
+| BE の `execute if block` に状態の一部だけを書くと、書いた状態だけを比べる（書かなければ ID だけを比べる） | 同上 |
+| Java 26.3 の `scoreboard objectives setdisplay` の表示場所は `below_name`。`belowName` は文法として拒否される | 同テストの `uses inputs that Java 26.3 accepts` |
+| 書き換えた BE のコマンド（セレクタの `r`・`rm`・`c`・`l`・`lm`・`m`・`rx`・`ry`、状態つきのブロック、rawtext の `tellraw`・`titleraw`、`execute in nether` など、同テストの一覧）は BDS が構文として受理する。見た目（rawtext の書式）の一致は未確認 | 同テストの `produces commands that BDS accepts` |
+| 変換を通したワールドで、`distance=..9` → `r=9`、`distance=9..16` → `rm=9,r=16`、`sort=nearest,limit=2` → `c=2`、`sort=furthest,limit=1` → `c=-1`、`@n` → `@e[c=1]`、`dx/dy/dz` の範囲は、コマンドブロックから Java と同じ防具立てを選んだ（距離は境界から1ブロック以上離した配置で確かめた） | `scenarios/convert/selectors.json`（3回連続成功、#62） |
+| 状態つきの `setblock`・`execute if block`（一致・不一致）、`fill ... replace minecraft:air`、偽プレイヤー名 `#a`・`$b` の比較と演算は、書き換えた後の BE で Java と同じ結果になった | `scenarios/convert/block-predicates.json`（同上） |

@@ -55,6 +55,9 @@ describe("mapping lookup", () => {
     // waterlogged は BE の状態にないため、片方だけの条件は書けない
     expect(lookup.blockPredicate("minecraft:oak_stairs", { waterlogged: "true" })).toEqual({ status: "inexact" });
     expect(lookup.blockPredicate("minecraft:stone")).toMatchObject({ status: "mapped", target: { states: { stone_type: "stone" } } });
+    // 別の Java のブロックが同じ BE の状態になっても、変換後は見分けられないため問わない
+    t.blocks.push({ java: { id: "minecraft:cave_air", states: {} }, bedrock: { id: "minecraft:air", states: {} } }, { java: { id: "minecraft:air", states: {} }, bedrock: { id: "minecraft:air", states: {} } });
+    expect(new MappingLookup(t).blockPredicate("minecraft:air")).toMatchObject({ status: "mapped", target: { id: "minecraft:air" } });
     expect(lookup.blockPredicate("minecraft:oak_stairs", { facing: "south" })).toEqual({ status: "unknown-state" });
     expect(lookup.blockPredicate("minecraft:oak_stairs", { color: "red" })).toEqual({ status: "unknown-state" });
     expect(lookup.blockPredicate("custom:x")).toEqual({ status: "unknown-block" });

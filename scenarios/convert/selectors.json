@@ -1,0 +1,29 @@
+{
+  "description": "変換を通す（F4）：distance・sort と limit・@n・dx の範囲・タグの否定を使うセレクタを BE の r・rm・c に書き換えて、同じエンティティが選ばれる。防具立ては Chunker が運ばないため play で出す",
+  "setup": ["scoreboard objectives add t dummy"],
+  "actions": [
+    {
+      "commandBlocks": [
+        { "pos": [2, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "tag @e[type=minecraft:armor_stand,distance=..9] add near" },
+        { "pos": [2, -60, 3], "kind": "chain", "facing": "south", "command": "tag @e[type=minecraft:armor_stand,distance=9..16] add mid" },
+        { "pos": [2, -60, 4], "kind": "chain", "facing": "south", "command": "tag @e[type=minecraft:armor_stand,sort=nearest,limit=2] add first2" },
+        { "pos": [2, -60, 5], "kind": "chain", "facing": "south", "command": "tag @e[type=minecraft:armor_stand,sort=furthest,limit=1] add far" },
+        { "pos": [2, -60, 6], "kind": "chain", "facing": "south", "command": "tag @n[type=minecraft:armor_stand,tag=!near] add n" },
+        { "pos": [2, -60, 7], "kind": "chain", "facing": "south", "command": "execute as @e[type=minecraft:armor_stand,tag=mid] run scoreboard players add #count t 1" },
+        { "pos": [2, -60, 8], "kind": "chain", "facing": "south", "command": "execute if score #count t matches 2 run tag @e[tag=far] add counted" },
+        { "pos": [2, -60, 9], "kind": "chain", "facing": "south", "command": "tag @e[x=15,y=-61,z=3,dx=2,dy=3,dz=2] add box" }
+      ]
+    }
+  ],
+  "play": [
+    { "run": "summon minecraft:armor_stand 10 -60 4" },
+    { "run": "summon minecraft:armor_stand 12 -60 4" },
+    { "run": "summon minecraft:armor_stand 16 -60 4" },
+    { "run": "summon minecraft:armor_stand 25 -60 4" },
+    { "run": "tag @e[type=minecraft:armor_stand] add probe" },
+    { "ticks": 2 },
+    { "run": "setblock 2 -60 1 minecraft:redstone_block" },
+    { "ticks": 5 }
+  ],
+  "observe": { "scores": ["t"], "entityTags": ["probe"] }
+}

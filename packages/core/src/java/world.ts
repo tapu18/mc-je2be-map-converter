@@ -1,6 +1,6 @@
 // Java版ワールドの保存データの読み込み（region、チャンク、スコアボード、storage、エンティティ）。
 // 圧縮の展開は呼び出し側から渡す（Node / ゲーム内のどちらでも使えるように）。
-import { readNbt, type NbtCompound, type NbtTag } from "../nbt/nbt.ts";
+import { readNbt, writeNbt, type NbtCompound, type NbtTag } from "../nbt/nbt.ts";
 
 /** region のチャンクの圧縮形式。1=gzip、2=zlib、3=なし、4=LZ4 */
 export type Decompress = (kind: "gzip" | "zlib", data: Uint8Array) => Uint8Array;
@@ -33,6 +33,65 @@ export class RegionFile {
     else throw new Error(`unsupported chunk compression ${kind}`);
     return readNbt(raw, "java").tag;
   }
+}
+
+/** zlib で圧縮する関数（呼び出し側から渡す） */
+export type Compress = (data: Uint8Array) => Uint8Array;
+
+/**
+ * region の各チャンクを edit に渡し、書き換えたチャンクだけを zlib で圧縮し直した region を返す。
+ * 何も書き換えなければ undefined。書き換えないチャンク（外部ファイルの .mcc を含む）は元のバイト列のまま運ぶ
+ */
+export function rewriteRegion(
+  bytes: Uint8Array,
+  decompress: Decompress,
+  compress: Compress,
+  edit: (chunk: NbtCompound, localX: number, localZ: number) => NbtCompound | undefined,
+): Uint8Array | undefined {
+  if (bytes.length < 8192) return undefined;
+  const region = new RegionFile(bytes, decompress);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const bodies: (Uint8Array | undefined)[] = [];
+  let changed = false;
+  for (let idx = 0; idx < 1024; idx++) {
+    const entry = view.getUint32(idx * 4);
+    const offset = (entry >>> 8) * 4096;
+    if (offset === 0) {
+      bodies.push(undefined);
+      continue;
+    }
+    // 長さ（4バイト）＋圧縮形式（1バイト）＋本体
+    const original = bytes.subarray(offset, offset + 4 + view.getUint32(offset));
+    const kind = bytes[offset + 4]!;
+    const chunk = kind === 1 || kind === 2 || kind === 3 ? region.chunk(idx % 32, Math.floor(idx / 32)) : undefined;
+    const next = chunk ? edit(chunk, idx % 32, Math.floor(idx / 32)) : undefined;
+    if (!next) {
+      bodies.push(original);
+      continue;
+    }
+    changed = true;
+    const packed = compress(writeNbt({ name: "", tag: next }, "java"));
+    const out = new Uint8Array(5 + packed.length);
+    new DataView(out.buffer).setUint32(0, packed.length + 1);
+    out[4] = 2;
+    out.set(packed, 5);
+    bodies.push(out);
+  }
+  if (!changed) return undefined;
+  const sectors = bodies.map((b) => (b ? Math.ceil(b.length / 4096) : 0));
+  const total = 2 + sectors.reduce((a, b) => a + b, 0);
+  const out = new Uint8Array(total * 4096);
+  const outView = new DataView(out.buffer);
+  out.set(bytes.subarray(4096, 8192), 4096); // 更新時刻はそのまま
+  let sector = 2;
+  bodies.forEach((b, idx) => {
+    if (!b) return;
+    if (sectors[idx]! > 255) throw new Error("region のチャンクが大きすぎる（255 セクタを超える）");
+    outView.setUint32(idx * 4, (sector << 8) | sectors[idx]!);
+    out.set(b, sector * 4096);
+    sector += sectors[idx]!;
+  });
+  return out;
 }
 
 // ---- NBT の小道具 ----

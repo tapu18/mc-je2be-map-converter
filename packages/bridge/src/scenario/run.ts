@@ -8,6 +8,7 @@ import { convertWorld, INIT_LOG_MARK, type ConvertReport } from "@je2be/converte
 import { BedrockServer } from "../bedrock.ts";
 import { JavaServer } from "../java.ts";
 import { paths, repoRoot } from "../paths.ts";
+import { rewriteResources } from "../rewrite-resources.ts";
 import { createDataPack, waitBedrockTicks } from "../poc-kit.ts";
 import { normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./normalize.ts";
 import type { Action, NormalizedState, Scenario, ScenarioCommandBlock, Vec3 } from "./types.ts";
@@ -103,7 +104,7 @@ export async function buildConvertedWorld(s: Scenario, log: string[]): Promise<{
     }
     cpSync(join(paths.javaServer, "je2be-test"), join(work, "java"), { recursive: true });
     const world = join(work, "bedrock");
-    const report = convertWorld(join(work, "java"), world, { java: paths.java, chunkerJar: chunkerJar() });
+    const report = convertWorld(join(work, "java"), world, { java: paths.java, chunkerJar: chunkerJar(), rewrite: await rewriteResources() });
     log.push(`convert: ${JSON.stringify(report)}`);
     return { work, world, report };
   } catch (e) {

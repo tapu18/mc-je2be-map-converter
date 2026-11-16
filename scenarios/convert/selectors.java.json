@@ -1,0 +1,16 @@
+{
+  "java": "26.3",
+  "state": {
+    "scores": {
+      "t": {
+        "#count": 2
+      }
+    },
+    "entities": {
+      "minecraft:armor_stand first2,near,probe": 1,
+      "minecraft:armor_stand first2,mid,n,probe": 1,
+      "minecraft:armor_stand box,mid,probe": 1,
+      "minecraft:armor_stand counted,far,probe": 1
+    }
+  }
+}

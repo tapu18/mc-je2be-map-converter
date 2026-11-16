@@ -1,12 +1,14 @@
 // Java ワールドを BE ワールドに変換する（#61、design.md 4章・5.10）。
 // 地形・ブロック・コマンドブロックは Chunker に任せ、Chunker が運ばないスコアは、
 // BE の初回読み込み時に書き込むビヘイビアーパック（初期化パック）として出す。
-// コマンドの書き換えはまだしない（#62）。
+// コマンドブロックのコマンドは、Chunker に渡す前の Java ワールドのコピーで BE の書き方に書き換える（#62）。
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ObjectiveScores } from "@je2be/core";
+import { rewriteWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
 import { JavaWorld } from "./java-world.ts";
 
 /** 初期化パックが使う @minecraft/server の版。bridge-pack と同じ版に保つ（convert.test.ts で確かめる） */
@@ -25,6 +27,8 @@ export interface ConvertOptions {
   chunkerJar: string;
   /** Chunker の出力形式（既定 BEDROCK_R26_60） */
   format?: string;
+  /** コマンドの書き換えに使う文法・対応表。省略するとコマンドを書き換えない */
+  rewrite?: RewriteResources;
 }
 
 export interface SkippedScore {
@@ -36,6 +40,8 @@ export interface SkippedScore {
 export interface ConvertReport {
   /** 初期化パックに入れた目的変数と参加者の数 */
   scores: { objectives: number; participants: number; skipped: SkippedScore[] };
+  /** コマンドブロックの書き換え（rewrite を渡したときだけ） */
+  commands?: CommandRewriteReport;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -112,14 +118,28 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[]): 
 
 /** Java ワールド（ディレクトリ）を BE ワールド（ディレクトリ）に変換する */
 export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptions): ConvertReport {
-  execFileSync(opts.java, ["-jar", opts.chunkerJar, "-i", javaDir, "-f", opts.format ?? DEFAULT_CHUNKER_FORMAT, "-o", outDir], {
-    stdio: "pipe",
-    timeout: 600_000,
-  });
-  if (!existsSync(join(outDir, "level.dat"))) throw new Error(`Chunker の出力に level.dat がない: ${outDir}`);
-  const { objectives, skipped } = selectScores(new JavaWorld(javaDir).scoreboard());
-  writeInitPack(outDir, objectives);
-  return {
-    scores: { objectives: objectives.length, participants: objectives.reduce((n, o) => n + o.scores.length, 0), skipped },
-  };
+  // 元のワールドは変えない。書き換えるときはコピーを Chunker に渡す
+  const work = opts.rewrite ? mkdtempSync(join(tmpdir(), "je2be-convert-")) : undefined;
+  try {
+    let input = javaDir;
+    let commands: CommandRewriteReport | undefined;
+    if (work && opts.rewrite) {
+      input = join(work, "java");
+      cpSync(javaDir, input, { recursive: true });
+      commands = rewriteWorldCommands(input, opts.rewrite);
+    }
+    execFileSync(opts.java, ["-jar", opts.chunkerJar, "-i", input, "-f", opts.format ?? DEFAULT_CHUNKER_FORMAT, "-o", outDir], {
+      stdio: "pipe",
+      timeout: 600_000,
+    });
+    if (!existsSync(join(outDir, "level.dat"))) throw new Error(`Chunker の出力に level.dat がない: ${outDir}`);
+    const { objectives, skipped } = selectScores(new JavaWorld(javaDir).scoreboard());
+    writeInitPack(outDir, objectives);
+    return {
+      scores: { objectives: objectives.length, participants: objectives.reduce((n, o) => n + o.scores.length, 0), skipped },
+      ...(commands ? { commands } : {}),
+    };
+  } finally {
+    if (work) rmSync(work, { recursive: true, force: true });
+  }
 }

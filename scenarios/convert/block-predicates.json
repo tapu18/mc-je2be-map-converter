@@ -1,0 +1,31 @@
+{
+  "description": "変換を通す（F1・F2 の書き換え）：状態つきのブロックの置き方と条件（execute if block）、fill の replace、偽プレイヤーの名前（#a・$b）を BE の書き方に書き換えて、結果が一致する",
+  "setup": [
+    "scoreboard objectives add t dummy",
+    "scoreboard players set #a t 2",
+    "scoreboard players set $b t 3",
+    "setblock 20 -60 20 minecraft:oak_stairs[facing=east,half=top]"
+  ],
+  "actions": [
+    {
+      "commandBlocks": [
+        { "pos": [2, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "execute if block 20 -60 20 minecraft:oak_stairs[facing=east,half=top] run setblock 20 -60 22 minecraft:diamond_block" },
+        { "pos": [2, -60, 3], "kind": "chain", "facing": "south", "command": "execute if block 20 -60 20 minecraft:oak_stairs[facing=west] run setblock 21 -60 22 minecraft:gold_block" },
+        { "pos": [2, -60, 4], "kind": "chain", "facing": "south", "command": "setblock 22 -60 20 minecraft:oak_stairs[facing=west]" },
+        { "pos": [2, -60, 5], "kind": "chain", "facing": "south", "command": "execute if block 22 -60 20 minecraft:oak_stairs[facing=west,half=bottom] run setblock 22 -60 22 minecraft:iron_block" },
+        { "pos": [2, -60, 6], "kind": "chain", "facing": "south", "command": "execute if score #a t < $b t run setblock 23 -60 22 minecraft:emerald_block" },
+        { "pos": [2, -60, 7], "kind": "chain", "facing": "south", "command": "scoreboard players operation $b t += #a t" },
+        { "pos": [2, -60, 8], "kind": "chain", "facing": "south", "command": "fill 24 -60 20 26 -60 20 minecraft:glass replace minecraft:air" }
+      ]
+    }
+  ],
+  "play": [
+    { "run": "setblock 25 -60 20 minecraft:obsidian" },
+    { "run": "setblock 2 -60 1 minecraft:redstone_block" },
+    { "ticks": 5 }
+  ],
+  "observe": {
+    "scores": ["t"],
+    "blocks": [{ "from": [20, -60, 22], "to": [23, -60, 22] }, { "from": [24, -60, 20], "to": [26, -60, 20] }]
+  }
+}

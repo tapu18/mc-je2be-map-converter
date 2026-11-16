@@ -42,7 +42,8 @@ const DIMENSIONS: Record<string, string> = {
   "minecraft:the_end": "the_end",
 };
 
-const SCOREBOARD_SLOTS: Record<string, string> = { list: "list", sidebar: "sidebar", belowName: "belowname", below_name: "belowname" };
+/** Java 26.3 の表示場所の名前は below_name（belowName は拒否される。rewrite.servers.test.ts で実測） */
+const SCOREBOARD_SLOTS: Record<string, string> = { list: "list", sidebar: "sidebar", below_name: "belowname" };
 
 // ---- セレクタ ----
 
@@ -299,6 +300,10 @@ function rewriteNode(n: ParsedNode, ctx: RewriteContext, ed: Editor): void {
     }
     case "time":
       ed.replace(n.start, n.end, String(v.ticks));
+      return;
+    case "name":
+      // BE は `#a`（execute if score の中）や `$b`（どこでも）を引用符なしでは読めない。引用符で囲めば読める（BDS 1.26.63.1 で実測）
+      if (n.parser === "minecraft:score_holder" && v.value !== "*") ed.replace(n.start, n.end, quoteIfNeeded(v.value));
       return;
     case "string":
       if (n.parser === "minecraft:message") ed.replace(n.start, n.end, rewriteMessage(v.value, ed));
