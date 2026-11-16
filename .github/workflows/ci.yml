@@ -73,6 +73,12 @@ jobs:
         with:
           path: ~/.cache/je2be
           key: servers-${{ hashFiles('tools/servers.json') }}
+      - name: 版別 Java のアーカイブをキャッシュ
+        if: steps.gate.outputs.run == 'true' && matrix.group == 'bridge'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/je2be-grammars
+          key: java-grammars-${{ hashFiles('tools/java-grammars.json', 'tools/servers.json') }}
       # EULAへの同意はリポジトリの所有者が承認済み（CLAUDE.md 参照）
       - if: steps.gate.outputs.run == 'true'
         run: npm run setup:servers

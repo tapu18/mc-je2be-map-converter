@@ -3,11 +3,13 @@ import type { TextFormat } from "./arguments.ts";
 
 /**
  * テキスト（minecraft:component）の書き方が JSON から SNBT に変わった最初の DataVersion（1.21.5）。
- * 値は記憶による（未確認、#13 の後続で配布マップと実サーバーで確かめる）
+ * 1.21.4 / 1.21.5 の実サーバーで確認（#58、versioned-grammar.servers.test.ts）。
  */
 export const SNBT_TEXT_DATA_VERSION = 4325;
+export const SNBT_TEXT_PACK_FORMAT = 71;
 
-/** ワールドの DataVersion からテキストの書き方を決める。わからなければ最新（SNBT）とみなす */
-export function textFormatFor(dataVersion: number | undefined): TextFormat {
-  return dataVersion !== undefined && dataVersion < SNBT_TEXT_DATA_VERSION ? "json" : "snbt";
+/** DataVersion、なければ単体パックの形式から選ぶ。両方不明な手動指定時は最新（SNBT）。 */
+export function textFormatFor(dataVersion: number | undefined, packFormat?: number): TextFormat {
+  if (dataVersion !== undefined) return dataVersion < SNBT_TEXT_DATA_VERSION ? "json" : "snbt";
+  return packFormat !== undefined && packFormat < SNBT_TEXT_PACK_FORMAT ? "json" : "snbt";
 }
