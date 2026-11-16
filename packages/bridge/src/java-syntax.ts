@@ -11,10 +11,12 @@ import { copySyntaxDatapack } from "./syntax-datapacks.ts";
 import { paths } from "./paths.ts";
 
 export interface JavaSyntaxOptions {
-  /** 同時に読むパックのディレクトリ。コピーの関数本文は空にし、定義と ID だけを使う。 */
+  /** 同時に読むディレクトリまたは ZIP。コピーの関数本文は空にする。 */
   datapacks?: string[];
   /** setupJavaGrammar で取得した版を使う場合。既定の固定 Java には影響しない。 */
   runtime?: JavaSyntaxRuntime;
+  /** 元ワールドの有効順。省略時は vanilla → datapacks の指定順。 */
+  packOrder?: ({ builtin: string } | { datapack: number })[] | undefined;
 }
 
 export interface JavaSyntaxRuntime {
@@ -49,7 +51,16 @@ export async function inspectJavaSyntax(commands: string[], options: JavaSyntaxO
     if (/[\r\n]/.test(c)) throw new Error(`改行を含むコマンドは判定できない（${i}番目）`);
     if (c.trim().startsWith("$")) throw new Error(`マクロは展開後のコマンドを渡す必要がある（${i}番目）`);
   });
-  if (commands.length === 0 && !options.datapacks?.length) return { checked: true, results: [], contextErrors: [], enabledPacks: "" };
+  const order = options.packOrder;
+  if (order) {
+    const indexes = order.flatMap((entry) => "datapack" in entry ? [entry.datapack] : []);
+    if (indexes.length !== (options.datapacks?.length ?? 0) || new Set(indexes).size !== indexes.length ||
+      indexes.some((i) => !Number.isInteger(i) || i < 0 || i >= (options.datapacks?.length ?? 0)) ||
+      order.some((entry) => "builtin" in entry && (!/^[a-z0-9_.-]+$/.test(entry.builtin)))) {
+      throw new Error("invalid Java syntax pack order");
+    }
+  }
+  if (commands.length === 0 && !options.datapacks?.length && !order?.length) return { checked: true, results: [], contextErrors: [], enabledPacks: "" };
   const dir = mkdtempSync(join(tmpdir(), "je2be-syntax-"));
   let java: JavaServer | undefined;
   try {
@@ -70,10 +81,12 @@ export async function inspectJavaSyntax(commands: string[], options: JavaSyntaxO
       copySyntaxDatapack(source, destination);
       return destination;
     });
+    const enabled = order ? order.map((entry) => "builtin" in entry ? entry.builtin : `file/${basename(context[entry.datapack]!)}`)
+      : ["vanilla", ...context.map((path) => `file/${basename(path)}`)];
     try {
       java = await JavaServer.start({
         datapacks: [...context, pack],
-        initialEnabledPacks: ["vanilla", ...context.map((path) => `file/${basename(path)}`), `file/${namespace}`],
+        initialEnabledPacks: [...enabled, `file/${namespace}`],
         ...(options.runtime ? { runtime: options.runtime } : {}),
       });
     } catch (error) {
@@ -106,9 +119,8 @@ export async function inspectJavaSyntax(commands: string[], options: JavaSyntaxO
       return error === undefined ? { command, ok: true } : { command, ok: false, error };
     });
     const contextErrors = lines.filter((line) => /\/ERROR\]/.test(line) && !line.includes(namespace) && /Failed to (load|parse|read)|Couldn't (load|parse|read)|Missing references/.test(line));
-    for (const path of context) {
-      const name = basename(path);
-      if (!enabledPacks.includes(`file/${name}`)) contextErrors.push(`Datapack was not enabled: ${name}`);
+    for (const name of enabled) {
+      if (!enabledPacks.includes(name)) contextErrors.push(`Datapack was not enabled: ${name}`);
     }
     return { checked: true, results, contextErrors, enabledPacks };
   } finally {

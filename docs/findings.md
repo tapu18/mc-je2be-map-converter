@@ -108,6 +108,9 @@
 | 安定リリース1.20.5 / 1.20.6 / 1.21.4 は `tellraw @a {text:'x'}` と `{text:"x",bold:1b}` を拒否し、1.21.5 / 1.21.11 / 26.3 は受理した。引用符付きキーの JSON `{"text":"x"}` は全6版で受理された。1.21.5 の配布物の `version.json` は DataVersion 4325・データパック形式71だった | `packages/bridge/src/versioned-grammar.servers.test.ts`、各版の配布物と生成文法。6版×13ケースの比較を3回連続成功（2026-11-16、#58） |
 | `gamerule keepInventory true` は1.20.5 / 1.20.6 / 1.21.4 / 1.21.5で受理、1.21.11 / 26.3で拒否。`keep_inventory` は逆だった。また `setworldspawn 0 64 0 ~15` は前者4版でのみ受理、`setworldspawn 0 64 0 90 0` は後者2版でのみ受理。変化した最初の中間リリースは未測定 | 同テスト。記載した6版でのみ確認 |
 | 旧5版と26.3の全6版で、`team modify t color blue` と `reset` は受理され、`bold` は色として拒否された。版別文法のパーサも同じ結果になった | 同テスト |
+| 同じ定義をディレクトリと ZIP から判定用コピーにした場合、Java 26.3 は通常の predicate と有効オーバーレイの predicate をどちらも受理し、未提供の predicate をどちらも拒否した。ZIP のバイト列と元関数本文は変化せず、通常・オーバーレイの load 関数に書いたスコア目標追加は実行されなかった（保存後のスコア目標は空） | `packages/bridge/src/validation-context.servers.test.ts`、2026-11-16（#63） |
+| Java 26.3 で保存した `Data.DataPacks.Enabled` の順序を新規判定ワールドの有効順へ渡すと、その順序で有効化された。`Disabled` のパックが持つ predicate は判定に混入せず、その参照は拒否された | 同テスト。保存された `level.dat` と RCON の `datapack list enabled`、関数読み込み結果で確認 |
+| 同じ predicate ID に対し、低優先パックへ存在しない型、高優先パックへ正しい型を置くと、保存した順序を渡した検証ワールドは正常に起動し、その ID の参照を受理した | 同テスト。パック名の辞書順では `first` → `second` だが、有効順を `second` → `first` にして優先順を識別 |
 
 ## 変換の通し（Java 26.3 → Chunker 1.21.0 → BDS 1.26.63.1）
 

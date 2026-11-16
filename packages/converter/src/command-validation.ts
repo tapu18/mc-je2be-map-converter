@@ -1,4 +1,5 @@
 // 変換レポートに埋め込める Java 側の追加検証結果。文法パーサは変更しない。
+import type { JavaValidationContext } from "./validation-context.ts";
 export interface ValidationCommand {
   /** ファイル・行やブロック座標等を呼び出し元が識別できる値。 */
   id: string;
@@ -21,6 +22,8 @@ export interface JavaCommandValidationReport {
   javaVersion: string;
   /** 渡した順に記録する。サーバーには同じ順で有効化する。 */
   datapacks: string[];
+  sourceContext?: JavaValidationContext | undefined;
+  limitations: string[];
   enabledPacks: string;
   /** 対象行の読み込みが完了し、パックの読み込みエラーがないこと。挙動の保証ではない。 */
   complete: boolean;
@@ -56,7 +59,7 @@ export function classifyJavaValidationError(error: string): JavaDiagnosticCode {
 
 /** 検証済みの対象だけを渡し、結果の取り違え・不足を拒否する。 */
 export function buildJavaValidationReport(
-  commands: ValidationCommand[], batch: JavaCheckBatch, options: { javaVersion: string; datapacks?: string[] },
+  commands: ValidationCommand[], batch: JavaCheckBatch, options: { javaVersion: string; datapacks?: string[]; sourceContext?: JavaValidationContext | undefined },
 ): JavaCommandValidationReport {
   if (new Set(commands.map((c) => c.id)).size !== commands.length) throw new Error("duplicate validation command ID");
   const eligible = commands.filter((c) => !javaValidationSkipReason(c.command));
@@ -68,6 +71,8 @@ export function buildJavaValidationReport(
   const report: JavaCommandValidationReport = {
     schemaVersion: 1, mode: "function-load", contextFunctions: "placeholders",
     javaVersion: options.javaVersion, datapacks: [...(options.datapacks ?? [])], enabledPacks: batch.enabledPacks,
+    sourceContext: options.sourceContext,
+    limitations: ["固定 Java 版での受理判定。元の版での有効性を保証しない。旧版の文法・pack_format・定義は更新せず渡すため、版の差による拒否や未有効化があり得る（#58）。"],
     complete: batch.checked && batch.contextErrors.length === 0, registryValidation: "java-server",
     summary: { total: commands.length, valid: 0, invalid: 0, unresolvedReferences: 0, notChecked: 0, contextErrors: batch.contextErrors.length },
     results: [], diagnostics: [],

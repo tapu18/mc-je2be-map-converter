@@ -35,7 +35,7 @@ npm install
 npm run setup:servers   # JRE 25、Java版サーバー、BDS、Chunker（地形変換器）を servers/ に取得し、データ生成のレポート（blocks.json など）を作る（EULA同意済みとして扱う。ユーザー承認済み）
 npm run setup:mappings  # 承認済み Geyser の固定ブロック・アイテム対応表を取得し、出典・MIT 表示と共に servers/mappings/ に生成する
 npm run setup:grammars  # 代表的な旧 JE と現行 JE の commands.json を別枠で生成する。特定の版だけなら -- 1.20.6 等を付ける
-npm run validate:commands -- <commands.jsonl> --datapack <展開済みパック> # 固定 Java での追加検証。既定のレポート出力は servers/command-validation.json
+npm run validate:commands -- <commands.jsonl> --datapack <ディレクトリまたはZIP> # --world <Javaワールド> で保存された有効パック構成も指定できる。ZIP は Python 3 が必要
 npm run check           # 型チェック＋Nodeだけのテスト。変更のたびに通す
 npm run test:servers    # 実サーバーを起動するテスト（*.servers.test.ts）。数十秒かかる
 ```

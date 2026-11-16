@@ -17,6 +17,8 @@
 ```sh
 npm run setup:servers
 npm run validate:commands -- ./servers/commands.jsonl --datapack ./my-pack --out ./servers/command-validation.json
+npm run validate:commands -- ./servers/commands.jsonl --datapack ./my-pack.zip
+npm run validate:commands -- ./servers/commands.jsonl --world ./my-java-world
 ```
 
 `--datapack` は繰り返して指定できる。パック間で参照する定義をまとめて渡す。
@@ -24,8 +26,14 @@ npm run validate:commands -- ./servers/commands.jsonl --datapack ./my-pack --out
 まとめたコーパスに全マップのパックを混ぜると、別マップの定義で参照が解決する恐れがある。
 指定順に新規ワールドのパックを有効化し、実際の有効パック一覧も結果に記録する。
 
-現時点では展開済みのディレクトリのみ対応する。ZIP 入力とワールドの有効・無効パックの
-自動選択は #63。元のワールドやパックを変更せず、検証用の空ワールドで判定する。
+`--datapack` はディレクトリと ZIP に対応する（ZIP の読み込みには Python 3 の標準
+`zipfile` を使用）。`--world` は `level.dat` の `Data.DataPacks.Enabled` / `Disabled`
+を読み、有効な `file/` パックだけを保存された順序で渡す。ZIP も展開済みパックも同じ方法で
+関数本文を空にする。無効・未選択のパックはコピーしない。組み込みパックも元の有効順で
+指定し、固定 Java に存在しない場合はコンテキストエラーにする。
+有効パックの欠落や不正な保存リストはエラーとし、勝手に全パックを有効化しない。
+`--world` と `--datapack` の併用は拒否する。元のワールドや ZIP・ディレクトリを変更せず、
+検証用の空ワールドで判定する。
 
 既定の出力は git 管理外の `servers/command-validation.json`。
 標準出力は出力先と件数のみ。詳細の診断には作者の ID、ファイル名や Java のエラー文が
@@ -57,6 +65,9 @@ npm run validate:commands -- ./servers/commands.jsonl --datapack ./my-pack --out
 
 レポートは `schemaVersion: 1`、`mode: function-load`、`contextFunctions: placeholders`。
 Java の対象版、パック構成、件数、入力識別子付きの結果・警告を含む。
+`sourceContext`（`--world` 指定時）に元の DataVersion・有効/無効 ID・対応する入力パスと
+順序を記録する。`limitations` に、元の版の文法・pack_format・定義は移行しないことと、
+固定 Java での拒否を元の版での不正と解釈できない旨（#58）を常に記録する。
 旧版のマップを26.3へ渡した結果は「26.3で受理できない」という意味であり、元の版でも
 不正とは限らない。版ごとの文法・サーバーの選択は #58。
 
@@ -66,6 +77,7 @@ Java の対象版、パック構成、件数、入力識別子付きの結果・
 残す。load/tick 等から処理が走っても入力関数の本文は実行されない。
 元パックの関数が全て正しいかを調べるには、その関数の行も検証対象として入力する。
 コピーに含まれるシンボリックリンクは拒否する。
+ZIP の絶対パス・親ディレクトリへの参照・リンク・重複エントリも拒否する。
 
 判定用パックがロードされなかったのに全行成功とする誤判定を防ぐため、有効パック一覧と、
 必ず読み込みに失敗する監視用関数のログを確認する。パックのレジストリ定義が壊れて
@@ -82,6 +94,9 @@ Java の対象版、パック構成、件数、入力識別子付きの結果・
 - `@je2be/bridge`: `checkJavaSyntax(commands, { datapacks })` は既存の判定配列を返す。
   読み込み状況も必要な場合は `inspectJavaSyntax` を使う。パック起因の起動失敗時は
   後者が `checked: false` を返し、前者は例外にする。
+- `@je2be/converter`: `readJavaValidationContext(world)` で保存された構成を取得し、
+  返された `{ datapacks, packOrder }` を `inspectJavaSyntax` に渡す。レポートの
+  `sourceContext` にも同じ構成を渡す。組み込みパックを挟んだ有効順も保つ。
 - `@je2be/converter`: `javaValidationSkipReason` で未判定行を除き、`inspectJavaSyntax` の結果を
   `buildJavaValidationReport` に渡す。結果の不足・入力順の取り違え・入力 ID の重複を拒否する。
 
@@ -92,3 +107,5 @@ Java の対象版、パック構成、件数、入力識別子付きの結果・
 
 検証の根拠は `packages/bridge/src/java-validation.servers.test.ts`。独自 fixture の定義参照、
 ID と値の拒否、パックのロード失敗、入力・load関数が実行されないことを実サーバーで確かめる。
+ZIP とディレクトリの同等性・オーバーレイ・保存された無効パックの除外は
+`packages/bridge/src/validation-context.servers.test.ts` で確かめる。
