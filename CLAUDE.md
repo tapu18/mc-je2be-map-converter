@@ -6,6 +6,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 - 実測で判明した事実: `docs/findings.md`
 - 正解データのシナリオの書き方: `docs/scenarios.md`
 - Java コマンドの追加検証と警告レポート: `docs/command-validation.md`
+- 版別コマンド文法の生成・選択と実測: `docs/command-versions.md`
 - PoC の書き方と共通の小道具: `docs/poc.md`
 - 配布マップのコマンドの型の頻度と、M1 の検証用マップに入れる型: `docs/corpus-patterns.md`
 - ID対応表の入手元・ライセンス比較と検証案: `docs/id-mapping-sources.md`（Geyser 採用承認済み。表示は `THIRD_PARTY_NOTICES.md`）
@@ -33,6 +34,7 @@ Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換
 npm install
 npm run setup:servers   # JRE 25、Java版サーバー、BDS、Chunker（地形変換器）を servers/ に取得し、データ生成のレポート（blocks.json など）を作る（EULA同意済みとして扱う。ユーザー承認済み）
 npm run setup:mappings  # 承認済み Geyser の固定ブロック・アイテム対応表を取得し、出典・MIT 表示と共に servers/mappings/ に生成する
+npm run setup:grammars  # 代表的な旧 JE と現行 JE の commands.json を別枠で生成する。特定の版だけなら -- 1.20.6 等を付ける
 npm run validate:commands -- <commands.jsonl> --datapack <展開済みパック> # 固定 Java での追加検証。既定のレポート出力は servers/command-validation.json
 npm run check           # 型チェック＋Nodeだけのテスト。変更のたびに通す
 npm run test:servers    # 実サーバーを起動するテスト（*.servers.test.ts）。数十秒かかる

@@ -3,16 +3,17 @@
 //   python3 -I scripts/dump_commands.py sample-map > <scratch>/commands.jsonl
 //   node tools/parse-corpus.ts <scratch>/commands.jsonl [--commands <commands.json>] [--failures <出力先>] [--java]
 //
-// --java を付けると、重複を除いたコマンドを Java 版サーバー（tools/servers.json の版）にも読ませ、
+// npm run setup:grammars で生成した文法を DataVersion / pack_format で選ぶ。文法なしは未判定として数える。
+// --java を付けると、版とコマンドの組で重複を除き、対応する Java 版サーバーにも読ませ、
 // パーサの判定と突き合わせる（packages/bridge/src/java-syntax.ts。数分かかる）。
 //
 // 出力は件数と失敗の分類だけ（コマンドの文面は出さない）。--failures を付けると、失敗したコマンドの文面を
 // 指定のファイルに書く（調べるため。権利上リポジトリに入れないこと）。
 // マクロ行（`$` で始まる）は実行時に文字列が決まるため、パースせずに数だけ数える。
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { checkJavaSyntax, paths } from "@je2be/bridge";
-import { CommandParser, textFormatFor, type CommandTreeNode } from "@je2be/core";
+import { checkJavaSyntax } from "@je2be/bridge";
+import { CommandParser, selectCommandGrammar, textFormatFor, type CommandTreeNode } from "@je2be/core";
+import { loadJavaGrammars, loadGrammarTree, type JavaGrammarInstallation } from "@je2be/converter";
 
 interface Row {
   map: number;
@@ -32,9 +33,12 @@ const flag = (name: string): string | undefined => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const treePath = flag("--commands") ?? join(paths.blocksReport, "..", "commands.json");
-const tree = JSON.parse(readFileSync(treePath, "utf8")) as CommandTreeNode;
-const parsers = { json: new CommandParser(tree, { textFormat: "json" }), snbt: new CommandParser(tree, { textFormat: "snbt" }) };
+const treePath = flag("--commands");
+if (treePath && args.includes("--java")) throw new Error("--commands の手動指定から Java の版を決められない。--java は版別カタログと一緒に使う");
+const tree = treePath ? JSON.parse(readFileSync(treePath, "utf8")) as CommandTreeNode : undefined;
+const grammars = tree ? [] : loadJavaGrammars();
+if (!tree && !grammars.length) throw new Error("版別文法がない。npm run setup:grammars を実行する");
+const parsers = new Map<string, CommandParser>();
 
 const rows = readFileSync(input, "utf8")
   .split("\n")
@@ -45,8 +49,9 @@ interface Tally {
   total: number;
   macro: number;
   ok: number;
+  unavailable: number;
 }
-const tally = (): Tally => ({ total: 0, macro: 0, ok: 0 });
+const tally = (): Tally => ({ total: 0, macro: 0, ok: 0, unavailable: 0 });
 const bySource: Record<string, Tally> = {};
 const byVersion: Record<string, Tally> = {};
 const byMap: Record<string, Tally> = {};
@@ -54,7 +59,7 @@ const failureReasons: Record<string, number> = {};
 const failureHeads: Record<string, number> = {};
 const failures: string[] = [];
 /** パーサの判定（重複を除いたコマンド → 成否と失敗理由） */
-const verdicts = new Map<string, { ok: boolean; reason?: string }>();
+const verdicts = new Map<string, { command: string; grammar?: JavaGrammarInstallation; ok: boolean; reason?: string }>();
 
 for (const row of rows) {
   const keys = [
@@ -72,15 +77,35 @@ for (const row of rows) {
     bump("macro");
     continue;
   }
-  const result = parsers[textFormatFor(row.dataVersion ?? undefined)].parse(cmd);
-  verdicts.set(cmd.replace(/^\//, ""), result.ok ? { ok: true } : { ok: false, reason: `${result.error.parser ?? "(リテラル)"}: ${result.error.message}` });
+  const selected = selectCommandGrammar(grammars, {
+    ...(row.dataVersion === null ? {} : { dataVersion: row.dataVersion }),
+    ...(row.packFormat === null ? {} : { packFormat: row.packFormat }),
+  });
+  if (!tree && !selected.ok) {
+    bump("unavailable");
+    continue;
+  }
+  const grammar = selected.ok ? selected.grammar : undefined;
+  const format = grammar?.textFormat ?? textFormatFor(row.dataVersion ?? undefined, row.packFormat ?? undefined);
+  const parserKey = `${grammar?.version ?? "manual"}:${format}`;
+  let parser = parsers.get(parserKey);
+  if (!parser) {
+    parser = new CommandParser(tree ?? loadGrammarTree(grammar!), { textFormat: format });
+    parsers.set(parserKey, parser);
+  }
+  const result = parser.parse(cmd);
+  const command = cmd.replace(/^\//, "");
+  verdicts.set(JSON.stringify([grammar?.version ?? "manual", command]), {
+    command, ...(grammar ? { grammar } : {}),
+    ...(result.ok ? { ok: true } : { ok: false, reason: `${result.error.parser ?? "(リテラル)"}: ${result.error.message}` }),
+  });
   if (result.ok) {
     bump("ok");
     continue;
   }
   // 先頭の語は、文法にあるコマンド名だけを出す（コマンドブロックに文章が書かれていることがあるため）
   const word = cmd.replace(/^\//, "").split(" ")[0] ?? "";
-  const head = tree.children?.[word] ? word : "(文法にない語)";
+  const head = parser.root.children?.[word] ? word : "(文法にない語)";
   const reason = `${result.error.parser ?? "(リテラル)"}: ${result.error.message.replace(/'[^']*'/g, "'…'").replace(/（[^）]*）/g, "")}`;
   failureReasons[reason] = (failureReasons[reason] ?? 0) + 1;
   failureHeads[head] = (failureHeads[head] ?? 0) + 1;
@@ -88,13 +113,13 @@ for (const row of rows) {
 }
 
 const rate = (t: Tally): string => {
-  const parsed = t.total - t.macro;
+  const parsed = t.total - t.macro - t.unavailable;
   return parsed ? `${((t.ok / parsed) * 100).toFixed(1)}%` : "-";
 };
 const table = (title: string, data: Record<string, Tally>): void => {
-  console.log(`\n### ${title}\n\n| 区分 | 行数 | マクロ | パース対象 | 成功 | 成功率 |\n| --- | ---: | ---: | ---: | ---: | ---: |`);
+  console.log(`\n### ${title}\n\n| 区分 | 行数 | マクロ | 文法なし | パース対象 | 成功 | 成功率 |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |`);
   for (const [k, t] of Object.entries(data).sort(([a], [b]) => a.localeCompare(b, "en", { numeric: true }))) {
-    console.log(`| ${k} | ${t.total} | ${t.macro} | ${t.total - t.macro} | ${t.ok} | ${rate(t)} |`);
+    console.log(`| ${k} | ${t.total} | ${t.macro} | ${t.unavailable} | ${t.total - t.macro - t.unavailable} | ${t.ok} | ${rate(t)} |`);
   }
 };
 const top = (title: string, data: Record<string, number>, n = 25): void => {
@@ -107,8 +132,9 @@ for (const t of Object.values(bySource)) {
   all.total += t.total;
   all.macro += t.macro;
   all.ok += t.ok;
+  all.unavailable += t.unavailable;
 }
-console.log(`文法: ${treePath}\n全体: ${all.total}行（マクロ ${all.macro}）、パース対象 ${all.total - all.macro}、成功 ${all.ok}（${rate(all)}）`);
+console.log(`文法: ${treePath ?? "DataVersion / pack_format ごとの固定版"}\n全体: ${all.total}行（マクロ ${all.macro}、文法なし ${all.unavailable}）、パース対象 ${all.total - all.macro - all.unavailable}、成功 ${all.ok}（${rate(all)}）`);
 table("コマンドの出どころ別（cb=コマンドブロック、fn=関数）", bySource);
 table("ワールドの DataVersion 別", byVersion);
 table("マップ別（連番）", byMap);
@@ -135,14 +161,22 @@ const classifyJavaError = (m: string): string => {
 const abstractMessage = (m: string): string => m.replace(/'[^']*'/g, "'…'").replace(/（[^）]*）/g, "").replace(/ at position \d+.*$/, "").replace(/\d+/g, "N");
 
 if (args.includes("--java")) {
-  const unique = [...verdicts.keys()];
-  const java = await checkJavaSyntax(unique);
+  const java = [];
+  for (const grammar of grammars) {
+    const commands = [...verdicts.values()].filter((v) => v.grammar?.version === grammar.version).map((v) => v.command);
+    if (!commands.length) continue;
+    const results = await checkJavaSyntax(commands, { runtime: {
+      java: grammar.java, serverDirectory: grammar.serverDirectory, packFormat: grammar.packFormat,
+      packMinor: grammar.packMinor, functionDirectory: grammar.source.functionDirectory,
+    } });
+    java.push(...results.map((result) => ({ ...result, version: grammar.version })));
+  }
   const matrix = { bothOk: 0, bothFail: 0, parserOnlyOk: 0, javaOnlyOk: 0 };
   const parserOnlyOk: Record<string, number> = {};
   const javaOnlyOk: Record<string, number> = {};
   const lines: string[] = [];
   for (const j of java) {
-    const p = verdicts.get(j.command) as { ok: boolean; reason?: string };
+    const p = verdicts.get(JSON.stringify([j.version, j.command])) as { ok: boolean; reason?: string };
     if (p.ok && j.ok) matrix.bothOk++;
     else if (!p.ok && !j.ok) matrix.bothFail++;
     else if (p.ok) {
@@ -157,7 +191,7 @@ if (args.includes("--java")) {
       lines.push(`java-ok\t${p.reason}\t${j.command}`);
     }
   }
-  console.log(`\n### Java 版サーバーとの突き合わせ（重複を除いた ${unique.length} 件、マクロ行を除く）\n`);
+  console.log(`\n### Java 版サーバーとの突き合わせ（版とコマンドの組で重複を除いた ${java.length} 件、マクロ・文法なしを除く）\n`);
   console.log(`| パーサ \\ Java | 読める | 読めない |\n| --- | ---: | ---: |`);
   console.log(`| 読める | ${matrix.bothOk} | ${matrix.parserOnlyOk} |\n| 読めない | ${matrix.javaOnlyOk} | ${matrix.bothFail} |`);
   top("パーサだけが読めたもの（Java のエラー）", parserOnlyOk);

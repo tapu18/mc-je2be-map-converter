@@ -1,0 +1,45 @@
+{
+  "$comment": "#58: 旧JE文法の検証用。BDSの固定版 tools/servers.json とは別枠。Mojang公式マニフェストから2026-11-16に取得。",
+  "versions": [
+    {
+      "version": "1.20.5",
+      "url": "https://piston-data.mojang.com/v1/objects/79493072f65e17243fd36a699c9a96b4381feb91/server.jar",
+      "sha1": "79493072f65e17243fd36a699c9a96b4381feb91",
+      "metadataUrl": "https://piston-meta.mojang.com/v1/packages/a7f0d5d66b6a76ac710858ea7c63791326dc6a64/1.20.5.json",
+      "metadataSha1": "a7f0d5d66b6a76ac710858ea7c63791326dc6a64",
+      "functionDirectory": "functions"
+    },
+    {
+      "version": "1.20.6",
+      "url": "https://piston-data.mojang.com/v1/objects/145ff0858209bcfc164859ba735d4199aafa1eea/server.jar",
+      "sha1": "145ff0858209bcfc164859ba735d4199aafa1eea",
+      "metadataUrl": "https://piston-meta.mojang.com/v1/packages/f218f389b6a159ac30b44a3adf9a8700ed42f397/1.20.6.json",
+      "metadataSha1": "f218f389b6a159ac30b44a3adf9a8700ed42f397",
+      "functionDirectory": "functions"
+    },
+    {
+      "version": "1.21.4",
+      "url": "https://piston-data.mojang.com/v1/objects/4707d00eb834b446575d89a61a11b5d548d8c001/server.jar",
+      "sha1": "4707d00eb834b446575d89a61a11b5d548d8c001",
+      "metadataUrl": "https://piston-meta.mojang.com/v1/packages/87fcc1eec25874d12bca737d6579a247ce2d2746/1.21.4.json",
+      "metadataSha1": "87fcc1eec25874d12bca737d6579a247ce2d2746",
+      "functionDirectory": "function"
+    },
+    {
+      "version": "1.21.5",
+      "url": "https://piston-data.mojang.com/v1/objects/e6ec2f64e6080b9b5d9b471b291c33cc7f509733/server.jar",
+      "sha1": "e6ec2f64e6080b9b5d9b471b291c33cc7f509733",
+      "metadataUrl": "https://piston-meta.mojang.com/v1/packages/deed2dfe12bd2f6dd3397178c68ce07d0a8f2604/1.21.5.json",
+      "metadataSha1": "deed2dfe12bd2f6dd3397178c68ce07d0a8f2604",
+      "functionDirectory": "function"
+    },
+    {
+      "version": "1.21.11",
+      "url": "https://piston-data.mojang.com/v1/objects/64bb6d763bed0a9f1d632ec347938594144943ed/server.jar",
+      "sha1": "64bb6d763bed0a9f1d632ec347938594144943ed",
+      "metadataUrl": "https://piston-meta.mojang.com/v1/packages/812ee7fdfdf648bb872f7a1dca33718de4e786b4/1.21.11.json",
+      "metadataSha1": "812ee7fdfdf648bb872f7a1dca33718de4e786b4",
+      "functionDirectory": "function"
+    }
+  ]
+}

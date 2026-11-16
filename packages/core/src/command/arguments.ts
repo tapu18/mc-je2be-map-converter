@@ -508,6 +508,7 @@ const GAMEMODES = new Set(["survival", "creative", "adventure", "spectator"]);
 const HEIGHTMAPS = new Set(["world_surface", "motion_blocking", "motion_blocking_no_leaves", "ocean_floor"]);
 const MIRRORS = new Set(["none", "front_back", "left_right"]);
 const ROTATIONS = new Set(["none", "clockwise_90", "counterclockwise_90", "180"]);
+const LEGACY_COLORS = new Set(["black", "dark_blue", "dark_green", "dark_aqua", "dark_red", "dark_purple", "gold", "gray", "dark_gray", "blue", "green", "aqua", "red", "light_purple", "yellow", "white", "reset"]);
 
 export const ARGUMENT_PARSERS: Record<string, ArgumentParser> = {
   "brigadier:bool": (r) => ({ kind: "bool", value: r.readBoolean() }),
@@ -550,6 +551,8 @@ export const ARGUMENT_PARSERS: Record<string, ArgumentParser> = {
   "minecraft:vec3": (r) => ({ kind: "coordinates", coordinates: readCoordinates(r, 3, { integer: false, local: true }) }),
   "minecraft:vec2": (r) => ({ kind: "coordinates", coordinates: readCoordinates(r, 2, { integer: false, local: false }) }),
   "minecraft:rotation": (r) => ({ kind: "coordinates", coordinates: readCoordinates(r, 2, { integer: false, local: false }) }),
+  "minecraft:angle": (r) => ({ kind: "coordinates", coordinates: readCoordinates(r, 1, { integer: false, local: false }) }),
+  "minecraft:color": (r) => word(r, LEGACY_COLORS),
   "minecraft:block_state": (r) => readBlock(r, false),
   "minecraft:block_predicate": (r) => readBlock(r, true),
   "minecraft:item_stack": readItemStack,
@@ -557,7 +560,15 @@ export const ARGUMENT_PARSERS: Record<string, ArgumentParser> = {
   "minecraft:nbt_compound_tag": (r) => ({ kind: "nbt", value: readSnbtCompound(r) }),
   "minecraft:nbt_tag": (r) => ({ kind: "nbt", value: readSnbtValue(r) }),
   "minecraft:nbt_path": (r) => ({ kind: "nbtPath", path: readNbtPath(r) }),
-  "minecraft:component": (r, _p, o) => ({ kind: "text", format: o.textFormat, value: readSnbtValue(r) }),
+  "minecraft:component": (r, _p, o) => {
+    const start = r.cursor;
+    const value = readSnbtValue(r);
+    if (o.textFormat === "json") {
+      try { JSON.parse(r.input.slice(start, r.cursor)); }
+      catch { throw r.error("JSON 形式のテキストが必要", start); }
+    }
+    return { kind: "text", format: o.textFormat, value };
+  },
   "minecraft:style": (r) => ({ kind: "nbt", value: readSnbtCompound(r) }),
   "minecraft:message": (r) => {
     const value = r.remaining();
@@ -646,7 +657,7 @@ export const ARGUMENT_PARSERS: Record<string, ArgumentParser> = {
     return { kind: "word", value };
   },
   "minecraft:scoreboard_slot": (r) => word(r),
-  "minecraft:team_color": (r) => word(r),
+  "minecraft:team_color": (r) => word(r, LEGACY_COLORS),
   "minecraft:swing_animation": (r) => word(r),
   "minecraft:hex_color": (r) => {
     const start = r.cursor;
