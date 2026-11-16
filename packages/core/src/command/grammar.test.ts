@@ -36,6 +36,8 @@ describe("versioned command grammar selection", () => {
     if (result.kind !== "text" || result.value.type !== "compound") throw new Error("expected text compound");
     expect(result.value.value.get("text")).toEqual({ type: "string", value: "a/b" });
     expect(reader.remaining()).toBe(" next");
+    expect(ARGUMENT_PARSERS["minecraft:component"]!(new StringReader("1.0"), undefined, { textFormat: "json" }))
+      .toEqual({ kind: "text", format: "json", value: { type: "double", value: 1 } });
     for (const input of ["{text:'x'}", '{"text":"x",}', '{"text":"x"']) {
       expect(() => ARGUMENT_PARSERS["minecraft:component"]!(new StringReader(input), undefined, { textFormat: "json" })).toThrow();
     }

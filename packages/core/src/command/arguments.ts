@@ -538,7 +538,12 @@ function readJsonText(r: StringReader): NbtTag {
     while (end < r.input.length && !/\s/.test(r.input[end]!)) end++;
   }
   let normalized: string;
-  try { normalized = JSON.stringify(JSON.parse(r.input.slice(start, end))); }
+  try {
+    const raw = r.input.slice(start, end);
+    JSON.parse(raw);
+    // 文字列だけを正規化し、1.0 等の元の数値表記・型を変えない。
+    normalized = raw.replace(/"(?:\\.|[^"\\])*"/g, (quoted) => JSON.stringify(JSON.parse(quoted)));
+  }
   catch { throw r.error("JSON 形式のテキストが必要", start); }
   r.cursor = end;
   // JSON.stringify は \/ を通常の / に戻す。既存のテキスト用 NBT 表現へ正規化する。
