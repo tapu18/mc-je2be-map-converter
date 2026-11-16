@@ -79,6 +79,7 @@ jobs:
         with:
           path: ~/.cache/je2be-grammars
           key: java-grammars-${{ hashFiles('tools/java-grammars.json', 'tools/servers.json') }}
+          restore-keys: java-grammars-
       # EULAへの同意はリポジトリの所有者が承認済み（CLAUDE.md 参照）
       - if: steps.gate.outputs.run == 'true'
         run: npm run setup:servers
