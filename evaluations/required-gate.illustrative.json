@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "mapId": "illustrative/required-gate",
+  "kind": "illustrative",
+  "scope": "client-playthrough",
+  "staticReport": null,
+  "completion": {
+    "status": "unverified",
+    "evidence": []
+  },
+  "gimmicks": [
+    {
+      "id": "required-display-interaction",
+      "scenario": "illustrative/display-gate",
+      "start": "説明用：進行扉を開く前",
+      "steps": [
+        "表示用エンティティをクリックする"
+      ],
+      "successCriteria": [
+        "扉が開き、次のエリアへ進める"
+      ],
+      "requiredFeatures": [
+        "interaction",
+        "表示用エンティティ",
+        "クリック検知"
+      ],
+      "required": true,
+      "status": "unverified",
+      "evidence": [],
+      "knownDiffs": [],
+      "incomparable": [
+        "BEでの表示・クリック動作は未検証"
+      ],
+      "fixes": [
+        {
+          "location": "進行扉のクリック入力",
+          "reason": "代替エンティティとクリック処理が未実装",
+          "procedure": "ボタンとスコア入力への手動置換を検討する。未実証の候補であり適用済みではない。",
+          "reapplyAfterConversion": "yes",
+          "verification": "candidate",
+          "evidence": []
+        }
+      ],
+      "warnings": [],
+      "failures": []
+    }
+  ]
+}
