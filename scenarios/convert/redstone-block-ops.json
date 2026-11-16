@@ -1,0 +1,26 @@
+{
+  "description": "変換を通す（F1）：レッドストーンで起動するインパルスとチェーンで setblock・fill・clone を行う。コマンドブロックは変換前の Java ワールドに置く",
+  "setup": [],
+  "actions": [
+    {
+      "commandBlocks": [
+        { "pos": [2, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "setblock 10 -60 10 minecraft:diamond_block" },
+        { "pos": [2, -60, 3], "kind": "chain", "facing": "south", "command": "fill 11 -60 10 13 -60 12 minecraft:gold_block" },
+        { "pos": [2, -60, 4], "kind": "chain", "facing": "south", "command": "clone 10 -60 10 13 -60 12 10 -60 20" },
+        { "pos": [6, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "setblock ~ ~1 ~ minecraft:iron_block" }
+      ]
+    }
+  ],
+  "play": [
+    { "run": "setblock 2 -60 1 minecraft:redstone_block" },
+    { "run": "setblock 6 -60 1 minecraft:redstone_block" },
+    { "ticks": 5 }
+  ],
+  "observe": {
+    "blocks": [
+      { "from": [10, -60, 10], "to": [13, -60, 12] },
+      { "from": [10, -60, 20], "to": [13, -60, 22] },
+      { "from": [6, -59, 2] }
+    ]
+  }
+}

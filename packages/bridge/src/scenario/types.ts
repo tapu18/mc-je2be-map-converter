@@ -47,6 +47,12 @@ export interface Scenario {
   setup: string[];
   actions: Action[];
   observe: Observe;
+  /**
+   * 変換を通すシナリオ（#61）。書いたときは、Java で setup と actions まで行ったワールドを保存して変換器に通し、
+   * BE はその変換後のワールドから play を行う。Java は同じセッションのまま play を続ける。
+   * BE で行う操作を変えたいときは bedrock ではなく変換器を直す（併用はできない）
+   */
+  play?: Action[];
   /** BE で実行する内容を変える場合（変換器ができるまでの手書きの対応）。省略時は同じものを実行する */
   bedrock?: EditionSteps;
   /** 既知の差分（調査済みのもの）。パスごとに理由を書く。ここにない差分はテストの失敗になる */

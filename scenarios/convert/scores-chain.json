@@ -1,0 +1,22 @@
+{
+  "description": "変換を通す（F2・F3）：変換前に入れたスコアが再注入され、レッドストーンで起動したチェーンの演算と条件付きの成否が一致する",
+  "setup": ["scoreboard objectives add t dummy", "scoreboard players set #a t 7", "scoreboard players set #b t -2", "scoreboard players set kept t 42"],
+  "actions": [
+    {
+      "commandBlocks": [
+        { "pos": [2, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "scoreboard players operation #a t += #b t" },
+        { "pos": [2, -60, 3], "kind": "chain", "facing": "south", "conditional": true, "command": "scoreboard players set #after_ok t 1" },
+        { "pos": [2, -60, 4], "kind": "chain", "facing": "south", "command": "scoreboard players operation #c t = #a t" },
+        { "pos": [2, -60, 5], "kind": "chain", "facing": "south", "command": "scoreboard players operation #c t *= #b t" },
+        { "pos": [6, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "scoreboard players add #nobody missing_objective 1" },
+        { "pos": [6, -60, 3], "kind": "chain", "facing": "south", "conditional": true, "command": "scoreboard players set #after_fail t 1" }
+      ]
+    }
+  ],
+  "play": [
+    { "run": "setblock 2 -60 1 minecraft:redstone_block" },
+    { "run": "setblock 6 -60 1 minecraft:redstone_block" },
+    { "ticks": 5 }
+  ],
+  "observe": { "scores": ["t"] }
+}

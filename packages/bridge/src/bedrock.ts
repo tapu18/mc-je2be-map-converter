@@ -133,7 +133,11 @@ export class BedrockServer {
       cpSync(p, join(packsDir, m.header.uuid), { recursive: true });
       return { pack_id: m.header.uuid, version: m.header.version };
     });
-    writeFileSync(join(worldDir, "world_behavior_packs.json"), JSON.stringify(refs, null, 2));
+    // 元のワールドが持つパック（変換器の初期化パックなど）は残す
+    const refsPath = join(worldDir, "world_behavior_packs.json");
+    const existing = existsSync(refsPath) ? (JSON.parse(readFileSync(refsPath, "utf8")) as { pack_id: string; version: number[] }[]) : [];
+    const merged = [...existing.filter((e) => !refs.some((r) => r.pack_id === e.pack_id)), ...refs];
+    writeFileSync(refsPath, JSON.stringify(merged, null, 2));
 
     // ベータAPIとコマンドの許可
     const datPath = join(worldDir, "level.dat");
@@ -198,6 +202,11 @@ export class BedrockServer {
   /** サーバーコンソールに直接コマンドを送る（応答は log から読む）。 */
   console(command: string): void {
     this.proc.write(command);
+  }
+
+  /** 条件に合うログの行が出るまで待つ（既に出ている行も対象にする） */
+  waitForLog(pred: (line: string) => boolean, timeoutMs: number, what: string): Promise<string> {
+    return this.proc.waitFor(pred, timeoutMs, what);
   }
 
   get log(): readonly string[] {
