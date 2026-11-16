@@ -1,0 +1,20 @@
+{
+  "java": "26.3",
+  "state": {
+    "scores": {
+      "t": {
+        "#a": 2,
+        "$b": 5
+      }
+    },
+    "blocks": {
+      "20,-60,22": "minecraft:diamond_block",
+      "21,-60,22": "minecraft:air",
+      "22,-60,22": "minecraft:iron_block",
+      "23,-60,22": "minecraft:emerald_block",
+      "24,-60,20": "minecraft:glass",
+      "25,-60,20": "minecraft:obsidian",
+      "26,-60,20": "minecraft:glass"
+    }
+  }
+}

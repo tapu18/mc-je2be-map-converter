@@ -44,6 +44,17 @@ export type BlockMappingResult =
   | { status: "mapped"; target: BedrockBlockState; sharedBy: number; waterlogged: boolean; verification: "unverified" }
   | { status: "unknown-block" | "incomplete-state" | "unknown-state" };
 
+/**
+ * ブロックの条件（`execute if block` などの部分的な状態）の対応。
+ * BE の条件（指定した状態だけを比べる。BDS 1.26.63.1 で実測、#62）が、同じ Java のブロックのうち
+ * Java の条件に一致する状態だけ（表の上で）に一致するときに mapped にする。
+ */
+export type BlockPredicateMappingResult =
+  | { status: "mapped"; target: BedrockBlockState; verification: "unverified" }
+  | { status: "unknown-block" | "unknown-state" }
+  /** BE の条件で書くと、同じ Java のブロックの、Java の条件に一致しない状態まで一致してしまう */
+  | { status: "inexact" };
+
 export type ItemMappingResult =
   | { status: "mapped"; target: ItemMapping; sharedBy: number; verification: "unverified" }
   | { status: "unknown-item" };
@@ -51,6 +62,8 @@ export type ItemMappingResult =
 /** mapped は表に行があるという意味であり、挙動が等価という判定ではない。 */
 export class MappingLookup {
   private blocks = new Map<string, BlockMapping>();
+  private rowsByJava = new Map<string, BlockMapping[]>();
+  private rowsByBedrock = new Map<string, BlockMapping[]>();
   private properties = new Map<string, string[]>();
   private blockTargets = new Map<string, number>();
   private items = new Map<string, ItemMapping>();
@@ -62,6 +75,8 @@ export class MappingLookup {
       const key = blockStateKey(row.java);
       if (this.blocks.has(key)) throw new Error(`duplicate Java block state: ${key}`);
       this.blocks.set(key, row);
+      this.rowsByJava.set(row.java.id, [...(this.rowsByJava.get(row.java.id) ?? []), row]);
+      this.rowsByBedrock.set(row.bedrock.id, [...(this.rowsByBedrock.get(row.bedrock.id) ?? []), row]);
       const props = Object.keys(row.java.states).sort();
       const previous = this.properties.get(row.java.id);
       if (previous && JSON.stringify(previous) !== JSON.stringify(props)) throw new Error(`inconsistent properties: ${row.java.id}`);
@@ -89,6 +104,31 @@ export class MappingLookup {
       sharedBy: this.blockTargets.get(blockStateKey(row.bedrock))!,
       waterlogged: states.waterlogged === "true", verification: "unverified",
     };
+  }
+
+  /** Java の状態の名前（表にある順ではなく名前順）。表にないブロックは undefined */
+  blockProperties(id: string): string[] | undefined {
+    return this.properties.get(id);
+  }
+
+  /** Java のブロックの条件（指定した状態だけを比べる）を、BE の条件に変える */
+  blockPredicate(id: string, states: Record<string, string> = {}): BlockPredicateMappingResult {
+    const props = this.properties.get(id);
+    if (!props) return { status: "unknown-block" };
+    if (Object.keys(states).some((k) => !props.includes(k))) return { status: "unknown-state" };
+    const matches = (this.rowsByJava.get(id) ?? []).filter((r) => Object.entries(states).every(([k, v]) => r.java.states[k] === v));
+    if (matches.length === 0) return { status: "unknown-state" };
+    const first = matches[0]!.bedrock;
+    if (matches.some((r) => r.bedrock.id !== first.id)) return { status: "inexact" };
+    // 一致するすべての状態に共通する BE の状態だけを条件にする
+    const common: BedrockBlockState["states"] = {};
+    for (const [k, v] of Object.entries(first.states)) if (matches.every((r) => r.bedrock.states[k] === v)) common[k] = v;
+    // その BE の条件が、同じ Java のブロックの、Java の条件に一致しない状態まで拾わないか。
+    // 別の Java のブロックが同じ BE のブロックになるもの（cave_air → air など）は、変換後の BE では見分けられないため問わない
+    const picked = (this.rowsByBedrock.get(first.id) ?? []).filter((r) => r.java.id === id && Object.entries(common).every(([k, v]) => r.bedrock.states[k] === v));
+    const wanted = new Set(matches);
+    if (picked.some((r) => !wanted.has(r))) return { status: "inexact" };
+    return { status: "mapped", target: { id: first.id, states: common }, verification: "unverified" };
   }
 
   item(id: string): ItemMappingResult {
