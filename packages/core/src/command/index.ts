@@ -4,5 +4,6 @@ export * from "./snbt.ts";
 export * from "./arguments.ts";
 export * from "./parser.ts";
 export * from "./version.ts";
+export * from "./grammar.ts";
 export * from "./rawtext.ts";
 export * from "./rewrite.ts";

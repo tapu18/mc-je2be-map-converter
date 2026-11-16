@@ -13,8 +13,18 @@ import { paths } from "./paths.ts";
 export interface JavaSyntaxOptions {
   /** 同時に読むディレクトリまたは ZIP。コピーの関数本文は空にする。 */
   datapacks?: string[];
+  /** setupJavaGrammar で取得した版を使う場合。既定の固定 Java には影響しない。 */
+  runtime?: JavaSyntaxRuntime;
   /** 元ワールドの有効順。省略時は vanilla → datapacks の指定順。 */
   packOrder?: ({ builtin: string } | { datapack: number })[] | undefined;
+}
+
+export interface JavaSyntaxRuntime {
+  java: string;
+  serverDirectory: string;
+  packFormat: number;
+  packMinor?: number;
+  functionDirectory: "function" | "functions";
 }
 
 export interface JavaSyntaxInspection {
@@ -56,10 +66,12 @@ export async function inspectJavaSyntax(commands: string[], options: JavaSyntaxO
   try {
     const namespace = `je2be_syntax_${randomBytes(8).toString("hex")}`;
     const pack = join(dir, namespace);
-    const fnDir = join(pack, "data", namespace, "function");
+    const fnDir = join(pack, "data", namespace, options.runtime?.functionDirectory ?? "function");
     mkdirSync(fnDir, { recursive: true });
+    const format = options.runtime?.packFormat ?? 121;
+    const range = options.runtime?.packMinor ? [format, options.runtime.packMinor] : format;
     writeFileSync(join(pack, "pack.mcmeta"), JSON.stringify({ pack: {
-      description: "je2be: syntax check", pack_format: 121, min_format: 121, max_format: 121,
+      description: "je2be: syntax check", pack_format: format, min_format: range, max_format: range,
     } }));
     commands.forEach((c, i) => writeFileSync(join(fnDir, `c${i}.mcfunction`), c.replace(/^\//, "") + "\n"));
     // 判定パック自体が読まれていなければ全行を成功と誤判定してしまうため、必ず失敗する監視用関数を置く。
@@ -75,11 +87,12 @@ export async function inspectJavaSyntax(commands: string[], options: JavaSyntaxO
       java = await JavaServer.start({
         datapacks: [...context, pack],
         initialEnabledPacks: [...enabled, `file/${namespace}`],
+        ...(options.runtime ? { runtime: options.runtime } : {}),
       });
     } catch (error) {
       // ロック競合やファイル I/O 等を、古いログを根拠にパックの不正と誤判定しない。
       if (!(error instanceof Error) || !/^process exited .*while waiting for java server start$/.test(error.message)) throw error;
-      const log = readFileSync(join(paths.servers, "java-last.log"), "utf8");
+      const log = readFileSync(join(options.runtime?.serverDirectory ?? paths.servers, "java-last.log"), "utf8");
       if (!log.includes("Failed to load datapacks")) throw error;
       return { checked: false, results: [], enabledPacks: "", contextErrors: log.split("\n").filter((line) =>
         /Failed to (load|parse)|Errors in (registry|element)|Caused by:/.test(line),

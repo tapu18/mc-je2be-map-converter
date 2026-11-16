@@ -8,6 +8,8 @@ import { DirLock, freeTcpPort } from "./resources.ts";
 import { dumpJavaWorld, type JavaDump, type JavaDumpRequest } from "./java-dump.ts";
 
 export interface JavaStartOptions {
+  /** 版別の検証サーバーを使う場合。省略時は tools/servers.json の固定版。 */
+  runtime?: { java: string; serverDirectory: string };
   /** ワールドの datapacks/ にコピーするデータパックのディレクトリ */
   datapacks?: string[];
   /** 新規ワールドで有効にするパック ID の順序（例: vanilla, file/my-pack）。 */
@@ -38,7 +40,7 @@ export class JavaServer {
   }
 
   static async start(opts: JavaStartOptions = {}): Promise<JavaServer> {
-    const lock = new DirLock(paths.javaServer);
+    const lock = new DirLock(JavaServer.directory(opts));
     lock.acquire();
     try {
       JavaServer.prepareWorld(opts);
@@ -50,9 +52,13 @@ export class JavaServer {
     }
   }
 
+  private static directory(opts: JavaStartOptions): string { return opts.runtime?.serverDirectory ?? paths.javaServer; }
+
+  get worldDirectory(): string { return join(JavaServer.directory(this.opts), LEVEL); }
+
   /** ワールドを作り直し、データパックを入れる。 */
   private static prepareWorld(opts: JavaStartOptions): void {
-    const worldDir = join(paths.javaServer, LEVEL);
+    const worldDir = join(JavaServer.directory(opts), LEVEL);
     rmSync(worldDir, { recursive: true, force: true });
     if (opts.world) cpSync(opts.world, worldDir, { recursive: true });
     for (const dp of opts.datapacks ?? []) {
@@ -62,7 +68,7 @@ export class JavaServer {
   }
 
   private static async launch(opts: JavaStartOptions): Promise<{ proc: ServerProcess; rcon: Rcon }> {
-    const dir = paths.javaServer;
+    const dir = JavaServer.directory(opts);
     const rconPort = opts.rconPort ?? (await freeTcpPort());
     const serverPort = await freeTcpPort();
     writeFileSync(
@@ -86,9 +92,9 @@ export class JavaServer {
         "",
       ].join("\n"),
     );
-    const proc = new ServerProcess(paths.java, [`-Xmx${opts.memory ?? "1G"}`, "-jar", "server.jar", "nogui"], {
+    const proc = new ServerProcess(opts.runtime?.java ?? paths.java, [`-Xmx${opts.memory ?? "1G"}`, "-jar", "server.jar", "nogui"], {
       cwd: dir,
-      logFile: join(paths.servers, "java-last.log"),
+      logFile: opts.runtime ? join(dir, "java-last.log") : join(paths.servers, "java-last.log"),
     });
     try {
       await proc.waitFor((l) => l.includes("RCON running on"), 180_000, "java server start");
@@ -117,7 +123,7 @@ export class JavaServer {
   async dump(req: JavaDumpRequest): Promise<JavaDump> {
     const res = await this.rcon.exec("save-all flush");
     if (!/Saved the game/.test(res)) throw new Error(`save-all flush failed: ${res}`);
-    return dumpJavaWorld(join(paths.javaServer, LEVEL), req);
+    return dumpJavaWorld(this.worldDirectory, req);
   }
 
   /** コマンドを実行し、フィードバック文字列を返す。先頭の `/` は不要。 */
