@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 import { copySyntaxDatapack } from "./syntax-datapacks.ts";
 import { checkJavaSyntax } from "./java-syntax.ts";
@@ -29,6 +30,22 @@ describe("syntax datapack copies", () => {
     symlinkSync(outside, join(source, "load.mcfunction"));
     expect(() => copySyntaxDatapack(source, join(temp(), "copy"))).toThrow(/symlink/);
     expect(readFileSync(outside, "utf8")).toBe("say unchanged");
+  });
+
+  it("reads ZIPs without changing the archive and stubs overlay functions", () => {
+    const archive = join(temp(), "pack.zip"), destination = join(temp(), "copy");
+    execFileSync("python3", ["-c", "import zipfile,sys\nwith zipfile.ZipFile(sys.argv[1], 'w') as z:\n z.writestr('overlay/data/test/function/load.mcfunction', 'say SHOULD_NOT_RUN')\n z.writestr('data/test/predicate/yes.json', '{}')", archive]);
+    const original = readFileSync(archive);
+    copySyntaxDatapack(archive, destination);
+    expect(readFileSync(archive)).toEqual(original);
+    expect(readFileSync(join(destination, "overlay/data/test/function/load.mcfunction"), "utf8")).toMatch(/^# je2be/);
+    expect(readFileSync(join(destination, "data/test/predicate/yes.json"), "utf8")).toBe("{}");
+  });
+
+  it.each(["../outside", "/absolute", "data/../../outside", "data\\evil", "link"])("rejects unsafe ZIP entry %s", (name) => {
+    const archive = join(temp(), "unsafe.zip");
+    execFileSync("python3", ["-c", "import zipfile,sys\ni=zipfile.ZipInfo(sys.argv[2])\ni.external_attr=(0o120777 << 16) if sys.argv[2]=='link' else 0\nwith zipfile.ZipFile(sys.argv[1], 'w') as z: z.writestr(i, 'target')", archive, name]);
+    expect(() => copySyntaxDatapack(archive, join(temp(), "copy"))).toThrow();
   });
 
   it("rejects multiline commands and unexpanded macros before starting Java", async () => {
