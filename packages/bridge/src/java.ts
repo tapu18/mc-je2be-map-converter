@@ -10,6 +10,8 @@ import { dumpJavaWorld, type JavaDump, type JavaDumpRequest } from "./java-dump.
 export interface JavaStartOptions {
   /** ワールドの datapacks/ にコピーするデータパックのディレクトリ */
   datapacks?: string[];
+  /** 新規ワールドで有効にするパック ID の順序（例: vanilla, file/my-pack）。 */
+  initialEnabledPacks?: string[];
   /** 既存ワールドを使う場合のディレクトリ（コピーして使う） */
   world?: string;
   memory?: string;
@@ -80,6 +82,7 @@ export class JavaServer {
         `rcon.port=${rconPort}`,
         "broadcast-rcon-to-ops=false",
         "function-permission-level=2",
+        ...(opts.initialEnabledPacks ? [`initial-enabled-packs=${opts.initialEnabledPacks.join(",")}`] : []),
         "",
       ].join("\n"),
     );
