@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ObjectiveScores } from "@je2be/core";
+import { nbt, readBedrockLevelDat, writeBedrockLevelDat, type ObjectiveScores, type NbtTag } from "@je2be/core";
 import { rewriteWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
 import { JavaWorld } from "./java-world.ts";
 
@@ -116,6 +116,21 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[]): 
   writeFileSync(refsPath, JSON.stringify([...refs.filter((r) => r.pack_id !== uuid), { pack_id: uuid, version }], null, 2));
 }
 
+/** 生成パックが要求するBeta APIsと、移植したコマンドブロックの実行を出力ワールド自身で許可する。 */
+export function configureOutputWorld(worldDir: string): void {
+  const file = join(worldDir, "level.dat");
+  const level = readBedrockLevelDat(new Uint8Array(readFileSync(file)));
+  const root = level.root.tag.value;
+  const previous = root.get("experiments");
+  const experiments = new Map<string, NbtTag>(previous?.type === "compound" ? previous.value : []);
+  experiments.set("gametest", nbt.byte(1));
+  experiments.set("experiments_ever_used", nbt.byte(1));
+  experiments.set("saved_with_toggled_experiments", nbt.byte(1));
+  root.set("experiments", nbt.compound(experiments));
+  for (const key of ["cheatsEnabled", "commandsEnabled", "commandblocksenabled"]) root.set(key, nbt.byte(1));
+  writeFileSync(file, writeBedrockLevelDat(level));
+}
+
 /** Java ワールド（ディレクトリ）を BE ワールド（ディレクトリ）に変換する */
 export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptions): ConvertReport {
   // 元のワールドは変えない。書き換えるときはコピーを Chunker に渡す
@@ -135,6 +150,7 @@ export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptio
     if (!existsSync(join(outDir, "level.dat"))) throw new Error(`Chunker の出力に level.dat がない: ${outDir}`);
     const { objectives, skipped } = selectScores(new JavaWorld(javaDir).scoreboard());
     writeInitPack(outDir, objectives);
+    configureOutputWorld(outDir);
     return {
       scores: { objectives: objectives.length, participants: objectives.reduce((n, o) => n + o.scores.length, 0), skipped },
       ...(commands ? { commands } : {}),

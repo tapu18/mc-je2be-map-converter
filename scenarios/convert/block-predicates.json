@@ -27,5 +27,6 @@
   "observe": {
     "scores": ["t"],
     "blocks": [{ "from": [20, -60, 22], "to": [23, -60, 22] }, { "from": [24, -60, 20], "to": [26, -60, 20] }]
-  }
+  },
+  "requiredObservations": ["scores.t", "blocks"]
 }

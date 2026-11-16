@@ -33,3 +33,35 @@ export function unexpectedDiffs(result: CompareResult, known: Record<string, str
 export function formatDiffs(diffs: Diff[]): string {
   return diffs.map((d) => `  ${d.path}: java=${JSON.stringify(d.java)} bedrock=${JSON.stringify(d.bedrock)}`).join("\n");
 }
+
+/** 必須の観測が欠落・比較不能なら、差分が0件でも成功としない。 */
+export function assessComparison(java: NormalizedState, bedrock: NormalizedState, required: string[] = [], known: Record<string, string> = {}) {
+  if (required.some(path => !path.trim()) || new Set(required).size !== required.length) throw new Error("required observations must be nonempty unique paths");
+  const result = compareStates(java, bedrock);
+  const values = (state: NormalizedState): Map<string, unknown> => {
+    const out = new Map<string, unknown>();
+    const visit = (value: unknown, path: string): void => {
+      if (value === undefined) return;
+      out.set(path, value);
+      if (value && typeof value === "object" && !("unmapped" in value)) for (const [key, v] of Object.entries(value)) visit(v, path ? `${path}.${key}` : key);
+    };
+    visit(state, "");
+    return out;
+  };
+  const j = values(java), b = values(bedrock);
+  const within = (path: string, parent: string): boolean => path === parent || path.startsWith(parent + ".");
+  const checks = required.map(path => {
+    const diffs = result.diffs.filter(d => within(d.path, path));
+    const incomparable = result.incomparable.some(p => within(p.split(": ")[0]!, path));
+    const status: "missing" | "incomparable" | "known-difference" | "different" | "matched" = !j.has(path) || !b.has(path) ? "missing" : incomparable ? "incomparable"
+      : diffs.length ? diffs.every(d => d.path in known) ? "known-difference" : "different" : "matched";
+    return { path, status };
+  });
+  const counts = { matched: 0, "known-difference": 0, different: 0, incomparable: 0, missing: 0 };
+  for (const check of checks) counts[check.status]++;
+  return {
+    ...result, checks, required: counts,
+    passed: unexpectedDiffs(result, known).length === 0 && counts.different === 0 && counts.incomparable === 0 && counts.missing === 0,
+    completeMatch: required.length > 0 && counts.matched === required.length && result.diffs.length === 0 && result.incomparable.length === 0,
+  };
+}

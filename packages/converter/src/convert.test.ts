@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { initScript, INIT_PROPERTY, SCRIPT_API_VERSION, selectScores, writeInitPack } from "./convert.ts";
+import { nbt, readBedrockLevelDat, writeBedrockLevelDat } from "@je2be/core";
+import { configureOutputWorld, initScript, INIT_PROPERTY, SCRIPT_API_VERSION, selectScores, writeInitPack } from "./convert.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const dirs: string[] = [];
@@ -27,6 +28,20 @@ describe("selectScores", () => {
 });
 
 describe("初期化パック", () => {
+  it("出力に必要な設定を付け、元の実験と無関係なワールド情報を保持する", () => {
+    const dir = tmp();
+    const file = join(dir, "level.dat");
+    writeFileSync(file, writeBedrockLevelDat({ storageVersion: 10, root: { name: "", tag: nbt.compound({
+      LevelName: nbt.string("fixture"), experiments: nbt.compound({ other_experiment: nbt.byte(1) }),
+    }) } }));
+    configureOutputWorld(dir);
+    const level = readBedrockLevelDat(new Uint8Array(readFileSync(file)));
+    expect(level.storageVersion).toBe(10);
+    expect(level.root.tag.value.get("LevelName")).toEqual(nbt.string("fixture"));
+    const exp = level.root.tag.value.get("experiments");
+    expect(exp?.type === "compound" && exp.value.get("other_experiment")).toEqual(nbt.byte(1));
+    for (const key of ["cheatsEnabled", "commandsEnabled", "commandblocksenabled"]) expect(level.root.tag.value.get(key)).toEqual(nbt.byte(1));
+  });
   it("スクリプトはスコアを持ち、一度だけ動く", () => {
     const s = initScript([{ objective: "t", scores: [{ participant: "#a", score: -3 }] }]);
     expect(s).toContain('[["t",[["#a",-3]]]]');
