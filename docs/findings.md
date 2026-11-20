@@ -89,8 +89,11 @@
 | 事実 | 根拠 |
 | --- | --- |
 | 1チャンクの常時実行リピート100個でスコア加算を行う最小処理は、BEコマンド直接実行・カスタムコマンド→キュー・scriptevent→キューの全経路で毎tick100更新となり、平均tick間隔は約50msを維持した。Core i5-11400 / WSL2で各100tick×2回測定。全スレッド合計のBDS CPU時間/tickは、基準1.54〜1.65ms、直接2.25〜2.33ms、custom 5.58〜5.92ms、scriptevent 5.00〜5.69ms。CPU時間はメインスレッドのMSPTではなく、完成したランタイムやスマホの評価でもない | `poc/repeat-performance/performance.servers.test.ts`、`results.json`、`samples.jsonl`（#5） |
-| 500個を2チャンクに密集させると全経路とも200更新/tick、8チャンクに分散すると500更新/tickになった。どちらも平均tick間隔は約50msのため、tick間隔だけでは処理量の低下を見抜けない。密集時の更新制限の原因・閾値は未確認 | 同上 |
+| 500個を2チャンクに密集させると全経路とも200更新/tick、8チャンクに分散すると500更新/tickになった。どちらも平均tick間隔は約50msのため、tick間隔だけでは処理量の低下を見抜けない。閾値の切り分けは下記の #31 | 同上 |
 | runIntervalでキューを反映する最小処理では、custom経由は起動と同tick、scriptevent経由は1tick後に加算された。キュー処理件数の合計と各IDのスコア差分の合計は一致した | 同上 |
+| BDS 1.26.63.1 では1チャンクに常時実行リピートを99/100/101/200個置くと、それぞれ毎tick 99/100/100/100更新。150+50個ではチャンクごとに100+50更新、平面の200個を8ブロックずらして100+100個に分けると100+100更新。Java 26.3 は同じどの配置でも40 tickで各ブロックが40回更新した | [#31 実機テスト](../poc/repeat-density/density.servers.test.ts)、[根拠データ](../poc/repeat-density/results.json) |
+| BDS の1チャンク200個では各ブロックが40 tickで20回更新した。上下2層を置く順を反転しても、逆順の配置を保存・再起動しても、各ブロック20回・合計100更新/tickだった。100個の直下にチェスト100個、または稼働中のホッパー100個と搬出先のチェスト100個を置いても、毎tick100更新だった | [配置と測定方法](../poc/repeat-density/README.md)、[根拠データ](../poc/repeat-density/results.json)（#31、#18 の相対順テストを参照） |
+| BDS の1チャンク200個は `maxCommandChainLength`（1・100000）、`functionCommandLimit`（1・10000）、`randomTickSpeed`（0・100）を変えても毎tick100更新だった。プレイヤーなしの常時読み込みエリアでは `tick-distance`（4→12）と `persistent-ticking-area-max-chunks`（100→16）の変更後も毎tick100更新。 `commandBlocksEnabled` を false にすると0更新、true で100更新に戻った | [設定別の結果](../poc/repeat-density/README.md#実測結果)、[根拠データ](../poc/repeat-density/results.json)（#31） |
 
 ## コマンドの文法（Java 26.3）
 
