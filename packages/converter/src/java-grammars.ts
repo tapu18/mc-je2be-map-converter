@@ -9,6 +9,10 @@ import { textFormatFor, type CommandGrammar, type CommandTreeNode } from "@je2be
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 export const grammarRoot = join(root, "servers", "grammars");
+const fixed = JSON.parse(readFileSync(join(root, "tools", "servers.json"), "utf8")) as {
+  java: Omit<JavaGrammarSource, "functionDirectory"> & { dataVersion: number };
+};
+export const fixedJavaDataVersion = fixed.java.dataVersion;
 
 export interface JavaGrammarSource {
   version: string;
@@ -35,8 +39,8 @@ function assertSource(source: JavaGrammarSource): void {
 
 export function javaGrammarSources(): JavaGrammarSource[] {
   const extra = JSON.parse(readFileSync(join(root, "tools", "java-grammars.json"), "utf8")) as { versions: JavaGrammarSource[] };
-  const fixed = JSON.parse(readFileSync(join(root, "tools", "servers.json"), "utf8")) as { java: Omit<JavaGrammarSource, "functionDirectory"> };
-  const sources: JavaGrammarSource[] = [...extra.versions, { ...fixed.java, functionDirectory: "function" }];
+  const { version, url, sha1 } = fixed.java;
+  const sources: JavaGrammarSource[] = [...extra.versions, { version, url, sha1, functionDirectory: "function" }];
   for (const source of sources) assertSource(source);
   if (new Set(sources.map((s) => s.version)).size !== sources.length) throw new Error("duplicate grammar release version");
   return sources;
@@ -110,6 +114,9 @@ export async function setupJavaGrammar(source: JavaGrammarSource): Promise<JavaG
   writeFileSync(join(serverDirectory, "eula.txt"), "eula=true\n");
   const metadata = versionMetadata(archive, output);
   if (metadata.id !== source.version) throw new Error(`expected Java ${source.version}, got ${metadata.id}`);
+  if (source.version === fixed.java.version && metadata.dataVersion !== fixedJavaDataVersion) {
+    throw new Error(`expected DataVersion ${fixedJavaDataVersion}, got ${metadata.dataVersion}`);
+  }
   const java = join(root, "servers", "jre", "bin", "java");
   execFileSync(java, ["-Xmx1G", "-DbundlerMainClass=net.minecraft.data.Main", "-jar", "server.jar", "--reports", "--output", generated], {
     cwd: serverDirectory, stdio: "pipe", timeout: 180_000, maxBuffer: 16 * 1024 * 1024,

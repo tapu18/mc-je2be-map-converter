@@ -1,0 +1,11 @@
+{
+  "repo": "tapu18/mc-je2be-map-converter",
+  "agent": "codex",
+  "base": "main",
+  "pollSeconds": 60,
+  "timeoutSeconds": 3600,
+  "maxAttempts": 3,
+  "maxRunsPerDay": 12,
+  "autoMerge": true,
+  "agentArgs": ["--approve-for-me"]
+}

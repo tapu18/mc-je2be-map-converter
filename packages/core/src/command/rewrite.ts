@@ -9,6 +9,7 @@ import type { BlockDefaults } from "../java/world.ts";
 import type { MappingLookup } from "../mappings/mappings.ts";
 import type { ArgumentValue, EntitySelector, Range } from "./arguments.ts";
 import { readSelector } from "./arguments.ts";
+import { bedrockEffect, bedrockEntityType } from "./bedrock-command-ids.ts";
 import { toCommandIR, type CommandParser, type ParsedNode } from "./parser.ts";
 import { formatRawText, plainText, toRawText } from "./rawtext.ts";
 import { CommandSyntaxError, StringReader } from "./reader.ts";
@@ -43,7 +44,8 @@ const DIMENSIONS: Record<string, string> = {
 };
 
 /** Java 26.3 の表示場所の名前は below_name（belowName は拒否される。rewrite.servers.test.ts で実測） */
-const SCOREBOARD_SLOTS: Record<string, string> = { list: "list", sidebar: "sidebar", below_name: "belowname" };
+const SCOREBOARD_SLOTS: Record<string, string> = { list: "list", sidebar: "sidebar", belowName: "belowname", below_name: "belowname" };
+const DAY_MARKERS = new Map([["day", 1000], ["noon", 6000], ["night", 13000], ["midnight", 18000]]);
 
 // ---- セレクタ ----
 
@@ -89,13 +91,15 @@ export function rewriteSelector(sel: EntitySelector): SelectorRewrite {
       case "sort":
         if (v.kind === "string") sort = v.value;
         break;
-      case "type":
+      case "type": {
         if (v.kind !== "resource") break;
         if (v.tag) return { ok: false, message: `エンティティの種類のタグ（type=#${v.id}）は BE にない` };
         if (JAVA_ONLY_ENTITIES.has(v.id)) return { ok: false, message: `${v.id} は BE にない（代替エンティティは未実装）` };
-        // 種類の ID が BE と同じ名前かは種類ごとには確かめていない（未確認。ID 対応表はブロック・アイテムだけ）
-        out.push(`type=${not}${v.id.replace(/^minecraft:/, "")}`);
+        const be = bedrockEntityType(v.id);
+        if (!be) return { ok: false, message: `BE に対応のないエンティティの種類 ${v.id}` };
+        out.push(`type=${not}${be}`);
         break;
+      }
       case "tag":
         if (v.kind === "string") out.push(`tag=${not}${v.value}`);
         break;
@@ -341,8 +345,16 @@ const COMMANDS: Record<string, CommandHandler> = {
     if (sub === "title" || sub === "subtitle" || sub === "actionbar") ed.replace(head.start, head.end, "titleraw");
   },
   teleport: (nodes, _head, _ctx, ed) => {
-    const lits = literals(nodes);
-    if (lits.includes("facing") && lits.includes("entity")) ed.unsupported("tp の facing entity の書き換えは未実装");
+    const target = arg(nodes, "facingEntity");
+    if (!target) return;
+    const anchor = arg(nodes, "facingAnchor");
+    if (anchor?.value?.kind === "word" && anchor.value.value === "eyes") {
+      return ed.unsupported("tp の facing entity eyes は BE の tp にない");
+    }
+    const entity = nodes[nodes.indexOf(target) - 1]!;
+    const facing = nodes[nodes.indexOf(entity) - 1]!;
+    ed.replace(facing.end, entity.end, "");
+    if (anchor) ed.replace(target.end, anchor.end, "");
   },
   setblock: (nodes, _head, _ctx, ed) => {
     if (literals(nodes).includes("strict")) ed.unsupported("setblock の strict は BE にない");
@@ -353,12 +365,94 @@ const COMMANDS: Record<string, CommandHandler> = {
     // BE の fill の replace の後ろには、置き方（destroy など）を書けない
     if (lits[0] === "replace" && lits.length > 1) ed.unsupported(`fill の replace と ${lits[1]} の組み合わせは BE にない`);
   },
-  clone: (nodes, _head, _ctx, ed) => {
+  clone: (nodes, _head, ctx, ed) => {
     const lits = literals(nodes);
-    if (lits.includes("from") || lits.includes("to")) ed.unsupported("clone のディメンション指定は BE にない");
-    if (lits.includes("strict")) ed.unsupported("clone の strict は BE にない");
-    // BE の filtered は引数の順が違う（filtered <mode> <block>）。並べ替えは未実装
-    if (lits.includes("filtered")) ed.unsupported("clone の filtered の書き換えは未実装");
+    if (lits.includes("from") || lits.includes("to")) return ed.unsupported("clone のディメンション指定は BE にない");
+    if (lits.includes("strict")) return ed.unsupported("clone の strict は BE にない");
+    const filter = arg(nodes, "filter");
+    if (filter?.value?.kind !== "block") return;
+    const block = rewriteBlockPredicate(filter.value, ctx, ed);
+    if (block === undefined) return;
+    const mode = nodes[nodes.indexOf(filter) + 1];
+    ed.replace(filter.start, mode?.end ?? filter.end, `${mode?.name ?? "normal"} ${block}`);
+  },
+  playsound: (nodes, _head, ctx, ed) => {
+    const sound = arg(nodes, "sound");
+    if (sound?.value?.kind !== "resource") return;
+    const id = ctx.mappings.sound(sound.value.id);
+    if (!id) return ed.unsupported(`BE に対応のないサウンド ${sound.value.id}`);
+    const category = nodes.find((n) => n.kind === "literal");
+    const targets = arg(nodes, "targets");
+    ed.replace(sound.start, category?.end ?? sound.end, targets ? id : `${id} @s`);
+    ed.warn("BE では Java のサウンドカテゴリを指定できず、対応する音の聞こえ方も変わり得る");
+  },
+  particle: (nodes, _head, ctx, ed) => {
+    const name = arg(nodes, "name");
+    if (name?.value?.kind !== "particle") return;
+    const id = ctx.mappings.particle(name.value.id);
+    if (!id) return ed.unsupported(`BE に対応のないパーティクル ${name.value.id}`);
+    const pos = arg(nodes, "pos");
+    const delta = arg(nodes, "delta")?.value;
+    const speed = arg(nodes, "speed")?.value;
+    const count = arg(nodes, "count")?.value;
+    if (name.value.options || arg(nodes, "viewers") || literals(nodes).includes("force")
+      || (delta?.kind === "coordinates" && delta.coordinates.some((c) => c.kind !== "absolute" || c.value !== 0))
+      || (speed?.kind === "number" && speed.value !== 0) || (count?.kind === "number" && count.value > 1)) {
+      return ed.unsupported("BE の particle ではオプション、拡散、速度、個数、表示対象や force を指定できない");
+    }
+    const position = pos ? ed.source.slice(pos.start, pos.end) : "~ ~ ~";
+    ed.replace(name.start, nodes.at(-1)!.end, `${id} ${position}`);
+    ed.warn("BE のパーティクルはエミッターを使うため、粒子の数や見た目が変わり得る");
+  },
+  effect: (nodes, head, _ctx, ed) => {
+    const action = nodes[0]!;
+    const targets = arg(nodes, "targets");
+    const effect = arg(nodes, "effect");
+    if (effect?.value?.kind === "resource") {
+      const id = bedrockEffect(effect.value.id);
+      if (!id) return ed.unsupported(`BE に対応のないステータス効果 ${effect.value.id}`);
+      ed.replace(effect.start, effect.end, id);
+    }
+    if (action.name === "give") {
+      ed.replace(head.end, action.end, "");
+    } else if (targets) {
+      ed.replace(head.end, action.end, "");
+      ed.replace(targets.end, targets.end, " clear");
+    } else {
+      ed.replace(head.end, action.end, " @s clear");
+    }
+  },
+  gamemode: ok,
+  time: (nodes, _head, _ctx, ed) => {
+    const [sub, option] = literals(nodes);
+    if (sub === "add" || (sub === "query" && ["time", "gametime", "day", "daytime"].includes(option ?? ""))) return;
+    if (sub === "set") {
+      if (arg(nodes, "time")) return;
+      const marker = arg(nodes, "timemarker")?.value;
+      if (marker?.kind === "resource" && marker.id.startsWith("minecraft:") && DAY_MARKERS.has(marker.id.slice("minecraft:".length))) return;
+      // 旧 Java の day などは絶対時刻。BE のマーカーは次に来る該当時刻へ進める。
+      const ticks = DAY_MARKERS.get(option ?? "");
+      if (ticks !== undefined) {
+        const literal = nodes[1]!;
+        return ed.replace(literal.start, literal.end, String(ticks));
+      }
+    }
+    ed.unsupported("BE に直接対応する時刻の操作がない");
+  },
+  weather: (nodes, _head, _ctx, ed) => {
+    const duration = arg(nodes, "duration");
+    if (duration?.value?.kind !== "time") {
+      return ed.warn("weather の継続時間の既定値は BE に従う");
+    }
+    ed.replace(duration.start, duration.end, String(duration.value.ticks));
+  },
+  difficulty: (nodes, _head, _ctx, ed) => {
+    if (!nodes.length) ed.unsupported("BE の difficulty は難易度を指定する必要がある");
+  },
+  gamerule: (nodes, _head, _ctx, ed) => {
+    const rule = nodes[0]!;
+    if (rule.name === "keep_inventory") ed.replace(rule.start, rule.end, "keepInventory");
+    else if (rule.name !== "keepInventory") ed.unsupported(`gamerule ${rule.name} の書き換えは未対応`);
   },
   scoreboard: (nodes, _head, _ctx, ed) => {
     const [group, sub] = literals(nodes);

@@ -163,11 +163,15 @@ npm run setup:mappings
 
 表を配布する変換器や生成パックには **3ファイルを一緒に含める**。パックの生成処理は
 まだ実装していないため、このコマンドがワールドやビヘイビアーパックを生成するわけではない。
-JSON にはブロック35,723状態とアイテム1,658件の ID・状態・必要なアイテム data 値だけを
-格納し、コンポーネント、形状、ネットワーク runtime ID 等のフィールドは除く。
+JSON にはブロック35,723状態、アイテム1,658件、サウンド1,917件、パーティクル92件の
+対応を格納する。コンポーネント、形状、ネットワーク runtime ID 等のフィールドは除く。
+サウンドには `sounds.json` の `playsound_mapping`、パーティクルには `particles.json` の
+`bedrock_id` のうち `minecraft:` 名前空間を使う。いずれも #14 で承認済みの固定版
+から抽出し、Geyser 固有のエミッターやイベント数値は出力しない。既存のブロック・アイテム表を
+引き続き読み込める。音と粒子を変換する場合は `npm run setup:mappings` で表を再生成する。
 
 取得元は `packages/converter/src/geyser-source.ts` の固定コミットと SHA-256。
-`blocks.nbt`・`items.json`・`LICENSE` の3ファイルだけを `servers/geyser-source/` に取得する。
+`blocks.nbt`・`items.json`・`sounds.json`・`particles.json`・`LICENSE` を `servers/geyser-source/` に取得する。
 JE の `blocks.json` も固定 SHA-256 と照合する。Geyser の配列位置と JE の数値状態 ID を
 誤って別版で結び付けないため、同じ件数だけでは受理しない。版を変えるときはソース固定値と
 JE レポートを一緒に検証し直す。JE 旧版のコマンドや保存状態は別途正規化が必要。

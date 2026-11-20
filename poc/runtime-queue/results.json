@@ -1,0 +1,315 @@
+{
+  "versions": {
+    "java": "26.3",
+    "bedrock": "1.26.63.1"
+  },
+  "javaChains": {
+    "scores": {
+      "place_seen": 1,
+      "summon_seen": 1,
+      "ok_seen": 1,
+      "fail_seen": 0,
+      "mixed_seen": 2,
+      "shared": 12
+    },
+    "comparators": [
+      true,
+      false
+    ],
+    "successCounts": [
+      1,
+      0
+    ],
+    "placed": "minecraft:stone",
+    "entities": {
+      "spawned": 1,
+      "tagged": 1,
+      "unexpectedlyTagged": 0
+    }
+  },
+  "javaStartup": [
+    {
+      "wrote": 1,
+      "tick": 0,
+      "event": "fn",
+      "seen": 0
+    },
+    {
+      "wrote": 2,
+      "tick": 1,
+      "event": "fn",
+      "seen": 0
+    },
+    {
+      "wrote": 1,
+      "tick": 2,
+      "event": "cb",
+      "seen": 2
+    },
+    {
+      "wrote": 3,
+      "tick": 2,
+      "event": "fn",
+      "seen": 1
+    },
+    {
+      "wrote": 2,
+      "tick": 3,
+      "event": "cb",
+      "seen": 3
+    },
+    {
+      "wrote": 4,
+      "tick": 3,
+      "event": "fn",
+      "seen": 2
+    },
+    {
+      "wrote": 3,
+      "tick": 4,
+      "event": "cb",
+      "seen": 4
+    },
+    {
+      "wrote": 5,
+      "tick": 4,
+      "event": "fn",
+      "seen": 3
+    },
+    {
+      "wrote": 4,
+      "tick": 5,
+      "event": "cb",
+      "seen": 5
+    },
+    {
+      "wrote": 6,
+      "tick": 5,
+      "event": "fn",
+      "seen": 4
+    },
+    {
+      "wrote": 5,
+      "tick": 6,
+      "event": "cb",
+      "seen": 6
+    },
+    {
+      "wrote": 7,
+      "tick": 6,
+      "event": "fn",
+      "seen": 5
+    },
+    {
+      "wrote": 6,
+      "tick": 7,
+      "event": "cb",
+      "seen": 7
+    },
+    {
+      "wrote": 8,
+      "tick": 7,
+      "event": "fn",
+      "seen": 6
+    },
+    {
+      "wrote": 7,
+      "tick": 8,
+      "event": "cb",
+      "seen": 8
+    },
+    {
+      "wrote": 8,
+      "tick": 9,
+      "event": "cb",
+      "seen": 8
+    }
+  ],
+  "bedrockNative": {
+    "scores": {
+      "place_seen": 1,
+      "summon_seen": 1,
+      "ok_seen": 1,
+      "fail_seen": 0,
+      "mixed_seen": 2,
+      "shared": 12
+    },
+    "comparators": [
+      true,
+      false
+    ],
+    "placed": "minecraft:stone",
+    "entities": {
+      "spawned": 1,
+      "tagged": 1,
+      "unexpectedlyTagged": 0
+    }
+  },
+  "bedrockRuntime": {
+    "scores": {
+      "place_seen": 1,
+      "summon_seen": 1,
+      "ok_seen": 1,
+      "fail_seen": 1,
+      "mixed_seen": 1,
+      "shared": 2
+    },
+    "comparators": [
+      true,
+      true
+    ],
+    "placed": "minecraft:stone",
+    "entities": {
+      "spawned": 1,
+      "tagged": 1,
+      "unexpectedlyTagged": 0
+    }
+  },
+  "bedrockHandlerAndDrain": [
+    {
+      "event": "assumed",
+      "tick": 0,
+      "label": "fail",
+      "success": true
+    },
+    {
+      "event": "assumed",
+      "tick": 0,
+      "label": "ok",
+      "success": true
+    },
+    {
+      "event": "summon",
+      "tick": 0,
+      "committed": 0,
+      "overlay": 1
+    },
+    {
+      "event": "place",
+      "tick": 0,
+      "committed": "minecraft:air",
+      "overlay": "minecraft:stone"
+    },
+    {
+      "event": "mixed",
+      "tick": 0,
+      "committed": 1
+    },
+    {
+      "event": "delegated",
+      "tick": 0,
+      "label": "fail",
+      "successCount": 0
+    },
+    {
+      "event": "delegated",
+      "tick": 0,
+      "label": "ok",
+      "successCount": 1
+    },
+    {
+      "event": "mixed_drain",
+      "tick": 0,
+      "before": 11,
+      "wrote": 2
+    }
+  ],
+  "bedrockStartup": [
+    {
+      "event": "fn",
+      "tick": 0,
+      "seen": 0,
+      "wrote": 1
+    },
+    {
+      "event": "cb",
+      "tick": 1,
+      "seen": 1,
+      "wrote": 1
+    },
+    {
+      "event": "fn",
+      "tick": 1,
+      "seen": 1,
+      "wrote": 2
+    },
+    {
+      "event": "cb",
+      "tick": 2,
+      "seen": 2,
+      "wrote": 2
+    },
+    {
+      "event": "fn",
+      "tick": 2,
+      "seen": 2,
+      "wrote": 3
+    },
+    {
+      "event": "cb",
+      "tick": 3,
+      "seen": 3,
+      "wrote": 3
+    },
+    {
+      "event": "fn",
+      "tick": 3,
+      "seen": 3,
+      "wrote": 4
+    },
+    {
+      "event": "cb",
+      "tick": 4,
+      "seen": 4,
+      "wrote": 4
+    },
+    {
+      "event": "fn",
+      "tick": 4,
+      "seen": 4,
+      "wrote": 5
+    },
+    {
+      "event": "cb",
+      "tick": 5,
+      "seen": 5,
+      "wrote": 5
+    },
+    {
+      "event": "fn",
+      "tick": 5,
+      "seen": 5,
+      "wrote": 6
+    },
+    {
+      "event": "cb",
+      "tick": 6,
+      "seen": 6,
+      "wrote": 6
+    },
+    {
+      "event": "fn",
+      "tick": 6,
+      "seen": 6,
+      "wrote": 7
+    },
+    {
+      "event": "cb",
+      "tick": 7,
+      "seen": 7,
+      "wrote": 7
+    },
+    {
+      "event": "fn",
+      "tick": 7,
+      "seen": 7,
+      "wrote": 8
+    },
+    {
+      "event": "cb",
+      "tick": 8,
+      "seen": 8,
+      "wrote": 8
+    }
+  ]
+}
