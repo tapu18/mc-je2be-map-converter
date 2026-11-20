@@ -1,0 +1,37 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "je2be repeat density PoC",
+    "description": "Measure repeat command block updates per chunk",
+    "uuid": "ac9fd54f-9b92-4b84-8122-349b29906bf4",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      60
+    ]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "e3675467-8d95-48b6-998b-a020d7dfb2a0",
+      "version": [
+        1,
+        0,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.12.0-beta"
+    }
+  ]
+}

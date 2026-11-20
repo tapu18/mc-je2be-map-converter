@@ -7,6 +7,7 @@
   },
   "java": {
     "version": "26.3",
+    "dataVersion": 5023,
     "url": "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar",
     "sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c"
   },

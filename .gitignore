@@ -1,4 +1,5 @@
 sample-map/
+agent-runner.json
 scripts/__pycache__/
 node_modules/
 dist/

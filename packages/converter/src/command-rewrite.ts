@@ -2,7 +2,7 @@
 // Chunker はコマンド文字列を変えずに運ぶ（docs/findings.md）ため、Chunker に渡す前の Java ワールド（のコピー）を書き換える。
 // BE のコマンド1個にできないものは元のまま残し、レポートに出す（チェーンごとランタイムで実行するのは M2）。
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { deflateSync } from "node:zlib";
 import {
   blockEntities,
@@ -11,6 +11,7 @@ import {
   MappingLookup,
   rewriteCommand,
   rewriteRegion,
+  selectCommandGrammar,
   textFormatFor,
   type CommandTreeNode,
   type MappingTables,
@@ -21,10 +22,11 @@ import {
   type TextFormat,
 } from "@je2be/core";
 import { loadBlockDefaults } from "./block-defaults.ts";
+import { fixedJavaDataVersion, loadGrammarTree, loadJavaGrammars } from "./java-grammars.ts";
 import { decompress, JavaWorld } from "./java-world.ts";
 
 export interface RewriteResources {
-  /** データ生成の commands.json */
+  /** 固定サーバー（tools/servers.json）の commands.json */
   commandsJson: string;
   /** データ生成の blocks.json */
   blocksJson: string;
@@ -35,8 +37,21 @@ export interface RewriteResources {
 /** 書き換えに使う文法・対応表を読む。textFormat はワールドの DataVersion から決める */
 export function loadRewriteContext(res: RewriteResources, textFormat: TextFormat): RewriteContext {
   const tree = JSON.parse(readFileSync(res.commandsJson, "utf8")) as CommandTreeNode;
-  const tables = JSON.parse(readFileSync(res.mappingsJson, "utf8")) as MappingTables;
-  return { parser: new CommandParser(tree, { textFormat }), mappings: new MappingLookup(tables), blockDefaults: loadBlockDefaults(res.blocksJson) };
+  return rewriteContext(tree, textFormat, res.mappingsJson, res.blocksJson);
+}
+
+function rewriteContext(tree: CommandTreeNode, textFormat: TextFormat, mappingsJson: string, blocksJson: string): RewriteContext {
+  const tables = JSON.parse(readFileSync(mappingsJson, "utf8")) as MappingTables;
+  return { parser: new CommandParser(tree, { textFormat }), mappings: new MappingLookup(tables), blockDefaults: loadBlockDefaults(blocksJson) };
+}
+
+function worldRewriteContext(res: RewriteResources, dataVersion: number | undefined): RewriteContext | undefined {
+  if (dataVersion === fixedJavaDataVersion) return loadRewriteContext(res, textFormatFor(dataVersion));
+  if (dataVersion === undefined) return undefined;
+  const selection = selectCommandGrammar(loadJavaGrammars(), { dataVersion });
+  if (!selection.ok) return undefined;
+  const grammar = selection.grammar;
+  return rewriteContext(loadGrammarTree(grammar), grammar.textFormat, res.mappingsJson, join(dirname(grammar.commandsPath), "blocks.json"));
 }
 
 export interface CommandBlockRewrite {
@@ -67,8 +82,13 @@ const num = (t: ReturnType<typeof child>): number => (t && typeof t.value === "n
  */
 export function rewriteWorldCommands(javaDir: string, res: RewriteResources): CommandRewriteReport {
   const world = new JavaWorld(javaDir);
-  const textFormat = textFormatFor(world.dataVersion());
-  const ctx = loadRewriteContext(res, textFormat);
+  const dataVersion = world.dataVersion();
+  const textFormat = textFormatFor(dataVersion);
+  const ctx = worldRewriteContext(res, dataVersion);
+  const unavailable: RewriteResult = {
+    status: "unsupported",
+    issues: [{ severity: "unsupported", message: `DataVersion ${dataVersion ?? "不明"} の文法がない。npm run setup:grammars で対象版を生成する` }],
+  };
   const counts: CommandRewriteReport["counts"] = { rewritten: 0, unchanged: 0, unsupported: 0, invalid: 0 };
   const commandBlocks: CommandBlockRewrite[] = [];
   for (const dimension of world.dimensions()) {
@@ -81,7 +101,7 @@ export function rewriteWorldCommands(javaDir: string, res: RewriteResources): Co
           const id = child(be, "id");
           const cmd = child(be, "Command");
           if (id?.type !== "string" || id.value !== "minecraft:command_block" || cmd?.type !== "string" || !cmd.value.trim()) continue;
-          const r = rewriteCommand(cmd.value, ctx);
+          const r = ctx ? rewriteCommand(cmd.value, ctx) : unavailable;
           counts[r.status]++;
           const pos: [number, number, number] = [num(child(be, "x")), num(child(be, "y")), num(child(be, "z"))];
           const entry: CommandBlockRewrite = { dimension, pos, java: cmd.value, status: r.status, issues: r.status === "invalid" ? [] : r.issues };

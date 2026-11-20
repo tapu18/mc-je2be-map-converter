@@ -80,10 +80,10 @@ export function verifyMappingSource(name: keyof typeof GEYSER_SOURCE.sha256, byt
   if (hash !== GEYSER_SOURCE.sha256[name]) throw new Error(`${name}: SHA-256 mismatch (expected ${GEYSER_SOURCE.sha256[name]}, got ${hash})`);
 }
 
-/** 固定された3ファイルのみを取得。既存ファイルも検証し、破損を黙って置き換えない。 */
+/** 固定されたファイルのみを取得。既存ファイルも検証し、破損を黙って置き換えない。 */
 export async function fetchGeyserSources(directory: string): Promise<void> {
   mkdirSync(directory, { recursive: true });
-  for (const name of ["blocks.nbt", "items.json", "LICENSE"] as const) {
+  for (const name of ["blocks.nbt", "items.json", "sounds.json", "particles.json", "LICENSE"] as const) {
     const path = join(directory, name);
     if (existsSync(path)) {
       verifyMappingSource(name, readFileSync(path));
@@ -96,6 +96,26 @@ export async function fetchGeyserSources(directory: string): Promise<void> {
     verifyMappingSource(name, bytes);
     writeFileSync(path, bytes);
   }
+}
+
+/** バニラのコマンドで参照できる文字列 ID だけを抽出する。 */
+function commandIds(raw: unknown, field: "playsound_mapping" | "bedrock_id"): Record<string, string> {
+  const entries: Record<string, string> = {};
+  for (const [id, value] of Object.entries(object(raw, field))) {
+    const target = object(value, id)[field];
+    if (typeof target !== "string" || target === "") continue;
+    if (field === "bedrock_id" && !target.startsWith("minecraft:")) continue;
+    if (field === "playsound_mapping" && !/^[a-z0-9_.]+$/.test(target)) continue;
+    const javaId = identifier(id.includes(":") ? id : `minecraft:${id}`);
+    entries[javaId] = field === "bedrock_id" ? identifier(target) : target;
+  }
+  return sorted(entries);
+}
+
+function loadCommandIds(directory: string, name: "sounds.json" | "particles.json"): unknown {
+  const bytes = readFileSync(join(directory, name));
+  verifyMappingSource(name, bytes);
+  return JSON.parse(bytes.toString("utf8"));
 }
 
 /** 表の生成と許諾文の同梱。sourceDirectory を事前取得すればオフラインでも使える。 */
@@ -113,6 +133,8 @@ export function generateGeyserMappings(sourceDirectory: string, javaReportPath: 
   if (root.length !== decoded.length) throw new Error("trailing data in blocks.nbt");
   const tables: MappingTables = {
     schemaVersion: 1, source: GEYSER_SOURCE,
+    sounds: commandIds(loadCommandIds(sourceDirectory, "sounds.json"), "playsound_mapping"),
+    particles: commandIds(loadCommandIds(sourceDirectory, "particles.json"), "bedrock_id"),
     ...normalizeGeyserMappings(root.tag, JSON.parse(items.toString("utf8")), JSON.parse(report.toString("utf8"))),
   };
   // 重複等を確認してから出力する。

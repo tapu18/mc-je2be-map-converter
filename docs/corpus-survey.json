@@ -1,0 +1,837 @@
+{
+  "measuredAt": "2026-11-20",
+  "inventory": {
+    "advancement.condition.<other>": 115,
+    "advancement.condition.minecraft:all_of": 1,
+    "advancement.condition.minecraft:any_of": 13,
+    "advancement.condition.minecraft:entity_properties": 298,
+    "advancement.condition.minecraft:inverted": 140,
+    "advancement.condition.minecraft:location_check": 3,
+    "advancement.condition.minecraft:match_tool": 1,
+    "advancement.condition.minecraft:value_check": 2,
+    "advancement.files": 616,
+    "advancement.function_reward": 470,
+    "advancement.trigger.<other>": 599,
+    "advancement.trigger.minecraft:consume_item": 24,
+    "advancement.trigger.minecraft:entity_hurt_player": 35,
+    "advancement.trigger.minecraft:impossible": 93,
+    "advancement.trigger.minecraft:inventory_changed": 93,
+    "advancement.trigger.minecraft:location": 5,
+    "advancement.trigger.minecraft:player_killed_entity": 38,
+    "advancement.trigger.minecraft:tick": 125,
+    "advancement.trigger.minecraft:using_item": 40,
+    "advancement.type.<other>": 925,
+    "archives": 19,
+    "command_blocks": 3550,
+    "comparator_command_block_pairs": 22,
+    "comparators": 19,
+    "comparators_adjacent_6_faces": 16,
+    "comparators_rear_input_command_block": 15,
+    "datapack_only": 1,
+    "empty_functions": 125,
+    "font.provider.bitmap": 553,
+    "font.provider.space": 69,
+    "font.provider.ttf": 60,
+    "function_lines": 111946,
+    "functions": 10280,
+    "invalid_json_files": 6,
+    "item_model.property.<other>": 1,
+    "item_model.property.minecraft:custom_model_data": 56,
+    "item_model.type.minecraft:model": 479,
+    "item_model.type.minecraft:range_dispatch": 1,
+    "item_model.type.minecraft:select": 56,
+    "item_model_definitions": 298,
+    "loot_table.condition.<other>": 21,
+    "loot_table.condition.minecraft:entity_properties": 2,
+    "loot_table.condition.minecraft:inverted": 2,
+    "loot_table.condition.minecraft:location_check": 1,
+    "loot_table.condition.minecraft:match_tool": 15,
+    "loot_table.condition.minecraft:random_chance": 6,
+    "loot_table.files": 514,
+    "loot_table.pools": 627,
+    "loot_table.type.<other>": 1438,
+    "loot_table.type.minecraft:alternatives": 8,
+    "loot_table.type.minecraft:empty": 57,
+    "loot_table.type.minecraft:item": 1915,
+    "loot_table.type.minecraft:loot_table": 138,
+    "model_custom_model_data_overrides": 371,
+    "nonempty_command_blocks": 3541,
+    "predicate.condition.<other>": 58,
+    "predicate.condition.minecraft:all_of": 10,
+    "predicate.condition.minecraft:any_of": 24,
+    "predicate.condition.minecraft:entity_properties": 246,
+    "predicate.condition.minecraft:inverted": 20,
+    "predicate.condition.minecraft:location_check": 67,
+    "predicate.condition.minecraft:random_chance": 20,
+    "predicate.files": 195,
+    "predicate.type.<other>": 30,
+    "predicate.type.minecraft:item": 1,
+    "resource_files.font": 76,
+    "resource_files.items": 298,
+    "resource_files.models": 890,
+    "resource_files.shaders": 3,
+    "resource_files.sounds": 25,
+    "resource_files.sounds.json": 4,
+    "resource_files.textures": 1174,
+    "worlds": 18,
+    "writes.data_block.lines": 135,
+    "writes.data_block.unresolved": 135,
+    "writes.direct_placement.overlaps_saved_cb.lines": 6,
+    "writes.direct_placement.overlaps_self.lines": 1,
+    "writes.place_command_block.fn": 56,
+    "writes.place_command_block.lines": 56,
+    "writes.place_command_block.setblock": 56
+  },
+  "commands": {
+    "counts": {
+      "cb.unsupported": 1727,
+      "cb.rewritten": 1020,
+      "fn.rewritten": 7357,
+      "fn.unsupported": 77901,
+      "fn.unchanged": 4393,
+      "selector.nbt.arguments": 317,
+      "fn.macro": 3630,
+      "data.commands": 59978,
+      "cb.unavailable": 265,
+      "fn.unavailable": 18659,
+      "cb.unchanged": 477,
+      "usage.selector.advancements": 79,
+      "usage.literal.advancement": 300,
+      "cb.invalid": 52,
+      "usage.literal.loot": 404,
+      "usage.literal.predicate": 284,
+      "fn.invalid": 6,
+      "usage.selector.predicate": 461
+    },
+    "functions": {
+      "nonempty": 10155,
+      "allLinesOutput": 318
+    },
+    "paths": [
+      [
+        "merge.entity: start_interpolation",
+        55830
+      ],
+      [
+        "data.entity: {…}",
+        55366
+      ],
+      [
+        "merge.entity: transformation[]",
+        55366
+      ],
+      [
+        "data.storage: <custom>",
+        1307
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>",
+        736
+      ],
+      [
+        "data.storage: <custom>.<custom>",
+        559
+      ],
+      [
+        "merge.entity: transformation.scale[]",
+        540
+      ],
+      [
+        "merge.entity: transformation.left_rotation[]",
+        482
+      ],
+      [
+        "merge.entity: transformation.right_rotation[]",
+        482
+      ],
+      [
+        "merge.entity: transformation.translation[]",
+        482
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>.<custom>",
+        370
+      ],
+      [
+        "data.entity: Pos[]",
+        109
+      ],
+      [
+        "data.entity: <custom>",
+        101
+      ],
+      [
+        "selector: <custom>",
+        98
+      ],
+      [
+        "data.storage: <custom>[][][][][][][][].<custom>",
+        97
+      ],
+      [
+        "merge.entity: text",
+        93
+      ],
+      [
+        "data.entity: text",
+        93
+      ],
+      [
+        "data.storage: <custom>.<custom>[]",
+        80
+      ],
+      [
+        "data.storage: <custom>.<custom>[].<custom>",
+        74
+      ],
+      [
+        "data.entity: item.components.minecraft:custom_model_data",
+        68
+      ],
+      [
+        "data.entity: Motion[]",
+        67
+      ],
+      [
+        "data.storage: <custom>[]",
+        66
+      ],
+      [
+        "selector: Item.components.minecraft:custom_data.Tags[]",
+        66
+      ],
+      [
+        "data.entity: Rotation[]",
+        54
+      ],
+      [
+        "merge.entity: Tags[]",
+        52
+      ],
+      [
+        "data.entity: <custom>.<custom>",
+        50
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>[]",
+        48
+      ],
+      [
+        "selector: Item.id",
+        47
+      ],
+      [
+        "data.entity: UUID",
+        46
+      ],
+      [
+        "data.entity: interpolation_duration",
+        42
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>.<custom>{…}",
+        40
+      ],
+      [
+        "data.block: Items",
+        37
+      ],
+      [
+        "data.entity: Owner",
+        37
+      ],
+      [
+        "data.entity: item.components.<custom>",
+        37
+      ],
+      [
+        "selector: Inventory[].id",
+        32
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>.<custom>.<custom>",
+        30
+      ],
+      [
+        "merge.entity: height",
+        29
+      ],
+      [
+        "merge.entity: text.<custom>[].<custom>",
+        27
+      ],
+      [
+        "merge.entity: text.<custom>[].text",
+        27
+      ],
+      [
+        "merge.entity: text.<custom>[].color",
+        27
+      ],
+      [
+        "merge.entity: text.text",
+        27
+      ],
+      [
+        "merge.entity: width",
+        27
+      ],
+      [
+        "selector: Item.count",
+        25
+      ],
+      [
+        "merge.entity: <custom>",
+        24
+      ],
+      [
+        "merge.entity: block_state",
+        24
+      ],
+      [
+        "selector: OnGround",
+        19
+      ],
+      [
+        "selector: active_effects[].id",
+        19
+      ],
+      [
+        "selector: <custom>.<custom>.id",
+        18
+      ],
+      [
+        "merge.entity: item.id",
+        17
+      ],
+      [
+        "data.entity: Motion",
+        16
+      ],
+      [
+        "data.entity: Rotation",
+        15
+      ],
+      [
+        "merge.entity: Invulnerable",
+        13
+      ],
+      [
+        "merge.entity: text.<custom>[].<custom>.<custom>",
+        13
+      ],
+      [
+        "data.entity: Glowing",
+        13
+      ],
+      [
+        "data.storage: <custom>{…}",
+        13
+      ],
+      [
+        "merge.entity: item.components.minecraft:custom_model_data",
+        12
+      ],
+      [
+        "selector: Inventory[].Slot",
+        12
+      ],
+      [
+        "data.block: Items[].components.<custom>",
+        12
+      ],
+      [
+        "selector: <custom>.<custom>",
+        10
+      ],
+      [
+        "data.entity: Item.components.minecraft:custom_data.Motion[]",
+        9
+      ],
+      [
+        "data.entity: Item.tag.Motion",
+        9
+      ],
+      [
+        "merge.entity: line_width",
+        9
+      ],
+      [
+        "merge.entity: view_range",
+        8
+      ],
+      [
+        "data.storage: <custom>[][][][][][][]",
+        8
+      ],
+      [
+        "data.storage: <custom>[][][][][][]",
+        8
+      ],
+      [
+        "data.storage: <custom>[][][][][]",
+        8
+      ],
+      [
+        "data.storage: <custom>[][][][]",
+        8
+      ],
+      [
+        "data.storage: <custom>[][][]",
+        8
+      ],
+      [
+        "data.storage: <custom>[][]",
+        8
+      ],
+      [
+        "data.block: <custom>",
+        7
+      ],
+      [
+        "merge.entity: interpolation_duration",
+        7
+      ],
+      [
+        "merge.entity: OnGround",
+        7
+      ],
+      [
+        "merge.entity: <custom>.<custom>.id",
+        6
+      ],
+      [
+        "merge.entity: <custom>.<custom>.count",
+        6
+      ],
+      [
+        "data.entity: transformation.left_rotation",
+        6
+      ],
+      [
+        "data.block: Items[].components.minecraft:custom_data.<custom>",
+        6
+      ],
+      [
+        "data.block: LootTable",
+        5
+      ],
+      [
+        "data.entity: Inventory{…}",
+        5
+      ],
+      [
+        "selector: Inventory[].components.minecraft:custom_data.Tags[]",
+        5
+      ],
+      [
+        "data.storage: <custom>[].<custom>",
+        5
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>.<custom>[]",
+        5
+      ],
+      [
+        "data.storage: <custom>[][][][][][][][].<custom>.<custom>.<custom>",
+        5
+      ],
+      [
+        "merge.storage: <custom>",
+        5
+      ],
+      [
+        "data.block: front_text.messages",
+        5
+      ],
+      [
+        "data.storage: <custom>[][][][][][][][]",
+        5
+      ],
+      [
+        "selector: Inventory[].count",
+        4
+      ],
+      [
+        "selector: active_effects[].amplifier",
+        4
+      ],
+      [
+        "merge.entity: NoGravity",
+        4
+      ],
+      [
+        "merge.entity: Fire",
+        4
+      ],
+      [
+        "selector: Item.components.minecraft:custom_data.<custom>",
+        4
+      ],
+      [
+        "merge.entity: Air",
+        4
+      ],
+      [
+        "data.entity: <custom>.<custom>.<custom>",
+        4
+      ],
+      [
+        "data.storage: <custom>[][][][][][][][].<custom>[]",
+        4
+      ],
+      [
+        "data.entity: Item",
+        3
+      ],
+      [
+        "data.entity: Health",
+        3
+      ],
+      [
+        "data.entity: Item.components.minecraft:custom_data.Motion",
+        3
+      ],
+      [
+        "data.entity: <custom>.<custom>[]",
+        3
+      ],
+      [
+        "merge.entity: teleport_duration",
+        3
+      ],
+      [
+        "data.entity: HandItems",
+        3
+      ],
+      [
+        "merge.entity: <custom>.<custom>[]",
+        3
+      ],
+      [
+        "data.entity: Pos",
+        3
+      ],
+      [
+        "data.entity: EnderItems",
+        3
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>[].<custom>",
+        3
+      ],
+      [
+        "data.block: Items[]",
+        3
+      ],
+      [
+        "merge.entity: text[].color",
+        2
+      ],
+      [
+        "merge.entity: text[].text",
+        2
+      ],
+      [
+        "merge.entity: Invisible",
+        2
+      ],
+      [
+        "data.block: front_text.messages[]",
+        2
+      ],
+      [
+        "data.block: Items{…}",
+        2
+      ],
+      [
+        "data.entity: Item.components.<custom>.<custom>",
+        2
+      ],
+      [
+        "data.entity: <custom>.<custom>{…}",
+        2
+      ],
+      [
+        "data.entity: width",
+        2
+      ],
+      [
+        "data.entity: height",
+        2
+      ],
+      [
+        "merge.entity: DisabledSlots",
+        2
+      ],
+      [
+        "data.storage: <custom>.<custom>{…}",
+        2
+      ],
+      [
+        "data.storage: <custom>[][][][][][][][].<custom>{…}",
+        2
+      ],
+      [
+        "data.entity: SelectedItem",
+        2
+      ],
+      [
+        "data.entity: Tags",
+        2
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>.<custom>.<custom>.<custom>.<custom>[]",
+        2
+      ],
+      [
+        "selector: SelectedItem.id",
+        1
+      ],
+      [
+        "data.entity: <custom>.<custom>.components.<custom>.<custom>",
+        1
+      ],
+      [
+        "merge.storage: <custom>.<custom>",
+        1
+      ],
+      [
+        "merge.storage: <custom>[]",
+        1
+      ],
+      [
+        "data.block: Items{…}.count",
+        1
+      ],
+      [
+        "data.entity: Invulnerable",
+        1
+      ],
+      [
+        "merge.entity: Item.components.<custom>",
+        1
+      ],
+      [
+        "data.entity: item",
+        1
+      ],
+      [
+        "data.entity: Item.components.minecraft:custom_model_data",
+        1
+      ],
+      [
+        "data.entity: SelectedItem.components.minecraft:custom_data.count",
+        1
+      ],
+      [
+        "data.entity: Inventory{…}.components.minecraft:custom_data.count",
+        1
+      ],
+      [
+        "merge.block: Lock",
+        1
+      ],
+      [
+        "merge.block: <custom>.<custom>",
+        1
+      ],
+      [
+        "merge.block: <custom>",
+        1
+      ],
+      [
+        "merge.entity: Item",
+        1
+      ],
+      [
+        "selector: NoGravity",
+        1
+      ],
+      [
+        "selector: Invulnerable",
+        1
+      ],
+      [
+        "selector: ShowArms",
+        1
+      ],
+      [
+        "selector: FallDistance",
+        1
+      ],
+      [
+        "selector: DisabledSlots",
+        1
+      ],
+      [
+        "selector: DeathTime",
+        1
+      ],
+      [
+        "selector: Pose.RightArm[]",
+        1
+      ],
+      [
+        "selector: Invisible",
+        1
+      ],
+      [
+        "selector: Tags[]",
+        1
+      ],
+      [
+        "selector: Motion[]",
+        1
+      ],
+      [
+        "selector: Small",
+        1
+      ],
+      [
+        "selector: Health",
+        1
+      ],
+      [
+        "selector: Air",
+        1
+      ],
+      [
+        "selector: Rotation[]",
+        1
+      ],
+      [
+        "selector: HandItems[].components.<custom>",
+        1
+      ],
+      [
+        "selector: HandItems[].components.<custom>.<custom>[].<custom>",
+        1
+      ],
+      [
+        "selector: HandItems[].count",
+        1
+      ],
+      [
+        "selector: HandItems[].id",
+        1
+      ],
+      [
+        "selector: HandItems[]",
+        1
+      ],
+      [
+        "selector: Fire",
+        1
+      ],
+      [
+        "selector: ArmorItems[]",
+        1
+      ],
+      [
+        "selector: NoBasePlate",
+        1
+      ],
+      [
+        "selector: <custom>[].id",
+        1
+      ],
+      [
+        "selector: <custom>[].<custom>",
+        1
+      ],
+      [
+        "selector: HurtTime",
+        1
+      ],
+      [
+        "merge.entity: Health",
+        1
+      ],
+      [
+        "merge.entity: DeathTime",
+        1
+      ],
+      [
+        "merge.entity: Motion[]",
+        1
+      ],
+      [
+        "data.entity: Item.count",
+        1
+      ],
+      [
+        "merge.entity: <custom>.<custom>",
+        1
+      ],
+      [
+        "merge.entity: text_opacity",
+        1
+      ],
+      [
+        "merge.entity: Glowing",
+        1
+      ],
+      [
+        "merge.entity: HandDropChances[]",
+        1
+      ],
+      [
+        "merge.entity: ArmorDropChances[]",
+        1
+      ],
+      [
+        "merge.entity: background",
+        1
+      ],
+      [
+        "merge.entity: shadow",
+        1
+      ],
+      [
+        "merge.entity: brightness.<custom>",
+        1
+      ],
+      [
+        "selector: Item.Item.id",
+        1
+      ],
+      [
+        "merge.storage: {…}",
+        1
+      ],
+      [
+        "data.storage: <custom>.<custom>{…}.<custom>",
+        1
+      ],
+      [
+        "data.storage: <custom>.<custom>[][]",
+        1
+      ],
+      [
+        "data.storage: <custom>[].<custom>.<custom>",
+        1
+      ],
+      [
+        "data.entity: Inventory",
+        1
+      ],
+      [
+        "data.storage: <custom>[][][][][][][][].<custom>.<custom>",
+        1
+      ],
+      [
+        "data.entity: CustomName",
+        1
+      ],
+      [
+        "data.storage: <custom>.<custom>.<custom>.<custom>.<custom>.<custom>",
+        1
+      ],
+      [
+        "data.block: Items[].Slot",
+        1
+      ]
+    ]
+  }
+}

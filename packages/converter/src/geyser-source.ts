@@ -7,6 +7,8 @@ export const GEYSER_SOURCE = {
   sha256: {
     "blocks.nbt": "efc9305b53fc170dd153eb417e003a61f2b17f924592892726ecffc3dce58536",
     "items.json": "89ec17a95b005e5dac170d7834a18da79952c914e8f29201f6fe9a1cdb992179",
+    "sounds.json": "b5ce4ad1d345e75d1519049808b1d03a2ac303e48cfbe18d7dcd8bb6b8758bf9",
+    "particles.json": "3ac0ead88d6cf42f00da739ba8da228660ef3f2044ec3a2e8d53a80161428df8",
     "LICENSE": "4f49de5134b13de98672e8f870aae5d36f5b415086fb1c6fdf832b78c47c7094",
     "java-blocks.json": "7a0de8aaf7b04d00c40b8ffdc4cfe75184cff2e821d336a020573201867105a4",
   },
