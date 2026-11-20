@@ -26,7 +26,7 @@
     "comparator_command_block_pairs": 22,
     "comparators": 19,
     "comparators_adjacent_6_faces": 16,
-    "comparators_rear_input_command_block": 7,
+    "comparators_rear_input_command_block": 15,
     "datapack_only": 1,
     "empty_functions": 125,
     "font.provider.bitmap": 553,

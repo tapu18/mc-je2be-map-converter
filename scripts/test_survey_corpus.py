@@ -50,7 +50,7 @@ class SurveyTest(unittest.TestCase):
         self.assertEqual(count['writes.data_block.unresolved'], 2)
 
     def test_comparator_across_chunk_boundary_and_facing(self):
-        # Minimal actual region/NBT bytes: comparator x=16 faces east, CB is x=15.
+        # Minimal actual region/NBT bytes: comparator x=16 faces west (input), CB is x=15.
         def string(value):
             b = value.encode()
             return struct.pack('>H', len(b)) + b
@@ -62,7 +62,7 @@ class SurveyTest(unittest.TestCase):
             return named(3, name, struct.pack('>i', value))
         air = compound(named(8, 'Name', string('minecraft:air')))
         comparator = compound(named(8, 'Name', string('minecraft:comparator')),
-                              named(10, 'Properties', compound(named(8, 'facing', string('east')))))
+                              named(10, 'Properties', compound(named(8, 'facing', string('west')))))
         states = compound(named(9, 'palette', b'\x0a' + struct.pack('>i',2) + air + comparator),
                           named(12, 'data', struct.pack('>i',256) + struct.pack('>q',1) + b'\0' * (255*8)))
         section = compound(named(1, 'Y', b'\0'), named(10, 'block_states', states))

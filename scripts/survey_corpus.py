@@ -158,8 +158,8 @@ def geometry(z, base, cbs, count):
                     if nm == 'minecraft:comparator':
                         comparators[(dim, root['xPos'] * 16 + x, sec['Y'] * 16 + y, root['zPos'] * 16 + zz)] = props.get('facing')
     offsets = [(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(0,0,1),(0,0,-1)]
-    # JE facing is output direction; rear input is opposite.
-    rear = {'east':(-1,0,0), 'west':(1,0,0), 'north':(0,0,1), 'south':(0,0,-1)}
+    # JE facing points toward the input (verified by corpus-survey.servers.test.ts).
+    rear = {'east':(1,0,0), 'west':(-1,0,0), 'north':(0,0,-1), 'south':(0,0,1)}
     adjacent = set(); pairs = 0
     for pos, facing in comparators.items():
         dim,x,y,zz = pos
