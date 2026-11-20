@@ -1,0 +1,37 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "je2be runtime queue PoC",
+    "description": "Deferred world writes and same-tick observations",
+    "uuid": "f4e0d0be-1dbf-4ccc-957d-44a7271d9751",
+    "version": [
+      0,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      60
+    ]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "84fe7864-b037-4275-ba02-416e7b20261b",
+      "version": [
+        0,
+        1,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.12.0-beta"
+    }
+  ]
+}
