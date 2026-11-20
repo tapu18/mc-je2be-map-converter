@@ -2,6 +2,8 @@
 
 複数のAIエージェントが並行して開発し、人は判断と実機確認を担う。作業の正本は GitHub の Issue と PR で、リポジトリ内の文書は設計（`design.md`）と実測した事実（`findings.md`）を持つ。
 
+定期巡回で Codex / Claude Code を起動する管理プログラムは [agent-runner.md](agent-runner.md) を参照。`npm run agents -- --dry-run` で候補を確認できる。
+
 ## 役割
 
 | 役割 | 担うこと |
