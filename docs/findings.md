@@ -134,6 +134,17 @@
 | 変換を通したワールドで、`distance=..9` → `r=9`、`distance=9..16` → `rm=9,r=16`、`sort=nearest,limit=2` → `c=2`、`sort=furthest,limit=1` → `c=-1`、`@n` → `@e[c=1]`、`dx/dy/dz` の範囲は、コマンドブロックから Java と同じ防具立てを選んだ（距離は境界から1ブロック以上離した配置で確かめた） | `scenarios/convert/selectors.json`（3回連続成功、#62） |
 | 状態つきの `setblock`・`execute if block`（一致・不一致）、`fill ... replace minecraft:air`、偽プレイヤー名 `#a`・`$b` の比較と演算は、書き換えた後の BE で Java と同じ結果になった | `scenarios/convert/block-predicates.json`（同上） |
 
+### 単一コマンドの追加検証（#72）
+
+| 事実 | 根拠 |
+| --- | --- |
+| Java 26.3 の `entity_type` を BDS の `@e[type=…]` と照合した。`zombified_piglin` → `zombie_pigman`、`evoker` → `evocation_illager` などの別名が受理された。`marker` と木材別のボート ID は拒否された | `packages/bridge/src/rewrite.servers.test.ts` の `checks vanilla entity and effect IDs against BDS` |
+| Java 26.3 の40効果のうち35種は同名で、`hero_of_the_village` は `village_hero` でブタに付与できた。残る `dolphins_grace`、`glowing`、`luck`、`unluck` は同名では拒否された。BDS の `effect <対象> clear <効果>` は指定した効果だけを消した | 同テスト。個別解除後の再解除は対象0件、全解除は対象1件 |
+| BDS は `playsound random.orb` と `particle minecraft:basic_flame_particle` の変換出力を構文として受理した。音声・粒子を描画するクライアントでの確認は未実施 | 同ファイルの `produces commands that BDS accepts` |
+| BDS は `clone ... filtered <mode> <block>` と `tp ... facing <target>` を受理した。`tp ... facing entity <target> feet` は拒否され、同じ高さに置いた対象への `facing <target>` のピッチは0度だった | 同テストの変換出力。ピッチは BDS のエンティティの回転値を読み戻した |
+| BDS は `gamemode spectator @a`、`time query time`、`time add`、`weather rain 100`、`difficulty normal` を受理した。`weather rain 100` の直後に保存したワールドには、経過した19 tick を引いた `rainTime=81` が記録された | 同テストの変換出力と BDS の `level.dat` の読み戻し |
+| Java 1.20.5 が保存したコマンドブロックの旧 `time set noon`、`gamerule keepInventory`、`belowName`、JSON のスラッシュエスケープ、ボートのセレクタを、DataVersion 3837 の文法で読み、出力を BDS が受理した | 同ファイルの `rewrites command blocks saved by Java 1.20.5 with that world's grammar` |
+
 ## 安定リリースの版別文法の拡充（#70）
 
 | 事実 | 根拠 |
