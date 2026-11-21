@@ -1,9 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
+import { writeNbt } from "@je2be/core";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { checkedOutputPaths, packageMcworld } from "./convert-output.ts";
+import { checkedOutputPaths, convertOutput, packageMcworld } from "./convert-output.ts";
 
 const dirs: string[] = [];
 const fixture = () => { const dir = mkdtempSync(join(tmpdir(), "je2be-output-unit-")); dirs.push(dir); const world = join(dir, "java"); mkdirSync(world); return { dir, world }; };
@@ -43,4 +45,15 @@ it("rejects linked world entries without leaving an archive", () => {
   const output = join(dir, "result.mcworld");
   expect(() => packageMcworld(world, output)).toThrow();
   expect(existsSync(output)).toBe(false);
+});
+
+it("fails clearly on missing assets and leaves neither output nor report", () => {
+  const { dir, world } = fixture();
+  writeFileSync(join(world, "level.dat"), gzipSync(writeNbt({ name: "", tag: { type: "compound", value: new Map([["Data", { type: "compound", value: new Map([["DataVersion", { type: "int", value: 5023 }]]) }]]) } }, "java")));
+  const output = join(dir, "converted.mcworld");
+  const missing = join(dir, "missing", "mappings.json");
+  expect(() => convertOutput(world, output, { mappings: missing, commands: join(dir, "missing", "commands.json") })).toThrow(/必要な資材がありません/);
+  expect(existsSync(output)).toBe(false);
+  expect(existsSync(`${output}.report.json`)).toBe(false);
+  expect(readdirSync(dir).sort()).toEqual(["java"]);
 });

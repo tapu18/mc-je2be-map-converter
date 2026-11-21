@@ -51,12 +51,27 @@ knownDiffsで説明した差分は許容できても、completeMatchはfalseと�
 
 ## 実クライアントでの受け入れ記録
 
-現状のCLIはextractのみで、convertWorldはBEディレクトリを出す。取り込める.mcworldを出すCLIは後続の #77。
-以下の確認は #77 の成果物ができた後に #46 で行う。サーバー検証だけでM1や製品の完了とはしない。
+取り込める.mcworldは変換CLI（#77）で作る。
+
+```sh
+npm run convert:world -- <Javaワールド> --out <出力.mcworld>   # ディレクトリ名を渡すとBEワールドのディレクトリを出す
+```
+
+- 入力ワールドは一時領域へコピーしてから変換し、原本は変更しない。既存の出力・レポートは上書きせずエラーにする
+- 必要な資材（JRE・Chunker・版別文法・blocks.json・固定Geyser対応表と表示）がなければエラーにする。`setup:servers`・`setup:mappings`・`setup:grammars` を実行する
+- .mcworld はワールド直下（level.dat・db・behavior_packs・world_behavior_packs.json 等）をアーカイブの直下に置く。Python 3 が必要
+- Geyser の出典・MIT表示（`LICENSE.geyser.txt`・`NOTICE.geyser.txt`）をワールド直下と初期化パックに同梱する
+- レポート（既定は `<出力>.report.json`）は常に `status: "partial"`、`clientVerification: "not-performed"`、`clearConfirmed: false` で、未対応・省略したコマンドの件数と未実装の範囲（`limitations`）を載せる
+
+自動検査は `packages/bridge/src/convert-cli.servers.test.ts`。自作の検証ワールドをCLIで変換し、原本が変わらないこと、上書きを拒否すること、アーカイブの構成、
+展開したワールドを設定補助・tickingareaなしでBDSで開きスコア42が復元されることを確かめる。
+`JE2BE_ACCEPTANCE_ARTIFACTS=<ディレクトリ>` を付けて実行すると、そのとき作った `fixture.mcworld` とレポートを残す。下表の実クライアント確認にはこれを使う。
+
+以下の確認は #46 で行う。サーバー検証だけでM1や製品の完了とはしない。
 
 | 項目 | 状態 | 根拠・結果 |
 | --- | --- | --- |
-| 自作マップの.mcworldを実クライアントへ取り込む | 未実施（#77待ち） | クライアント版、OS、成果物のハッシュを記録する |
+| 自作マップの.mcworldを実クライアントへ取り込む | 未実施 | クライアント版、OS、成果物のハッシュを記録する |
 | 初回に偽プレイヤーのスコアが復元される | 未実施 | kept=42等、対象スコアの実値を記録する |
 | ギミックが利用者の起動操作で動く | 未実施 | 操作・成功条件・読み込み範囲・既知差分を記録する |
 | 値を変えて保存し、ワールドを閉じて再読込する | 未実施 | 変更した値が保持され、初期値へ戻らないことを確認する |

@@ -38,6 +38,7 @@ npm run setup:servers   # JRE 25、Java版サーバー、BDS、Chunker（地形�
 npm run setup:mappings  # 承認済み Geyser の固定ブロック・アイテム対応表を取得し、出典・MIT 表示と共に servers/mappings/ に生成する
 npm run setup:grammars  # 対象の安定版 JE の commands.json を別枠で生成する。特定の版だけなら -- 1.20.6 等を付ける
 npm run validate:commands -- <commands.jsonl> --datapack <ディレクトリまたはZIP> # --world <Javaワールド> で保存された有効パック構成も指定できる。ZIP は Python 3 が必要
+npm run convert:world -- <Javaワールド> --out <出力.mcworld|ディレクトリ> # 変換してBEワールドとレポートを出す。原本・既存出力は変更しない。.mcworld は Python 3 が必要
 npm run check           # 型チェック＋Nodeだけのテスト。変更のたびに通す
 npm run test:servers    # 実サーバーを起動するテスト（*.servers.test.ts）。数十秒かかる
 ```
