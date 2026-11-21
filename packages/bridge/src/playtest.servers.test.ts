@@ -4,9 +4,9 @@ import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { gzipSync, gunzipSync } from "node:zlib";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { readNbt, writeNbt, type MappingTables, type NbtTag } from "@je2be/core";
-import { INIT_LOG_MARK } from "@je2be/converter";
+import { INIT_LOG_MARK, javaGrammarSources, setupJavaGrammar } from "@je2be/converter";
 import { BedrockServer } from "./bedrock.ts";
 import { JavaServer } from "./java.ts";
 import { paths, repoRoot } from "./paths.ts";
@@ -129,6 +129,8 @@ const geyser = geyserBlockMapper(tables);
 const mapBlock: BedrockBlockMapper = (type, states) => geyser(type, states) ?? minimalBlockMapper(type, states);
 
 describe("playtest maps", () => {
+  // CLI は対象ワールドの版別文法を使う。CI では未生成のことがあるので先に用意する（convert-cli.servers.test.ts と同じ）
+  beforeAll(async () => { await setupJavaGrammar(javaGrammarSources().find((g) => g.version === "26.3")!); }, 600_000);
   for (const s of loadScenarios().filter((x) => x.play)) {
     it(`${s.id}: buttons survive conversion and pressing them matches Java`, async () => {
       const p = toPlaytest(s);
