@@ -1,0 +1,67 @@
+{
+  "description": "reload 後の load と tick、および同じ tick 内の tick 関数と反復コマンドブロックの順序",
+  "setup": [
+    "scoreboard objectives add clock dummy",
+    "scoreboard players set #tick clock 0",
+    "data modify storage m2:clock trace set value []"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:clock/load": [
+        "data modify storage m2:clock trace append value {source:\"load\"}"
+      ],
+      "m2:clock/tick": [
+        "scoreboard players add #tick clock 1",
+        "data modify storage m2:clock trace append value {source:\"tick\"}",
+        "execute store result storage m2:clock trace[-1].tick int 1 run scoreboard players get #tick clock"
+      ],
+      "m2:clock/block": [
+        "data modify storage m2:clock trace append value {source:\"block\"}",
+        "execute store result storage m2:clock trace[-1].tick int 1 run scoreboard players get #tick clock"
+      ]
+    },
+    "functionTags": {
+      "minecraft:load": {
+        "values": [
+          "m2:clock/load"
+        ]
+      },
+      "minecraft:tick": {
+        "values": [
+          "m2:clock/tick"
+        ]
+      }
+    }
+  },
+  "actions": [
+    {
+      "run": "data modify storage m2:clock after_reload set from storage m2:clock trace"
+    },
+    {
+      "commandBlocks": [
+        {
+          "pos": [
+            8,
+            -60,
+            8
+          ],
+          "kind": "repeat",
+          "facing": "east",
+          "command": "function m2:clock/block"
+        }
+      ]
+    },
+    {
+      "ticks": 4
+    }
+  ],
+  "observe": {
+    "scores": [
+      "clock"
+    ],
+    "storage": [
+      "m2:clock"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

@@ -29,6 +29,11 @@ for (const s of loadScenarios()) {
       expect(state, `Java の結果が正解データと違う（Java のバージョンが変わったなら記録し直す）\n${log.join("\n")}`).toEqual(golden.state);
     });
 
+    if (s.bedrockPending) {
+      it.skip(`bedrock 未実行（${s.bedrockPending}）`, () => {});
+      return;
+    }
+
     it("bedrock matches the golden data", async () => {
       const golden = readGolden(s);
       if (!golden) throw new Error(`${s.id}: 正解データがない`);

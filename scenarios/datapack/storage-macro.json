@@ -1,0 +1,54 @@
+{
+  "description": "storage の set / append / merge とスコアの保存、storage の複合値からのマクロ展開",
+  "setup": [
+    "scoreboard objectives add macro dummy",
+    "scoreboard players set #input macro -7"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:storage/prepare": [
+        "data modify storage m2:data args set value {name:\"first\",amount:0,extra:{keep:1,change:2}}",
+        "data modify storage m2:data args merge value {extra:{change:3,add:4}}",
+        "execute store result storage m2:data args.amount int 1 run scoreboard players get #input macro",
+        "data modify storage m2:data history set value []",
+        "data modify storage m2:data history append from storage m2:data args"
+      ],
+      "m2:storage/apply": [
+        "$scoreboard players set #$(name) macro $(amount)",
+        "$data modify storage m2:data labels append value \"$(name)\""
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "function m2:storage/prepare"
+    },
+    {
+      "run": "data modify storage m2:data labels set value []"
+    },
+    {
+      "run": "function m2:storage/apply with storage m2:data args"
+    },
+    {
+      "run": "data modify storage m2:data next set from storage m2:data args"
+    },
+    {
+      "run": "data modify storage m2:data next merge value {name:\"second\",amount:12}"
+    },
+    {
+      "run": "data modify storage m2:data history append from storage m2:data next"
+    },
+    {
+      "run": "function m2:storage/apply with storage m2:data next"
+    }
+  ],
+  "observe": {
+    "scores": [
+      "macro"
+    ],
+    "storage": [
+      "m2:data"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

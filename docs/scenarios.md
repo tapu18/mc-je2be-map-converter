@@ -36,6 +36,34 @@ Java版サーバーで実行した結果を正解として記録し、BE で実�
 - `play`：変換を通すシナリオ（#61）。書くと、Java で `setup` と `actions` まで行ったワールドを保存して変換器（`convertWorld`：コマンドブロックのコマンドの書き換え＋Chunker＋エンティティとスコアの初期化パック）に通し、BE はその変換後のワールドから `play` を行う。Java は同じセッションのまま `play` を続ける。BE の操作を変えたいときは `bedrock` ではなく変換器を直す（`bedrock` とは併用できない）。例は `scenarios/convert/`
 - `knownDiffs`：調査済みの差分と理由。ここにない差分はテストの失敗になる。差分がなくなったら消す（残っていると失敗になる）。
 
+### データパックと BE 未実行
+
+```json
+{
+  "description": "load で初期化した storage を関数で更新する",
+  "setup": [],
+  "datapack": {
+    "functions": {
+      "example:init": ["data modify storage example:state trace set value []"],
+      "example:probe/append": ["data modify storage example:state trace append value 7"]
+    },
+    "functionTags": {
+      "minecraft:load": { "values": ["example:init"] },
+      "example:probe": { "values": ["example:probe/append"] }
+    }
+  },
+  "actions": [{ "ticks": 1 }, { "run": "function #example:probe" }],
+  "observe": { "storage": ["example:state"] },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}
+```
+
+- `datapack.functions` は、名前空間付きの関数 ID から .mcfunction の行の配列への対応。先頭の `/` を省き、マクロ行は `$` で始める。
+- `datapack.functionTags` は、名前空間付きのタグ ID から Java のタグ JSON への対応。入れ子のタグは `"#example:other"` で参照する。`minecraft:load` と `minecraft:tick` も同じ形式で書く。
+- Java は有効な空パックで起動する。tick を止めて `setup` を実行し、関数とタグを書き込んで `reload` を行う。関数が読み込まれてから `actions` へ進む。load・tick 関数を動かすには `ticks` で明示的に進める。
+- `observe.storage` では ID ごとに Java の保存 NBT を JSON に変換した値を記録する。リストの並びは保存する。long は文字列になり、そのほかの数値型の区別は省く。
+- `bedrockPending` は BE を実行できない理由。Java の記録と照合は通常どおり行い、BE のテストは理由付きでスキップする。`datapack` または `observe.storage` を使う場合は必須。`bedrock`、`play`、`knownDiffs` とは併用できない。
+
 ## 比較の決まり
 
 - ブロックは Java 形式（`minecraft:oak_stairs[facing=east,half=top]`）にそろえて比べる。BE のブロックの対応表は ID 対応（#14）ができるまで最小限で、対応がないものは「比べられなかった値」として表示する。調査用では失敗にしないが、requiredObservationsで必須にした対象なら失敗にする。
@@ -46,13 +74,14 @@ Java版サーバーで実行した結果を正解として記録し、BE で実�
 ## 実行と記録
 
 ```sh
-npx vitest run --config vitest.servers.config.ts packages/bridge/src/scenario   # 全シナリオを両エディションで実行
+npx vitest run --config vitest.servers.config.ts packages/bridge/src/scenario   # 全シナリオを実行
 JE2BE_RECORD=1 npm run scenarios:record                                          # 正解データを記録し直す（Java だけ）
 ```
 
 - 正解データがないシナリオは、手元では実行時に記録される。CI では失敗になるので、記録してからコミットする。
 - Java版サーバーのバージョンを上げたら記録し直し、差分を確かめてからコミットする。
-- 1シナリオごとに両サーバーを新しいワールドで起動する（1本あたり十数秒）。
+- 1シナリオごとに新しいワールドで起動する（1本あたり十数秒）。`bedrockPending` の場合は Java だけを起動する。
+- データパックの Java 照合に絞る場合は、上の Vitest コマンドに `-t 'scenario datapack/.*java'` を付ける。
 
 ## ギミックとしての評価
 

@@ -1,0 +1,72 @@
+{
+  "description": "同じ関数の append、replace による以前の予約の取り消し、clear による未実行の確認",
+  "setup": [
+    "data modify storage m2:schedule trace set value []"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:schedule/append": [
+        "data modify storage m2:schedule trace append value \"append\""
+      ],
+      "m2:schedule/replace": [
+        "data modify storage m2:schedule trace append value \"replace\""
+      ],
+      "m2:schedule/clear": [
+        "data modify storage m2:schedule trace append value \"clear\""
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "schedule function m2:schedule/append 2t append"
+    },
+    {
+      "run": "schedule function m2:schedule/append 4t append"
+    },
+    {
+      "run": "schedule function m2:schedule/replace 2t append"
+    },
+    {
+      "run": "schedule function m2:schedule/replace 5t replace"
+    },
+    {
+      "run": "schedule function m2:schedule/clear 3t append"
+    },
+    {
+      "run": "schedule function m2:schedule/clear 6t append"
+    },
+    {
+      "run": "schedule clear m2:schedule/clear"
+    },
+    {
+      "run": "data modify storage m2:schedule before_step set from storage m2:schedule trace"
+    },
+    {
+      "ticks": 2
+    },
+    {
+      "run": "data modify storage m2:schedule after_two set from storage m2:schedule trace"
+    },
+    {
+      "ticks": 2
+    },
+    {
+      "run": "data modify storage m2:schedule after_four set from storage m2:schedule trace"
+    },
+    {
+      "ticks": 1
+    },
+    {
+      "run": "data modify storage m2:schedule after_five set from storage m2:schedule trace"
+    },
+    {
+      "ticks": 2
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:schedule"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

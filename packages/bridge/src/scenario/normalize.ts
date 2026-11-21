@@ -80,10 +80,14 @@ function normalizeEntityDetails(raw: RawEntity[], observe: Observe): NonNullable
 
 export function normalizeJava(
   observe: Observe,
-  raw: { scores?: RawScores[]; blocks?: { pos: number[]; type: string; states: Record<string, string> }[]; entities?: RawEntity[] },
+  raw: { scores?: RawScores[]; blocks?: { pos: number[]; type: string; states: Record<string, string> }[]; entities?: RawEntity[]; storage?: Record<string, unknown> },
 ): NormalizedState {
   const out: NormalizedState = {};
   if (observe.scores) out.scores = normalizeScores(raw.scores ?? [], observe);
+  if (observe.storage) {
+    const storage = raw.storage ?? {};
+    out.storage = Object.fromEntries(observe.storage.filter((id) => Object.hasOwn(storage, id)).map((id) => [id, storage[id]]));
+  }
   if (observe.blocks) out.blocks = Object.fromEntries((raw.blocks ?? []).map((b) => [posKey(b.pos), javaBlockString(b.type, b.states)]));
   if (observe.entityTags) out.entities = normalizeEntities(raw.entities ?? [], observe);
   if (observe.entityDetails) out.entityDetails = normalizeEntityDetails(raw.entities ?? [], observe);
