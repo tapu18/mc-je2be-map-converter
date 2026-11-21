@@ -24,9 +24,9 @@ const REWRITTEN: [string, string][] = [
   ["say hi @e[type=minecraft:experience_orb]", "say hi @e[type=xp_orb]"],
   ['tellraw @a {selector:"@e[type=minecraft:tropical_fish]"}', 'tellraw @a {"rawtext":[{"selector":"@e[type=tropicalfish]"}]}'],
   // サウンド・パーティクル・効果
-  ["playsound minecraft:entity.experience_orb.pickup master @a", "playsound random.orb @a"],
+  ["playsound minecraft:entity.experience_orb.pickup master @a[distance=..10]", "playsound random.orb @a[r=10] ~ ~ ~"],
   ["execute as @a run playsound entity.experience_orb.pickup player @s ~ ~ ~ 1 0.5 0", "execute as @a run playsound random.orb @s ~ ~ ~ 1 0.5 0"],
-  ["playsound entity.experience_orb.pickup", "playsound random.orb @s"],
+  ["playsound entity.experience_orb.pickup", "playsound random.orb @s ~ ~ ~"],
   ["particle minecraft:flame", "particle minecraft:basic_flame_particle ~ ~ ~"],
   ["particle minecraft:flame ~ ~ ~ 0 0 0 0 1 normal", "particle minecraft:basic_flame_particle ~ ~ ~"],
   ["effect give @a minecraft:speed 3 2 true", "effect @a speed 3 2 true"],

@@ -138,7 +138,8 @@ flowchart TD
 - ディメンションIDの対応（`the_nether` → `nether`）。`execute in` での座標の 1/8 換算は両エディションで同じ（#8）
 - 実装（#62、`packages/core/src/command/rewrite.ts`・`rawtext.ts`）：
   - パースした節の位置を使い、元の文字列のうち変える部分（セレクタ、ブロック、テキスト、ディメンション、時間、偽プレイヤーの名前）だけを差し替える。結果は `rewritten` / `unchanged` / `unsupported`（BE のコマンド1個にできない。理由つき）/ `invalid`（Java の文法で読めない）
-  - 書き換えるコマンドの形は列挙したもの（`say`、`tellraw`、`title`、`kill`、`tag`、`tp`、`setblock`、`fill`、`clone`、`scoreboard`、`give` と、`execute` の as / at / positioned / rotated / facing / anchored / align / in / if・unless の score・entity・block・blocks）だけで、それ以外は `unsupported` にする。`playsound`・`particle`・`effect` などは ID の対応表がないため未対応
+  - 書き換えるコマンドの形は `packages/core/src/command/rewrite.ts` の `COMMANDS` と `EXECUTE_STEPS` に列挙する。対応できない形は `unsupported` にする。
+  - `playsound` と `particle` の ID は Geyser の固定表を使う（#90）。音のカテゴリは省略して警告し、位置を省いた音には実行位置 `~ ~ ~` を明示する。粒子のオプション、拡散・方向、速度、複数個の指定、`force`、明示した表示対象はレポートに未対応として記録する。未登録 ID も未対応として記録する。
   - ブロックの置き方（`setblock` など）は、省いた状態を Java の既定値（`blocks.json`）で補ってから表で引く。ブロックの条件（`execute if block`、`fill ... replace`）は、BE の条件が書いた状態だけを比べること（実測）を使い、同じ Java のブロックの別の状態まで一致してしまう条件（`[waterlogged=true]` など）は `unsupported` にする
   - 変換（`convertWorld`）では、Chunker に渡す前の Java ワールドのコピーでコマンドブロックの `Command` を書き換える（5.10）。`unsupported` のコマンドは元のまま残し、レポート（`ConvertReport.commands`）に出す。5.4 のチェーン単位の振り分け（ランタイムへの差し替え）は M2
 

@@ -383,23 +383,31 @@ const COMMANDS: Record<string, CommandHandler> = {
     if (!id) return ed.unsupported(`BE に対応のないサウンド ${sound.value.id}`);
     const category = nodes.find((n) => n.kind === "literal");
     const targets = arg(nodes, "targets");
-    ed.replace(sound.start, category?.end ?? sound.end, targets ? id : `${id} @s`);
-    ed.warn("BE では Java のサウンドカテゴリを指定できず、対応する音の聞こえ方も変わり得る");
+    ed.replace(sound.start, category?.end ?? sound.end, targets ? id : `${id} @s ~ ~ ~`);
+    // Java の位置省略時は実行位置。BE で省くと遠い対象にも成功を返すので、実行位置を明示する。
+    if (targets && !arg(nodes, "pos")) ed.replace(targets.end, targets.end, " ~ ~ ~");
+    ed.warn(`BE の playsound では Java のサウンドカテゴリ ${category?.name ?? "master（既定）"} を指定できない`);
+    ed.warn("対応する音や、音量・ピッチ・距離による聞こえ方は版によって変わり得る");
   },
   particle: (nodes, _head, ctx, ed) => {
     const name = arg(nodes, "name");
     if (name?.value?.kind !== "particle") return;
     const id = ctx.mappings.particle(name.value.id);
-    if (!id) return ed.unsupported(`BE に対応のないパーティクル ${name.value.id}`);
+    if (!id) ed.unsupported(`BE に対応のないパーティクル ${name.value.id}`);
     const pos = arg(nodes, "pos");
     const delta = arg(nodes, "delta")?.value;
     const speed = arg(nodes, "speed")?.value;
     const count = arg(nodes, "count")?.value;
-    if (name.value.options || arg(nodes, "viewers") || literals(nodes).includes("force")
-      || (delta?.kind === "coordinates" && delta.coordinates.some((c) => c.kind !== "absolute" || c.value !== 0))
-      || (speed?.kind === "number" && speed.value !== 0) || (count?.kind === "number" && count.value > 1)) {
-      return ed.unsupported("BE の particle ではオプション、拡散、速度、個数、表示対象や force を指定できない");
-    }
+    const unsupported = [
+      name.value.options && "粒子のオプション（色や種類など）",
+      delta?.kind === "coordinates" && delta.coordinates.some((c) => c.kind !== "absolute" || c.value !== 0) && "拡散・方向（delta）",
+      speed?.kind === "number" && speed.value !== 0 && "速度（speed）",
+      count?.kind === "number" && count.value > 1 && `個数（count=${count.value}）`,
+      literals(nodes).includes("force") && "表示範囲（force）",
+      arg(nodes, "viewers") && "表示対象（viewers）",
+    ].filter(Boolean);
+    if (unsupported.length) ed.unsupported(`BE の particle で指定できない引数：${unsupported.join("、")}`);
+    if (!id || unsupported.length) return;
     const position = pos ? ed.source.slice(pos.start, pos.end) : "~ ~ ~";
     ed.replace(name.start, nodes.at(-1)!.end, `${id} ${position}`);
     ed.warn("BE のパーティクルはエミッターを使うため、粒子の数や見た目が変わり得る");
