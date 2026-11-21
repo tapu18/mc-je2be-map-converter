@@ -57,6 +57,8 @@ export interface Scenario {
   bedrock?: EditionSteps;
   /** 既知の差分（調査済みのもの）。パスごとに理由を書く。ここにない差分はテストの失敗になる */
   knownDiffs?: Record<string, string>;
+  /** 製品の受け入れ確認で必須の正規化パス。scores.t / blocks / entities 等。playでは必須 */
+  requiredObservations?: string[];
 }
 
 /** 両エディションの結果をそろえた形。比較はこの形どうしで行う */

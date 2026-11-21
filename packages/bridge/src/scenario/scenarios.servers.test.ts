@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { repoRoot } from "../paths.ts";
-import { compareStates, formatDiffs, unexpectedDiffs } from "./compare.ts";
+import { assessComparison, formatDiffs, unexpectedDiffs } from "./compare.ts";
 import { loadScenarios, readGolden, writeGolden } from "./load.ts";
 import { runBedrock, runJava } from "./run.ts";
 
@@ -33,10 +33,13 @@ for (const s of loadScenarios()) {
       const golden = readGolden(s);
       if (!golden) throw new Error(`${s.id}: 正解データがない`);
       const { state, log } = await runBedrock(s);
-      const result = compareStates(golden.state, state);
+      if (s.play && !s.requiredObservations?.length) throw new Error(`${s.id}: 変換の受け入れ確認には requiredObservations が必要`);
+      const result = assessComparison(golden.state, state, s.requiredObservations, s.knownDiffs);
       const unexpected = unexpectedDiffs(result, s.knownDiffs);
       const stale = Object.keys(s.knownDiffs ?? {}).filter((p) => !result.diffs.some((d) => d.path === p));
       if (result.incomparable.length) console.log(`${s.id}: 比べられなかった値（ID 対応なし）\n  ${result.incomparable.join("\n  ")}`);
+      console.log(`${s.id}: ${JSON.stringify({ required: result.required, knownDifferences: result.diffs.length - unexpected.length, incomparable: result.incomparable.length, completeMatch: result.completeMatch })}`);
+      expect(result.passed, `必須観測の不足・比較不能・差分\n${JSON.stringify(result.checks)}`).toBe(true);
       expect(unexpected, `説明のない差分\n${formatDiffs(unexpected)}\n${log.join("\n")}`).toEqual([]);
       expect(stale, "knownDiffs にあるが、もう差分がない（消すこと）").toEqual([]);
     });

@@ -151,7 +151,7 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
   const pack = buildStructurePack(actions);
   let bds: BedrockServer;
   try {
-    bds = await BedrockServer.start({ behaviorPacks: [pack.dir], ...(converted ? { world: converted.world } : {}) });
+    bds = await BedrockServer.start({ behaviorPacks: [pack.dir], ...(converted ? { world: converted.world, worldSettings: "preserve" as const } : {}) });
   } catch (e) {
     rmSync(pack.dir, { recursive: true, force: true });
     if (converted) rmSync(converted.work, { recursive: true, force: true });
@@ -179,13 +179,18 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
         if (res.result?.successCount !== 1) throw new ScenarioError(`bedrock: structure load ${load.id}: ${JSON.stringify(res)}`);
       }
     }
-    const scores = s.observe.scores ? ((await bds.request<RawScores[]>("scores")).result ?? []) : undefined;
+    const observe = async <T>(op: string, args: Record<string, unknown> = {}): Promise<T> => {
+      const response = await bds.request<T>(op, args);
+      if (!response.ok || response.result === undefined) throw new ScenarioError(`bedrock observation failed: ${op}: ${response.error ?? "no result"}`);
+      return response.result;
+    };
+    const scores = s.observe.scores ? await observe<RawScores[]>("scores") : undefined;
     const blocks: RawBlock[] = [];
     for (const b of s.observe.blocks ?? []) {
       const [from, to] = blockRange(b);
-      blocks.push(...((await bds.request<RawBlock[]>("blocks", { from, to })).result ?? []));
+      blocks.push(...await observe<RawBlock[]>("blocks", { from, to }));
     }
-    const entities = s.observe.entityTags ? ((await bds.request<RawEntity[]>("entities", {})).result ?? []) : undefined;
+    const entities = s.observe.entityTags ? await observe<RawEntity[]>("entities") : undefined;
     return { state: normalizeBedrock(s.observe, { ...(scores ? { scores } : {}), blocks, ...(entities ? { entities } : {}) }, mapBlock), log };
   } finally {
     await bds.stop();

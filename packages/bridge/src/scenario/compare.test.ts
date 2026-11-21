@@ -1,8 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { compareStates, unexpectedDiffs } from "./compare.ts";
+import { assessComparison, compareStates, unexpectedDiffs } from "./compare.ts";
 import { javaBlockString, minimalBlockMapper, normalizeBedrock, normalizeJava } from "./normalize.ts";
 
 describe("scenario normalize/compare", () => {
+  it("fails missing or incomparable required observations while allowing investigative comparisons", () => {
+    const j = { blocks: { "0,0,0": "minecraft:stone" } };
+    const b = { blocks: { "0,0,0": { unmapped: "minecraft:stone" } } };
+    expect(assessComparison(j, b).passed).toBe(true);
+    expect(assessComparison(j, b, ["blocks"])).toMatchObject({ passed: false, completeMatch: false, required: { incomparable: 1 } });
+    expect(assessComparison({}, {}, ["scores.t"])).toMatchObject({ passed: false, required: { missing: 1 } });
+    expect(assessComparison({}, {}).completeMatch).toBe(false);
+    expect(() => assessComparison({}, {}, [""])).toThrow();
+    const absent = normalizeJava({ scores: ["t"] }, { scores: [] });
+    expect(assessComparison(absent, absent, ["scores.t"]).passed).toBe(false);
+  });
+  it("reports known differences separately from complete required matches", () => {
+    const j = { scores: { t: { a: 1 } } }, b = { scores: { t: { a: 2 } } };
+    expect(assessComparison(j, b, ["scores.t"], { "scores.t.a": "known difference" })).toMatchObject({ passed: true, completeMatch: false, required: { "known-difference": 1, matched: 0 } });
+    expect(assessComparison(j, j, ["scores.t"])).toMatchObject({ passed: true, completeMatch: true, required: { matched: 1 } });
+    expect(assessComparison(j, b, ["scores.t"])).toMatchObject({ passed: false, required: { different: 1 } });
+  });
   const observe = { scores: ["t"], blocks: [{ from: [0, 0, 0] as [number, number, number] }], entityTags: ["p"] };
 
   it("normalizes both editions into the same shape", () => {

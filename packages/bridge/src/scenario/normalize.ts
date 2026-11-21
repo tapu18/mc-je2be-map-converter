@@ -46,6 +46,7 @@ function normalizeScores(raw: RawScores[], observe: Observe): Record<string, Rec
   const out: Record<string, Record<string, number>> = {};
   for (const objective of observe.scores ?? []) {
     const o = raw.find((r) => r.objective === objective);
+    if (!o) continue;
     out[objective] = Object.fromEntries((o?.scores ?? []).map((s) => [s.participant, s.score]));
   }
   return out;
