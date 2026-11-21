@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { selectCommandGrammar, type MappingTables } from "@je2be/core";
@@ -73,9 +73,9 @@ export function convertOutput(input: string, output: string, flags: Record<strin
       linkSync(archive, target); // 同じファイルシステム。既存ファイルへは上書きしない。
       ownsTarget = true;
     } else {
-      mkdirSync(target); // 既存ディレクトリも拒否する。
+      mkdirSync(target); // 既存ディレクトリも拒否する。作った空のディレクトリへ中身を移す。
       ownsTarget = true;
-      cpSync(world, target, { recursive: true, errorOnExist: true, force: false });
+      for (const name of readdirSync(world)) renameSync(join(world, name), join(target, name));
     }
     return { output: target, report: reportPath, status: fullReport.status, clientVerification: fullReport.clientVerification, clearConfirmed: false,
       scores: report.scores, commands: report.commands?.counts, limitations: fullReport.limitations };
