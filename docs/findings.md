@@ -193,3 +193,5 @@
 | --- | --- |
 | 押されていない石のボタンを、インパルス（`auto:0`）のコマンドブロックの面に `setblock` で置いても、コマンドブロックは動かなかった。押された状態（JE は `powered=true`、BE は `button_pressed_bit=true`）で置き直すと、両版とも隣のコマンドブロックが動いた | 2026-11-21、Java 26.3 と BDS 1.26.63.1 での一時的な計測（`setblock 10 -60 10 diamond_block` の有無を観測）。同じ置き方で `packages/bridge/src/playtest.servers.test.ts` の4本が、Java で元のシナリオの正解データと一致する（押されていないボタンの設置で動いていれば一致しない） |
 | Chunker 1.21.0 は、コマンドブロックの面に付けた石のボタン（壁付け・北向き）を、同じ向きの BE のボタンに変換した | `playtest.servers.test.ts` で押す前のボタンを両版で観測し、Geyser の対応表で比べて一致（3回連続成功、2026-11-21） |
+| Windows の統合版で、変換した検証用マップ4本（F1〜F4 をボタン操作にしたもの）のボタンを人が押すと、どれも BDS のテストと同じ結果になった | 2026-11-21、所有者の画面確認とコマンドの一覧（`/scoreboard players list *`、`/tag ... list`）。成果物の SHA-256 と手順は `docs/output-validation.md` |
+| 統合版のサイドバーに、`#` で始まる名前（`#a` など）のスコアは出なかった。同じ目的変数の `kept`・`$b` は出た | 同上。値は `/scoreboard players list *` で出た |
