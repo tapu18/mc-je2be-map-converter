@@ -20,13 +20,13 @@ const JAVA_ERROR = /Unknown or incomplete command|Incorrect argument|<--\[HERE\]
 
 export class ScenarioError extends Error {}
 
-function blockRange(b: { from: Vec3; to?: Vec3 }): [Vec3, Vec3] {
+export function blockRange(b: { from: Vec3; to?: Vec3 }): [Vec3, Vec3] {
   return [b.from, b.to ?? b.from];
 }
 
 // ---- Java ----
 
-async function javaTicks(java: JavaServer, n: number): Promise<void> {
+export async function javaTicks(java: JavaServer, n: number): Promise<void> {
   const gametime = async (): Promise<number> => Number(/(\d+)/.exec(await java.exec("time query gametime"))?.[1]);
   const start = await gametime();
   await java.exec(`tick step ${n}`);
@@ -37,7 +37,7 @@ async function javaTicks(java: JavaServer, n: number): Promise<void> {
   }
 }
 
-async function javaAction(java: JavaServer, a: Action, log: string[]): Promise<void> {
+export async function javaAction(java: JavaServer, a: Action, log: string[]): Promise<void> {
   if ("run" in a) {
     const res = await java.exec(a.run);
     log.push(`> ${a.run}\n${res}`);
