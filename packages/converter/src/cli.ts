@@ -6,10 +6,29 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBlockDefaults } from "./block-defaults.ts";
 import { extractWorld } from "./extract.ts";
+import { convertOutput } from "./convert-output.ts";
 
 const [cmd, dir, ...flags] = process.argv.slice(2);
+if (cmd === "convert" && dir) {
+  try {
+    const options: Record<string, string> = {};
+    const supported = new Set(["out", "report", "java", "chunker", "commands", "blocks", "mappings"]);
+    for (let i = 0; i < flags.length; i += 2) {
+      const key = flags[i]!.replace(/^--/, "");
+      const value = flags[i + 1];
+      if (!flags[i]!.startsWith("--") || !supported.has(key) || !value || value.startsWith("--") || options[key] !== undefined) throw new Error("convert のオプションが不正です");
+      options[key] = value;
+    }
+    if (!options.out) throw new Error("convert <Java-world> --out <BE-directory|file.mcworld> [--report <file.json>] が必要です");
+    console.log(JSON.stringify(convertOutput(dir, options.out, options), null, 2));
+    process.exit(0);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
 if (cmd !== "extract" || !dir) {
-  console.error("usage: node packages/converter/src/cli.ts extract <world-dir> [--summary] [--no-entities]");
+  console.error("usage: node packages/converter/src/cli.ts extract <world-dir> [--summary] [--no-entities]\n       node packages/converter/src/cli.ts convert <world-dir> --out <directory|file.mcworld>");
   process.exit(2);
 }
 function findBlocksJson(): string | undefined {

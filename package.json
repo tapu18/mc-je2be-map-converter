@@ -18,6 +18,7 @@
     "setup:mappings": "node tools/setup-mappings.ts",
     "setup:grammars": "node tools/setup-grammars.ts",
     "validate:commands": "node tools/validate-commands.ts",
+    "convert:world": "node packages/converter/src/cli.ts convert",
     "coverage:corpus": "node tools/coverage-corpus.ts",
     "scenarios:record": "npm run build:pack && JE2BE_RECORD=1 vitest run --config vitest.servers.config.ts packages/bridge/src/scenario -t java"
   },
