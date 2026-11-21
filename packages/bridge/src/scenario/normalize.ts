@@ -15,6 +15,9 @@ export interface RawBlock {
 export interface RawEntity {
   type: string;
   tags: string[];
+  pos?: number[];
+  nameTag?: string;
+  scores?: Record<string, number>;
 }
 
 /**
@@ -63,6 +66,18 @@ function normalizeEntities(raw: RawEntity[], observe: Observe): Record<string, n
   return out;
 }
 
+function normalizeEntityDetails(raw: RawEntity[], observe: Observe): NonNullable<NormalizedState["entityDetails"]> {
+  const out: NonNullable<NormalizedState["entityDetails"]> = {};
+  for (const e of raw) {
+    if (!e.tags.some((t) => observe.entityTags?.includes(t)) || e.pos?.length !== 3 || e.nameTag === undefined) continue;
+    const block = e.pos.map(Math.floor) as [number, number, number];
+    const scores = Object.fromEntries(Object.entries(e.scores ?? {}).sort(([a], [b]) => a.localeCompare(b)));
+    (out[entityKey(e)] ??= []).push({ name: e.nameTag, block, scores });
+  }
+  for (const entities of Object.values(out)) entities.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  return out;
+}
+
 export function normalizeJava(
   observe: Observe,
   raw: { scores?: RawScores[]; blocks?: { pos: number[]; type: string; states: Record<string, string> }[]; entities?: RawEntity[] },
@@ -71,7 +86,15 @@ export function normalizeJava(
   if (observe.scores) out.scores = normalizeScores(raw.scores ?? [], observe);
   if (observe.blocks) out.blocks = Object.fromEntries((raw.blocks ?? []).map((b) => [posKey(b.pos), javaBlockString(b.type, b.states)]));
   if (observe.entityTags) out.entities = normalizeEntities(raw.entities ?? [], observe);
+  if (observe.entityDetails) out.entityDetails = normalizeEntityDetails(raw.entities ?? [], observe);
   return out;
+}
+
+function javaEntityType(e: RawEntity): RawEntity {
+  const type = e.type === "minecraft:villager_v2" ? "minecraft:villager"
+    : e.type === "minecraft:zombie_villager_v2" ? "minecraft:zombie_villager"
+      : e.type === "minecraft:ender_crystal" ? "minecraft:end_crystal" : e.type;
+  return { ...e, type };
 }
 
 export function normalizeBedrock(
@@ -92,6 +115,8 @@ export function normalizeBedrock(
       }),
     );
   }
-  if (observe.entityTags) out.entities = normalizeEntities(raw.entities ?? [], observe);
+  const entities = (raw.entities ?? []).map(javaEntityType);
+  if (observe.entityTags) out.entities = normalizeEntities(entities, observe);
+  if (observe.entityDetails) out.entityDetails = normalizeEntityDetails(entities, observe);
   return out;
 }

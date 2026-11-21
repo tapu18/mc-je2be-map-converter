@@ -195,3 +195,23 @@
 | Chunker 1.21.0 は、コマンドブロックの面に付けた石のボタン（壁付け・北向き）を、同じ向きの BE のボタンに変換した | `playtest.servers.test.ts` で押す前のボタンを両版で観測し、Geyser の対応表で比べて一致（3回連続成功、2026-11-21） |
 | Windows の統合版で、変換した検証用マップ4本（F1〜F4 をボタン操作にしたもの）のボタンを人が押すと、どれも BDS のテストと同じ結果になった | 2026-11-21、所有者の画面確認とコマンドの一覧（`/scoreboard players list *`、`/tag ... list`）。成果物の SHA-256 と手順は `docs/output-validation.md` |
 | 統合版のサイドバーに、`#` で始まる名前（`#a` など）のスコアは出なかった。同じ目的変数の `kept`・`$b` は出た | 同上。値は `/scoreboard players list *` で出た |
+
+## 変換前に配置したエンティティの復元（#89）
+
+Java 26.3 → Chunker 1.21.0 → BDS 1.26.63.1。Java の保存データを正解として記録した
+[`convert/placed-entities`](../scenarios/convert/placed-entities.json) と
+[`placed-entities.servers.test.ts`](../packages/bridge/src/placed-entities.servers.test.ts) の結果。
+
+| 項目 | 実測結果 |
+| --- | --- |
+| 種類・位置・向き・名前・タグ | 防具立て、村人（BE では `villager_v2`）、豚のブロック座標・名前・タグ・個体数が Java と一致。防具立ては [8.5, -60, 8.5]、yaw 90°。BDS はプレイヤーなし、ブリッジの常設読み込み領域なしで初期化を完了した |
+| UUID スコアと再読み込み | 防具立ての 7、村人の -4 は BE の各個体のスコアボード ID に付いた。再起動後も値と3体の BE ID は同じだった。Java 専用 `marker` とそのスコアはレポートに出た |
+| 防具立て | 頭の鉄のヘルメットは `replaceitem` で装備できた。 `effect @s invisibility infinite 0 true` は再起動後も残った。BDS が保存した NBT には効果の `Duration: -1`、`CustomNameVisible: 0`、`PoseIndex: 0` があった。Java の名前の常時表示、頭の姿勢、`Small`・`ShowArms` はレポートに出た |
+| 村人の職業・服装・取引 | `minecraft:become_farmer` の後と再起動後に BE の `family=farmer` で選択できた。Java の砂漠服に対し BE の `mark_variant` は 0。BDS のスクリプトで列挙したコンポーネントに取引テーブルはなく、保存値は `TradeTier: 0`、`TradeExperience: 0`、農民の既定テーブルとその取引だった。Java のレベル2とエメラルドからダイヤモンドへの取引はレポートに出た |
+| 動作・耐性 | BDS の村人には歩行ナビゲーションがあり、`damage … 1` で体力が減った。Java の `NoAI`・`Invulnerable`・`Silent` はレポートに出た。BDS が保存した村人と豚では `Persistent: 1` を確認した |
+
+保存 NBT は、出力アーカイブを展開して BDS で開き、初期化終了後に
+`structure save je2be:probe89 7 -60 7 14 -57 10 true disk false` と
+`structure save je2be:probe89pig 47 -60 47 49 -57 49 true disk false` を実行して取得した。
+[構造物の WAL 読み出しヘルパー](../poc/mcstructure-version/leveldb-log.ts) と
+`readNbt(..., "bedrock")` で `structure.entities` を読んだ。
