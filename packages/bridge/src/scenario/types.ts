@@ -32,6 +32,9 @@ export interface Observe {
   blocks?: { from: Vec3; to?: Vec3 }[];
   /** 見るエンティティ（このタグのどれかを持つもの） */
   entityTags?: string[];
+  /** タグで選んだ各エンティティの名前・座標と、指定した目的変数のスコアも比べる */
+  entityDetails?: boolean;
+  entityScores?: string[];
 }
 
 export interface EditionSteps {
@@ -69,6 +72,7 @@ export interface NormalizedState {
   blocks?: Record<string, string | { unmapped: string }>;
   /** "種類 タグ1,タグ2" → 数 */
   entities?: Record<string, number>;
+  entityDetails?: Record<string, { name: string; block: Vec3; scores: Record<string, number> }[]>;
 }
 
 export interface Diff {

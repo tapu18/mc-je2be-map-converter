@@ -52,8 +52,8 @@ it("maps Bedrock states back to Java only when the table is unambiguous", () => 
   expect(map("minecraft:unknown", {})).toBeUndefined();
 });
 
-it("turns every convert scenario into a playtest", () => {
-  const converts = loadScenarios().filter((s) => s.play);
+it("turns convert scenarios with player actions into playtests", () => {
+  const converts = loadScenarios().filter((s) => s.play?.length);
   expect(converts.length).toBeGreaterThan(0);
   for (const s of converts) expect(toPlaytest(s).steps.length, s.id).toBeGreaterThan(0);
 });

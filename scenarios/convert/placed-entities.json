@@ -1,0 +1,23 @@
+{
+  "description": "変換前に置いた防具立て・村人・モブを名前・座標・タグ・スコアとともに復元する",
+  "setup": [
+    "gamerule spawn_mobs false",
+    "scoreboard objectives add entity_points dummy",
+    "summon minecraft:armor_stand 8.5 -60 8.5 {Tags:[\"je2be_placed\",\"display_stand\"],CustomName:{text:\"Map stand\"},CustomNameVisible:1b,ShowArms:1b,Invisible:1b,Small:1b,Pose:{Head:[30f,0f,0f]},equipment:{head:{id:\"minecraft:iron_helmet\",count:1}},Rotation:[90f,0f]}",
+    "summon minecraft:villager 12.5 -60 8.5 {Tags:[\"je2be_placed\",\"guide\"],CustomName:{text:\"Map guide\"},NoAI:1b,Invulnerable:1b,Silent:1b,PersistenceRequired:1b,VillagerData:{profession:\"minecraft:farmer\",level:2,type:\"minecraft:desert\"},Offers:{Recipes:[{buy:{id:\"minecraft:emerald\",count:1},sell:{id:\"minecraft:diamond\",count:1},maxUses:5}]}}",
+    "summon minecraft:pig 48.5 -60 48.5 {Tags:[\"je2be_placed\",\"pet\"],CustomName:{text:\"Map pig\"},PersistenceRequired:1b}",
+    "summon minecraft:marker 8.5 -60 10.5 {Tags:[\"je2be_marker\"]}",
+    "scoreboard players set @e[tag=display_stand,limit=1] entity_points 7",
+    "scoreboard players set @e[tag=guide,limit=1] entity_points -4",
+    "scoreboard players set @e[tag=je2be_marker,limit=1] entity_points 9"
+  ],
+  "actions": [
+    { "run": "fill 11 -60 7 13 -58 9 minecraft:glass outline" },
+    { "run": "fill 12 -60 8 12 -59 8 minecraft:air" },
+    { "run": "fill 47 -60 47 49 -58 49 minecraft:glass outline" },
+    { "run": "fill 48 -60 48 48 -59 48 minecraft:air" }
+  ],
+  "play": [],
+  "observe": { "entityTags": ["je2be_placed"], "entityDetails": true, "entityScores": ["entity_points"] },
+  "requiredObservations": ["entities", "entityDetails"]
+}

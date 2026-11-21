@@ -65,7 +65,7 @@ export async function runJava(s: Scenario): Promise<{ state: NormalizedState; lo
     for (const a of s.actions) await javaAction(java, a, log);
     for (const a of s.play ?? []) await javaAction(java, a, log);
     const dump = await java.dump({
-      scores: !!s.observe.scores,
+      scores: !!(s.observe.scores || s.observe.entityScores),
       entities: !!s.observe.entityTags,
     });
     const blocks = [];
@@ -73,7 +73,15 @@ export async function runJava(s: Scenario): Promise<{ state: NormalizedState; lo
       const [from, to] = blockRange(b);
       blocks.push(...((await java.dump({ blocks: { from, to } })).blocks ?? []));
     }
-    return { state: normalizeJava(s.observe, { ...(dump.scores ? { scores: dump.scores } : {}), blocks, ...(dump.entities ? { entities: dump.entities } : {}) }), log };
+    const entities = dump.entities?.map((e) => {
+      const name = (e.nbt as { CustomName?: string | { text?: string } }).CustomName;
+      const scores = Object.fromEntries((s.observe.entityScores ?? []).flatMap((id) => {
+        const score = dump.scores?.find((o) => o.objective === id)?.scores.find((row) => row.participant === e.id)?.score;
+        return score === undefined ? [] : [[id, score]];
+      }));
+      return { ...e, nameTag: typeof name === "string" ? name : name?.text ?? "", scores };
+    });
+    return { state: normalizeJava(s.observe, { ...(dump.scores ? { scores: dump.scores } : {}), blocks, ...(entities ? { entities } : {}) }), log };
   } finally {
     await java.stop();
   }
@@ -190,7 +198,7 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
       const [from, to] = blockRange(b);
       blocks.push(...await observe<RawBlock[]>("blocks", { from, to }));
     }
-    const entities = s.observe.entityTags ? await observe<RawEntity[]>("entities") : undefined;
+    const entities = s.observe.entityTags ? await observe<RawEntity[]>("entities", { scoreObjectives: s.observe.entityScores ?? [] }) : undefined;
     return { state: normalizeBedrock(s.observe, { ...(scores ? { scores } : {}), blocks, ...(entities ? { entities } : {}) }, mapBlock), log };
   } finally {
     await bds.stop();

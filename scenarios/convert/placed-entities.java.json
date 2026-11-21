@@ -1,0 +1,49 @@
+{
+  "java": "26.3",
+  "state": {
+    "entities": {
+      "minecraft:armor_stand display_stand,je2be_placed": 1,
+      "minecraft:villager guide,je2be_placed": 1,
+      "minecraft:pig je2be_placed,pet": 1
+    },
+    "entityDetails": {
+      "minecraft:armor_stand display_stand,je2be_placed": [
+        {
+          "name": "Map stand",
+          "block": [
+            8,
+            -60,
+            8
+          ],
+          "scores": {
+            "entity_points": 7
+          }
+        }
+      ],
+      "minecraft:villager guide,je2be_placed": [
+        {
+          "name": "Map guide",
+          "block": [
+            12,
+            -60,
+            8
+          ],
+          "scores": {
+            "entity_points": -4
+          }
+        }
+      ],
+      "minecraft:pig je2be_placed,pet": [
+        {
+          "name": "Map pig",
+          "block": [
+            48,
+            -60,
+            48
+          ],
+          "scores": {}
+        }
+      ]
+    }
+  }
+}

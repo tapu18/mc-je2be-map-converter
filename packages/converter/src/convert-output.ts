@@ -64,7 +64,7 @@ export function convertOutput(input: string, output: string, flags: Record<strin
     }
     const fullReport = { schemaVersion: 1, status: "partial", input: source, output: target, dataVersion,
       clientVerification: "not-performed", clearConfirmed: false,
-      limitations: ["エンティティ・storage・データパック・リソースパックの移植は未実装", "ランタイムが必要なチェーンは未実装", "ID対応と既定状態は固定JE 26.3資材。旧版の差は未対応に含み得る", "出力ワールドはBeta APIsとコマンドを有効化"], ...report };
+      limitations: ["storage・データパック・リソースパックの移植は未実装", "エンティティの復元時のエラーはワールドのコンテンツログに出力", "ランタイムが必要なチェーンは未実装", "ID対応と既定状態は固定JE 26.3資材。旧版の差は未対応に含み得る", "出力ワールドはBeta APIsとコマンドを有効化"], ...report };
     writeFileSync(reportPath, JSON.stringify(fullReport, null, 2) + "\n", { flag: "wx" });
     ownsReport = true;
     if (target.toLowerCase().endsWith(".mcworld")) {
@@ -78,7 +78,7 @@ export function convertOutput(input: string, output: string, flags: Record<strin
       for (const name of readdirSync(world)) renameSync(join(world, name), join(target, name));
     }
     return { output: target, report: reportPath, status: fullReport.status, clientVerification: fullReport.clientVerification, clearConfirmed: false,
-      scores: report.scores, commands: report.commands?.counts, limitations: fullReport.limitations };
+      scores: report.scores, entities: report.entities, commands: report.commands?.counts, limitations: fullReport.limitations };
   } catch (error) {
     if (ownsTarget) rmSync(target, { recursive: true, force: true });
     if (ownsReport) rmSync(reportPath, { force: true });
