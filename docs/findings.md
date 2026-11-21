@@ -89,8 +89,11 @@
 | 事実 | 根拠 |
 | --- | --- |
 | 1チャンクの常時実行リピート100個でスコア加算を行う最小処理は、BEコマンド直接実行・カスタムコマンド→キュー・scriptevent→キューの全経路で毎tick100更新となり、平均tick間隔は約50msを維持した。Core i5-11400 / WSL2で各100tick×2回測定。全スレッド合計のBDS CPU時間/tickは、基準1.54〜1.65ms、直接2.25〜2.33ms、custom 5.58〜5.92ms、scriptevent 5.00〜5.69ms。CPU時間はメインスレッドのMSPTではなく、完成したランタイムやスマホの評価でもない | `poc/repeat-performance/performance.servers.test.ts`、`results.json`、`samples.jsonl`（#5） |
-| 500個を2チャンクに密集させると全経路とも200更新/tick、8チャンクに分散すると500更新/tickになった。どちらも平均tick間隔は約50msのため、tick間隔だけでは処理量の低下を見抜けない。密集時の更新制限の原因・閾値は未確認 | 同上 |
+| 500個を2チャンクに密集させると全経路とも200更新/tick、8チャンクに分散すると500更新/tickになった。どちらも平均tick間隔は約50msのため、tick間隔だけでは処理量の低下を見抜けない。閾値の切り分けは下記の #31 | 同上 |
 | runIntervalでキューを反映する最小処理では、custom経由は起動と同tick、scriptevent経由は1tick後に加算された。キュー処理件数の合計と各IDのスコア差分の合計は一致した | 同上 |
+| BDS 1.26.63.1 では1チャンクに常時実行リピートを99/100/101/200個置くと、それぞれ毎tick 99/100/100/100更新。150+50個ではチャンクごとに100+50更新、平面の200個を8ブロックずらして100+100個に分けると100+100更新。Java 26.3 は同じどの配置でも40 tickで各ブロックが40回更新した | [#31 実機テスト](../poc/repeat-density/density.servers.test.ts)、[根拠データ](../poc/repeat-density/results.json) |
+| BDS の1チャンク200個では各ブロックが40 tickで20回更新した。上下2層を置く順を反転しても、逆順の配置を保存・再起動しても、各ブロック20回・合計100更新/tickだった。100個の直下にチェスト100個、または稼働中のホッパー100個と搬出先のチェスト100個を置いても、毎tick100更新だった | [配置と測定方法](../poc/repeat-density/README.md)、[根拠データ](../poc/repeat-density/results.json)（#31、#18 の相対順テストを参照） |
+| BDS の1チャンク200個は `maxCommandChainLength`（1・100000）、`functionCommandLimit`（1・10000）、`randomTickSpeed`（0・100）を変えても毎tick100更新だった。プレイヤーなしの常時読み込みエリアでは `tick-distance`（4→12）と `persistent-ticking-area-max-chunks`（100→16）の変更後も毎tick100更新。 `commandBlocksEnabled` を false にすると0更新、true で100更新に戻った | [設定別の結果](../poc/repeat-density/README.md#実測結果)、[根拠データ](../poc/repeat-density/results.json)（#31） |
 
 ## コマンドの文法（Java 26.3）
 
@@ -131,6 +134,17 @@
 | 変換を通したワールドで、`distance=..9` → `r=9`、`distance=9..16` → `rm=9,r=16`、`sort=nearest,limit=2` → `c=2`、`sort=furthest,limit=1` → `c=-1`、`@n` → `@e[c=1]`、`dx/dy/dz` の範囲は、コマンドブロックから Java と同じ防具立てを選んだ（距離は境界から1ブロック以上離した配置で確かめた） | `scenarios/convert/selectors.json`（3回連続成功、#62） |
 | 状態つきの `setblock`・`execute if block`（一致・不一致）、`fill ... replace minecraft:air`、偽プレイヤー名 `#a`・`$b` の比較と演算は、書き換えた後の BE で Java と同じ結果になった | `scenarios/convert/block-predicates.json`（同上） |
 
+### 単一コマンドの追加検証（#72）
+
+| 事実 | 根拠 |
+| --- | --- |
+| Java 26.3 の `entity_type` を BDS の `@e[type=…]` と照合した。`zombified_piglin` → `zombie_pigman`、`evoker` → `evocation_illager` などの別名が受理された。`marker` と木材別のボート ID は拒否された | `packages/bridge/src/rewrite.servers.test.ts` の `checks vanilla entity and effect IDs against BDS` |
+| Java 26.3 の40効果のうち35種は同名で、`hero_of_the_village` は `village_hero` でブタに付与できた。残る `dolphins_grace`、`glowing`、`luck`、`unluck` は同名では拒否された。BDS の `effect <対象> clear <効果>` は指定した効果だけを消した | 同テスト。個別解除後の再解除は対象0件、全解除は対象1件 |
+| BDS は `playsound random.orb` と `particle minecraft:basic_flame_particle` の変換出力を構文として受理した。音声・粒子を描画するクライアントでの確認は未実施 | 同ファイルの `produces commands that BDS accepts` |
+| BDS は `clone ... filtered <mode> <block>` と `tp ... facing <target>` を受理した。`tp ... facing entity <target> feet` は拒否され、同じ高さに置いた対象への `facing <target>` のピッチは0度だった | 同テストの変換出力。ピッチは BDS のエンティティの回転値を読み戻した |
+| BDS は `gamemode spectator @a`、`time query time`、`time add`、`weather rain 100`、`difficulty normal` を受理した。`weather rain 100` の直後に保存したワールドには、経過した19 tick を引いた `rainTime=81` が記録された | 同テストの変換出力と BDS の `level.dat` の読み戻し |
+| Java 1.20.5 が保存したコマンドブロックの旧 `time set noon`、`gamerule keepInventory`、`belowName`、JSON のスラッシュエスケープ、ボートのセレクタを、DataVersion 3837 の文法で読み、出力を BDS が受理した | 同ファイルの `rewrites command blocks saved by Java 1.20.5 with that world's grammar` |
+
 ## 安定リリースの版別文法の拡充（#70）
 
 | 事実 | 根拠 |
@@ -148,3 +162,19 @@
 | 従来の変換出力を実験設定を補わずBDSで開くと、生成した初期化パックが「Beta APIs experiment is not enabled」として読み込まれなかった。同じ固定beta依存の観測パックも読み込まれず、準備待ちがタイムアウトした | `packages/bridge/src/output-world.servers.test.ts` の初期測定（2026-11-17、修正前のconvertWorld）。BDS 1.26.63.1の依存エラーログ |
 | 変換器がBeta APIs・コマンド許可をlevel.datへ出した後は、ブリッジの設定補助とtickingareaなしで初期化パックが動き、keptのスコアは42になった。99に変更して保存再起動すると99を保持し、再注入は起きなかった | 同テスト。BDSのtickingarea一覧・スコア観測・初期化ログを確認 |
 | 初期化パックの有効化参照を除くと観測パックだけではスコアを復元しなかった。Beta APIsの設定を0にした入力は依存エラーとなり、ブリッジは設定を修復しなかった | 同テストの欠落ケース。出力スモークと4変換シナリオ計9テストを3回連続成功（2026-11-17） |
+
+## コーパス追加調査（#15、保存データの静的計数）
+
+- 2026-11-20、19 ZIP（18ワールド＋単体データパック）を読み取り走査。非空関数10,155個中、現行書き換え器が全行を出力できるものは318個（3.13%）。ゲーム内の成功率ではない。空関数125個は除外した。
+- 配置済みコンパレーター19個中、CBに6面で隣接するもの16個（隣接ペア22）、背面入力位置にCBがあるもの15個。JEのfacingは入力側を指すことを `corpus-survey.servers.test.ts` で確認（入力側/逆向きの出力15/0）。直接の設置/複製コマンドの書込先が実行元CB自身に重なる行は1行。実行時条件は未評価。
+- パースできた範囲では、NBTのマージ値の末端キー `start_interpolation` が55,830回、`transformation[]` が55,366回。進捗616、predicate 195、loot_table 514ファイル、モデル890、フォント76、シェーダー3ファイルを計数した。定義の存在数であり、有効化・描画・発火の計数ではない。
+- 根拠: `scripts/survey_corpus.py` と `tools/survey-corpus.ts`。全匿名集計は [corpus-survey.json](corpus-survey.json)、除外数・未判定・再実行方法は [corpus-survey.md](corpus-survey.md)。集計ロジックは合成ZIP/NBT・匿名化テスト（`npm run check`）、既存の抽出/書き換えは実Java/BDSテストで検証した。私有マップは公開・CI投入していない。
+
+## ランタイムの遅延書き込みと tick の依存（#67）
+
+| 事実 | 根拠 |
+| --- | --- |
+| キューに積んだ直後のハンドラで確定済みのブロックは空気、防具立ての検索結果は0体。保留中の石と防具立てをオーバーレイで読むと、同じチェーン内の条件と選択数は Java・ネイティブ BE と一致した。反映後に石と防具立て1体も確認した。セレクタで使った条件は種類と距離 | [実機テスト](../poc/runtime-queue/runtime-queue.servers.test.ts)、[実測データ](../poc/runtime-queue/results.json) |
+| 対象ありの `tag` では両版のネイティブ経路と BE のキュー経路で比較器が点灯し、条件付きブロックが動いた。対象なしの場合、ネイティブ経路ではどちらも起きず、キュー経路ではどちらも起きた。委譲の成功数0を確認した時点は、成功を返したハンドラより後で、同じ BDS tick 内だった | 同上 |
+| 同じチェーンでネイティブがスコア1を書き、ランタイムが2を予約したところ、ネイティブは古い1を読んだ。その後のネイティブの加算で11になり、キュー反映が2で上書きした。Java・ネイティブ BE の同じ並びでは読み取り値2、加算後12 | 同上 |
+| 両経路を共に0で初期化した起動テストを3回実施。関数からコマンドブロックの最初の書き込み1を読んだのは Java で3回目、BE で2回目。最初のコマンドブロックが読んだ関数の値は Java で2、BE で1。両方が毎tick動く区間では、どちらも反対側の直前の書き込みを読んだ | [起動時の観測条件と時系列](../poc/runtime-queue/README.md#起動時の観測)、[実測データ](../poc/runtime-queue/results.json) |

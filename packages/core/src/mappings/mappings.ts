@@ -33,6 +33,9 @@ export interface MappingTables {
   };
   blocks: BlockMapping[];
   items: ItemMapping[];
+  /** 旧版の生成表にはコマンド用の ID 表がない。 */
+  sounds?: Record<string, string>;
+  particles?: Record<string, string>;
 }
 
 /** キー順と値の型を保持する。JE の部分条件の変換には使わない。 */
@@ -68,9 +71,13 @@ export class MappingLookup {
   private blockTargets = new Map<string, number>();
   private items = new Map<string, ItemMapping>();
   private itemTargets = new Map<string, number>();
+  private sounds: ReadonlyMap<string, string>;
+  private particles: ReadonlyMap<string, string>;
 
   constructor(tables: MappingTables) {
     if (tables.schemaVersion !== 1) throw new Error("unsupported mapping schema");
+    this.sounds = new Map(Object.entries(tables.sounds ?? {}));
+    this.particles = new Map(Object.entries(tables.particles ?? {}));
     for (const row of tables.blocks) {
       const key = blockStateKey(row.java);
       if (this.blocks.has(key)) throw new Error(`duplicate Java block state: ${key}`);
@@ -129,6 +136,14 @@ export class MappingLookup {
     const wanted = new Set(matches);
     if (picked.some((r) => !wanted.has(r))) return { status: "inexact" };
     return { status: "mapped", target: { id: first.id, states: common }, verification: "unverified" };
+  }
+
+  sound(id: string): string | undefined {
+    return this.sounds.get(id);
+  }
+
+  particle(id: string): string | undefined {
+    return this.particles.get(id);
   }
 
   item(id: string): ItemMappingResult {

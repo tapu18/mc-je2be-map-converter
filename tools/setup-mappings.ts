@@ -13,4 +13,4 @@ const report = resolve(values.blocks ?? join(root, "servers", `reports-${GEYSER_
 const output = resolve(values.out ?? join(root, "servers", "mappings"));
 if (!values.offline) await fetchGeyserSources(source);
 const tables = generateGeyserMappings(source, report, output);
-console.log(JSON.stringify({ output, source: tables.source, blocks: tables.blocks.length, items: tables.items.length }, null, 2));
+console.log(JSON.stringify({ output, source: tables.source, blocks: tables.blocks.length, items: tables.items.length, sounds: Object.keys(tables.sounds ?? {}).length, particles: Object.keys(tables.particles ?? {}).length }, null, 2));

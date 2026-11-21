@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "mapId": "self-authored/scores-chain",
+  "kind": "observed",
+  "scope": "server-scenario",
+  "staticReport": null,
+  "completion": {
+    "status": "unverified",
+    "evidence": []
+  },
+  "gimmicks": [
+    {
+      "id": "restore-scores",
+      "scenario": "convert/scores-chain",
+      "start": "scenarios/convert/scores-chain.json の setup と actions 後のJavaワールド",
+      "steps": [
+        "convertWorldで変換する",
+        "変換先をBDSで開き、playを実行する"
+      ],
+      "successCriteria": [
+        "保存した参加者 kept の t が42のまま残る"
+      ],
+      "requiredFeatures": [
+        "偽プレイヤーのスコア再注入"
+      ],
+      "required": true,
+      "status": "passed",
+      "evidence": [
+        "packages/bridge/src/scenario/scenarios.servers.test.ts: scenario convert/scores-chain（JE 26.3 / Chunker 1.21.0 / BDS 1.26.63.1）",
+        "scenarios/convert/scores-chain.java.json",
+        "docs/findings.md: 変換の通し（#61・#62、コミット7142ba7）",
+        "2026-11-16: 同シナリオのJava・BEテストを3回連続成功（30.93 / 29.75 / 29.29秒）。観測スコアは正解データと一致。"
+      ],
+      "knownDiffs": [],
+      "incomparable": [],
+      "fixes": [],
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "conditional-chain",
+      "scenario": "convert/scores-chain",
+      "start": "同じ変換済みワールドの2本の未起動チェーン",
+      "steps": [
+        "playで2箇所にredstone_blockを置く",
+        "5tick後に t を観測する"
+      ],
+      "successCriteria": [
+        "#a=5、#b=-2、#c=-10、#after_ok=1",
+        "失敗側の #after_fail が作られない"
+      ],
+      "requiredFeatures": [
+        "スコア演算",
+        "成功・失敗の条件付きチェーン"
+      ],
+      "required": true,
+      "status": "passed",
+      "evidence": [
+        "packages/bridge/src/scenario/scenarios.servers.test.ts: scenario convert/scores-chain（JE 26.3 / Chunker 1.21.0 / BDS 1.26.63.1）",
+        "scenarios/convert/scores-chain.java.json",
+        "docs/findings.md: 変換の通し（#61・#62、コミット7142ba7）",
+        "2026-11-16: 同シナリオのJava・BEテストを3回連続成功（30.93 / 29.75 / 29.29秒）。観測スコアは正解データと一致。"
+      ],
+      "knownDiffs": [],
+      "incomparable": [],
+      "fixes": [],
+      "warnings": [],
+      "failures": []
+    }
+  ]
+}

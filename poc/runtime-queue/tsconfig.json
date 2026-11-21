@@ -1,0 +1,9 @@
+{
+  "extends": "../../packages/bridge-pack/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "pack/scripts",
+    "typeRoots": []
+  },
+  "include": ["src", "../../packages/bridge-pack/src/env.d.ts"]
+}
