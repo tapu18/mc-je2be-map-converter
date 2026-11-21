@@ -1,5 +1,5 @@
 // Java ワールドを BE ワールドに変換する（#61、design.md 4章・5.10）。
-// 地形・ブロック・コマンドブロックは Chunker に任せ、Chunker が運ばないスコアは、
+// 地形・ブロック・コマンドブロックは Chunker に任せ、スコアとエンティティは、
 // BE の初回読み込み時に書き込むビヘイビアーパック（初期化パック）として出す。
 // コマンドブロックのコマンドは、Chunker に渡す前の Java ワールドのコピーで BE の書き方に書き換える（#62）。
 import { execFileSync } from "node:child_process";
@@ -7,9 +7,11 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { nbt, readBedrockLevelDat, writeBedrockLevelDat, type ObjectiveScores, type NbtTag } from "@je2be/core";
+import { nbt, readBedrockLevelDat, writeBedrockLevelDat, type MappingTables, type ObjectiveScores, type NbtTag } from "@je2be/core";
 import { rewriteWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
 import { JavaWorld } from "./java-world.ts";
+import { collectPlacedEntities, type PlacedEntity, type PlacedEntityReport } from "./placed-entities.ts";
+import { restoreEntitiesScript } from "./entity-init-script.ts";
 
 /** 初期化パックが使う @minecraft/server の版。bridge-pack と同じ版に保つ（convert.test.ts で確かめる） */
 export const SCRIPT_API_VERSION = "2.12.0-beta";
@@ -40,20 +42,24 @@ export interface SkippedScore {
 export interface ConvertReport {
   /** 初期化パックに入れた目的変数と参加者の数 */
   scores: { objectives: number; participants: number; skipped: SkippedScore[] };
+  entities: PlacedEntityReport;
   /** コマンドブロックの書き換え（rewrite を渡したときだけ） */
   commands?: CommandRewriteReport;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** 初期化パックに入れるスコアを選ぶ。エンティティ（UUID）のスコアは、エンティティを再配置するまで運べない */
-export function selectScores(scores: ObjectiveScores[]): { objectives: ObjectiveScores[]; skipped: SkippedScore[] } {
+/** UUID のスコアを、再配置時に BE のエンティティへ設定する。 */
+export function selectScores(scores: ObjectiveScores[], entities: PlacedEntity[] = []): { objectives: ObjectiveScores[]; skipped: SkippedScore[] } {
+  const byUuid = new Map(entities.filter((e) => e.uuid).map((e) => [e.uuid, e]));
   const skipped: SkippedScore[] = [];
   const objectives = scores.map((o) => ({
     objective: o.objective,
     scores: o.scores.filter((s) => {
       if (!UUID.test(s.participant)) return true;
-      skipped.push({ objective: o.objective, participant: s.participant, reason: "エンティティのスコア（エンティティの再配置は未対応）" });
+      const entity = byUuid.get(s.participant.toLowerCase());
+      if (entity) entity.scores.push([o.objective, s.score]);
+      else skipped.push({ objective: o.objective, participant: s.participant, reason: "UUID に対応する再配置対象がない" });
       return false;
     }),
   }));
@@ -67,32 +73,40 @@ function stableUuid(seed: string): string {
 }
 
 /** 初期化パックのスクリプト。ワールドの初回読み込みで目的変数を作り、スコアを書き込む */
-export function initScript(objectives: ObjectiveScores[]): string {
+export function initScript(objectives: ObjectiveScores[], entities: PlacedEntity[] = []): string {
   const data = JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]));
-  return `// je2be が生成した初期化スクリプト。Java ワールドのスコアを、BE の初回読み込み時に書き込む
-import { world } from "@minecraft/server";
+  return `// je2be が生成した初期化スクリプト。Java ワールドのエンティティとスコアを、BE の初回読み込み時に復元する
+import { world, system, ItemStack } from "@minecraft/server";
 
 const OBJECTIVES = ${data};
-
+const ENTITIES = ${JSON.stringify(entities)};
+${restoreEntitiesScript}
 world.afterEvents.worldLoad.subscribe(() => {
-  if (world.getDynamicProperty(${JSON.stringify(INIT_PROPERTY)})) return;
-  let count = 0;
-  for (const [id, scores] of OBJECTIVES) {
-    const objective = world.scoreboard.getObjective(id) ?? world.scoreboard.addObjective(id, id);
-    for (const [participant, score] of scores) {
-      objective.setScore(participant, score);
-      count++;
-    }
-  }
-  world.setDynamicProperty(${JSON.stringify(INIT_PROPERTY)}, true);
-  console.warn(${JSON.stringify(INIT_LOG_MARK)} + " " + count + " scores");
+  initialize().catch((error) => console.warn("[je2be] initialization failed: " + error));
 });
+
+async function initialize() {
+  if (world.getDynamicProperty(${JSON.stringify(INIT_PROPERTY)})) return;
+  const count = OBJECTIVES.reduce((total, [, scores]) => total + scores.length, 0);
+  if (world.getDynamicProperty(PROGRESS) === undefined) {
+    for (const [id, scores] of OBJECTIVES) {
+      const objective = world.scoreboard.getObjective(id) ?? world.scoreboard.addObjective(id, id);
+      for (const [participant, score] of scores) objective.setScore(participant, score);
+    }
+    world.setDynamicProperty(PROGRESS, 0);
+  }
+  const failures = await restoreEntities();
+  world.setDynamicProperty(${JSON.stringify(INIT_PROPERTY)}, true);
+  console.warn(${JSON.stringify(INIT_LOG_MARK)} + " " + count + " named scores, " + ENTITIES.length + " entity placements, " + failures + " entity errors");
+}
 `;
 }
 
 /** 初期化パックを BE ワールドの behavior_packs/ に置き、world_behavior_packs.json に足す */
-export function writeInitPack(worldDir: string, objectives: ObjectiveScores[]): void {
-  const script = initScript(objectives);
+export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = []): void {
+  const chunk = (n: number) => Math.floor(n / 16);
+  const sorted = [...entities].sort((a, b) => a.dimension.localeCompare(b.dimension) || chunk(a.pos.x) - chunk(b.pos.x) || chunk(a.pos.z) - chunk(b.pos.z));
+  const script = initScript(objectives, sorted);
   const uuid = stableUuid(`pack:${script}`);
   const dir = join(worldDir, "behavior_packs", "je2be_init");
   mkdirSync(join(dir, "scripts"), { recursive: true });
@@ -102,7 +116,7 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[]): 
     JSON.stringify(
       {
         format_version: 2,
-        header: { name: "je2be init", description: "Java ワールドのスコアを書き込む（je2be が生成）", uuid, version, min_engine_version: [1, 26, 60] },
+        header: { name: "je2be init", description: "Java ワールドのエンティティとスコアを復元する（je2be が生成）", uuid, version, min_engine_version: [1, 26, 60] },
         modules: [{ type: "script", language: "javascript", uuid: stableUuid(`module:${script}`), version, entry: "scripts/main.js" }],
         dependencies: [{ module_name: "@minecraft/server", version: SCRIPT_API_VERSION }],
       },
@@ -133,26 +147,35 @@ export function configureOutputWorld(worldDir: string): void {
 
 /** Java ワールド（ディレクトリ）を BE ワールド（ディレクトリ）に変換する */
 export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptions): ConvertReport {
-  // 元のワールドは変えない。書き換えるときはコピーを Chunker に渡す
-  const work = opts.rewrite ? mkdtempSync(join(tmpdir(), "je2be-convert-")) : undefined;
+  const source = new JavaWorld(javaDir);
+  const version = source.dataVersion();
+  // エンティティが terrain region から専用 region に移ったのは Java 1.17。
+  const legacy = version === undefined || version < 2724;
+  const items = opts.rewrite ? (JSON.parse(readFileSync(opts.rewrite.mappingsJson, "utf8")) as MappingTables).items : [];
+  const placed = collectPlacedEntities(source, legacy, version, items);
+  const hasEntities = placed.report.scheduled > 0 || placed.report.skipped.length > 0;
+  const { objectives, skipped } = selectScores(source.scoreboard(), placed.entities);
+  const work = opts.rewrite || hasEntities ? mkdtempSync(join(tmpdir(), "je2be-convert-")) : undefined;
   try {
     let input = javaDir;
     let commands: CommandRewriteReport | undefined;
-    if (work && opts.rewrite) {
+    if (work) {
       input = join(work, "java");
-      cpSync(javaDir, input, { recursive: true });
-      commands = rewriteWorldCommands(input, opts.rewrite);
+      cpSync(javaDir, input, { recursive: true, dereference: true });
+      if (hasEntities) new JavaWorld(input).removeEntitiesFromChunkerCopy(legacy);
+      if (opts.rewrite) commands = rewriteWorldCommands(input, opts.rewrite);
     }
     execFileSync(opts.java, ["-jar", opts.chunkerJar, "-i", input, "-f", opts.format ?? DEFAULT_CHUNKER_FORMAT, "-o", outDir], {
       stdio: "pipe",
       timeout: 600_000,
     });
     if (!existsSync(join(outDir, "level.dat"))) throw new Error(`Chunker の出力に level.dat がない: ${outDir}`);
-    const { objectives, skipped } = selectScores(new JavaWorld(javaDir).scoreboard());
-    writeInitPack(outDir, objectives);
+    writeInitPack(outDir, objectives, placed.entities);
     configureOutputWorld(outDir);
     return {
-      scores: { objectives: objectives.length, participants: objectives.reduce((n, o) => n + o.scores.length, 0), skipped },
+      scores: { objectives: objectives.length, participants: objectives.reduce((n, o) => n + o.scores.length, 0)
+        + placed.entities.reduce((n, e) => n + e.scores.length, 0), skipped },
+      entities: placed.report,
       ...(commands ? { commands } : {}),
     };
   } finally {

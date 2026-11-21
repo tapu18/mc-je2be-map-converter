@@ -243,8 +243,21 @@ export function readCommandStorage(namespace: string, root: NbtCompound): Map<st
   return out;
 }
 
-/** entities/ の region のチャンク（展開済み）からエンティティを読む */
+/** 保存済みのエンティティ UUID（1.16 以降の int[4] と旧版の long 2個） */
+export function entityUuid(entity: NbtCompound): string | undefined {
+  const ints = child(entity, "UUID");
+  const most = child(entity, "UUIDMost");
+  const least = child(entity, "UUIDLeast");
+  const hex = ints?.type === "intArray" && ints.value.length === 4
+    ? Array.from(ints.value, (i) => (i >>> 0).toString(16).padStart(8, "0")).join("")
+    : most?.type === "long" && least?.type === "long"
+      ? [most.value, least.value].map((i) => BigInt.asUintN(64, i).toString(16).padStart(16, "0")).join("")
+      : undefined;
+  return hex && [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
+}
+
+/** 専用の entities/ と、旧版で地形チャンクに入っていたエンティティを読む */
 export function chunkEntities(chunk: NbtCompound): NbtCompound[] {
-  const list = child(chunk, "Entities");
-  return list?.type === "list" ? (list.value.filter((t) => t.type === "compound") as NbtCompound[]) : [];
+  const list = child(chunk, "Entities") ?? child(child(chunk, "Level"), "Entities");
+  return list?.type === "list" ? list.value.filter((t) => t.type === "compound") : [];
 }

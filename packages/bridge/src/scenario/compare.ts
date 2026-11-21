@@ -22,6 +22,7 @@ export function compareStates(java: NormalizedState, bedrock: NormalizedState): 
   }
   compareMaps("blocks", java.blocks, bedrock.blocks, diffs, incomparable);
   compareMaps("entities", java.entities, bedrock.entities, diffs);
+  compareMaps("entityDetails", java.entityDetails, bedrock.entityDetails, diffs);
   return { diffs, incomparable };
 }
 

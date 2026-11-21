@@ -70,6 +70,7 @@ const handlers: Record<string, Handler> = {
 
   entities: (req) => {
     const opts = (req.query ?? {}) as Parameters<Dimension["getEntities"]>[0];
+    const objectives = (req.scoreObjectives as string[] | undefined) ?? [];
     return dim(req)
       .getEntities(opts)
       .map((e) => ({
@@ -79,6 +80,18 @@ const handlers: Record<string, Handler> = {
         rot: [e.getRotation().x, e.getRotation().y],
         tags: e.getTags(),
         nameTag: e.nameTag,
+        ...(req.components ? {
+          markVariant: e.getComponent("minecraft:mark_variant")?.value,
+          scale: e.getComponent("minecraft:scale")?.value,
+          health: e.getComponent("minecraft:health")?.currentValue,
+          invisible: e.getEffect("invisibility") !== undefined,
+          components: e.getComponents().map((c) => c.typeId),
+        } : {}),
+        ...(objectives.length ? { scores: Object.fromEntries(objectives.flatMap((id) => {
+          const identity = e.scoreboardIdentity;
+          const score = identity && world.scoreboard.getObjective(id)?.getScore(identity);
+          return score === undefined ? [] : [[id, score]];
+        })) } : {}),
       }));
   },
 

@@ -135,7 +135,7 @@ describe("playtest maps", () => {
     mapBlock = (type, states) => geyser(type, states) ?? minimalBlockMapper(type, states);
     await setupJavaGrammar(javaGrammarSources().find((g) => g.version === "26.3")!);
   }, 600_000);
-  for (const s of loadScenarios().filter((x) => x.play)) {
+  for (const s of loadScenarios().filter((x) => x.play?.length)) {
     it(`${s.id}: buttons survive conversion and pressing them matches Java`, async () => {
       const p = toPlaytest(s);
       const golden = readGolden(s);

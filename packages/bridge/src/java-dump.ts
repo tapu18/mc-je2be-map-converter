@@ -1,6 +1,6 @@
 // Java版ワールドの保存データから状態を取り出す（RCON の文字列出力では取れないブロックステートやエンティティ一覧のため）。
 // 形は BDS の検証パックの応答（blocks / scores / entities）にそろえる。
-import { blockAt, blockEntities, child, nbtToPlain, type ObjectiveScores } from "@je2be/core";
+import { blockAt, blockEntities, child, entityUuid, nbtToPlain, type ObjectiveScores } from "@je2be/core";
 import { JavaWorld, loadBlockDefaults } from "@je2be/converter";
 import { paths } from "./paths.ts";
 import { existsSync } from "node:fs";
@@ -50,12 +50,6 @@ export interface JavaDump {
 
 const num = (t: unknown): number => (typeof t === "number" ? t : Number(t));
 
-function uuidString(ints: unknown): string {
-  if (!Array.isArray(ints) || ints.length !== 4) return "";
-  const hex = ints.map((i) => (Number(i) >>> 0).toString(16).padStart(8, "0")).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
 /** 保存済みのワールドディレクトリから状態を読む（読み込みは @je2be/converter の JavaWorld） */
 export function dumpJavaWorld(dir: string, req: JavaDumpRequest): JavaDump {
   const world = new JavaWorld(dir);
@@ -92,7 +86,7 @@ export function dumpJavaWorld(dir: string, req: JavaDumpRequest): JavaDump {
       const pos = (plain.Pos as number[] | undefined) ?? [];
       const rot = (plain.Rotation as number[] | undefined) ?? [];
       entities.push({
-        id: uuidString(plain.UUID),
+        id: entityUuid(e) ?? "",
         type: String(plain.id),
         pos: [num(pos[0]), num(pos[1]), num(pos[2])],
         rot: [num(rot[1] ?? 0), num(rot[0] ?? 0)],

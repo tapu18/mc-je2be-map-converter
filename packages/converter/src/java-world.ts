@@ -1,10 +1,11 @@
 // Java版ワールドのディレクトリを読む（Node 専用）。region・スコア・storage・エンティティの場所の違い（26.x と以前）を吸収する。
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { gunzipSync, inflateSync } from "node:zlib";
+import { deflateSync, gunzipSync, inflateSync } from "node:zlib";
 import {
   child,
   chunkEntities,
+  rewriteRegion,
   readCommandStorage,
   readNbt,
   readScoreboard,
@@ -43,7 +44,7 @@ export class JavaWorld {
     if (existsSync(dims)) {
       for (const ns of readdirSync(dims, { withFileTypes: true }).filter((d) => d.isDirectory())) {
         for (const name of readdirSync(join(dims, ns.name), { withFileTypes: true }).filter((d) => d.isDirectory())) {
-          if (existsSync(join(dims, ns.name, name.name, "region"))) out.add(`${ns.name}:${name.name}`);
+          if (["region", "entities"].some((folder) => existsSync(join(dims, ns.name, name.name, folder)))) out.add(`${ns.name}:${name.name}`);
         }
       }
     }
@@ -112,12 +113,33 @@ export class JavaWorld {
   }
 
   /** ディメンションの全エンティティ（1.17 以降の entities/。それより前のチャンク内の Entities も読む） */
-  *entities(dimension = "minecraft:overworld"): Generator<NbtCompound> {
-    let found = false;
+  *entities(dimension = "minecraft:overworld", legacy = true): Generator<NbtCompound> {
+    let hasEntityChunks = false;
     for (const c of this.chunks(dimension, "entities")) {
-      found = true;
+      hasEntityChunks = true;
       yield* chunkEntities(c);
     }
-    if (!found) for (const c of this.chunks(dimension, "region")) yield* chunkEntities(c);
+    if (legacy && !hasEntityChunks) for (const c of this.chunks(dimension, "region")) yield* chunkEntities(c);
+  }
+
+  /** Chunker 用に作ったコピーからエンティティを除く。旧版で Chunker 自身も運ぶ場合の二重配置を防ぐ。 */
+  removeEntitiesFromChunkerCopy(legacy: boolean): void {
+    for (const dimension of this.dimensions()) {
+      const dir = this.dimensionDir(dimension);
+      rmSync(join(dir, "entities"), { recursive: true, force: true });
+      if (!legacy) continue;
+      const regionDir = join(dir, "region");
+      if (!existsSync(regionDir)) continue;
+      for (const name of readdirSync(regionDir).filter((n) => REGION_NAME.test(n))) {
+        const file = join(regionDir, name);
+        const result = rewriteRegion(readFileSync(file), decompress, deflateSync, (chunk) => {
+          const level = child(chunk, "Level");
+          const removedRoot = chunk.value.delete("Entities");
+          const removedLevel = level?.type === "compound" && level.value.delete("Entities");
+          return removedRoot || removedLevel ? chunk : undefined;
+        });
+        if (result) writeFileSync(file, result);
+      }
+    }
   }
 }
