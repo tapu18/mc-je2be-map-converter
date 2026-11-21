@@ -51,7 +51,7 @@
 | 動的プロパティの文字列1件は UTF-8 で 32,767 バイトまで（文字数ではなくバイト数）。ワールドとエンティティで同じ。超えると `ArgumentOutOfBoundsError` | `poc/dynamic-properties/` |
 | 動的プロパティの合計は、ワールド・エンティティとも 32MB まで書いて上限に当たらなかった | 同上 |
 | 動的プロパティは再起動後も、エンティティのチャンクを読み込み直した後も残る（約8MBで確認） | 同上 |
-| tick内の実行順は BE が「コマンドブロック → `tick.json` → `runInterval` → `system.run` → `scriptevent`」、Java が「`tick` 関数 → コマンドブロック」（推定）。詳細は `design.md` 7章 | `poc/tick-order/` |
+| tick内の実行順は BE が「コマンドブロック → `tick.json` → `runInterval` → `system.run` → `scriptevent`」。Java 26.3 は `tick step` で進めた4 tick で「`tick` 関数 → リピートコマンドブロック」だった | `poc/tick-order/`、[#96 の Java 実測データ](../scenarios/datapack/load-tick.java.json) |
 | `system.run` の実行順は積んだ順ではない。スクリプトの処理中（`runInterval` 内）に積んだものが、コマンドブロックの処理中に積んだものより先に動く | 同上 |
 | リピートコマンドブロックは、同じチャンク内では BE・Java とも置いた順（保存された順）に動く。座標順ではない。再起動後も同じ | `poc/tick-order/cb-order.servers.test.ts` |
 | チャンク間の実行順は、Java はセッション中一定だが再起動ごとに変わり得る。BE はおおむねチャンク順だが tick によって入れ替わる（38tick中1〜2回） | 同上 |
@@ -225,3 +225,16 @@ Java 26.3 → Chunker 1.21.0 → BDS 1.26.63.1。Java の保存データを正�
 `structure save je2be:probe89pig 47 -60 47 49 -57 49 true disk false` を実行して取得した。
 [構造物の WAL 読み出しヘルパー](../poc/mcstructure-version/leveldb-log.ts) と
 `readNbt(..., "bedrock")` で `structure.entities` を読んだ。
+
+## M2 のデータパックシナリオ（#96）
+
+Java 26.3 で `reload` 後に操作し、スコアと command storage をワールドの保存データから記録した。
+
+| 項目 | 実測結果 | 根拠 |
+| --- | --- | --- |
+| 関数の戻り値とタグ | `return run function` で内側の戻り値 7 と成功値 1 が得られた。`return fail` の結果値と成功値はともに 0。各 return より後の行は実行されなかった。スコア条件を満たして呼んだ関数タグは記載順に実行された | [calls.java.json](../scenarios/datapack/calls.java.json) |
+| 複数の実行者 | 距離の異なる marker 3体で、`execute as` から呼んだ関数が `sort=nearest` で 1, 2, 3、`sort=furthest` で 3, 2, 1 の順に実行された | [calls.java.json](../scenarios/datapack/calls.java.json) |
+| スコアの演算 | `operation` の全9演算子を記録した。負数を含む除算では −7 / 2 と 7 / −2 がともに −4、剰余はそれぞれ 1 と −1。最大の int に `+= 1` すると −2147483648 になった | [score-operations.java.json](../scenarios/datapack/score-operations.java.json) |
+| storage とマクロ | `merge` は入れ子の既存キーを残し、指定したキーを更新・追加した。スコアを storage に保存し、2組の引数でマクロを呼ぶと、それぞれの名前に対応するスコア −7 と 12 が付いた | [storage-macro.java.json](../scenarios/datapack/storage-macro.java.json) |
+| 予約実行 | `append` の2件は予約から 2、4 tick 後に動いた。`replace` を使った関数は古い予約の 2 tick 後には動かず、5 tick 後に1回動いた。`clear` で取り消した 3、6 tick 後の2件は、7 tick 後まで記録されなかった | [schedule.java.json](../scenarios/datapack/schedule.java.json) |
+| load と tick | tick を止めて `reload` を済ませた時点の記録は空。最初の `tick step` で load が先に1回動いた。続く4組は各組で tick 関数 → 反復コマンドブロックの順に動き、各組の両方が同じ tick 番号 1〜4 を記録した | [load-tick.java.json](../scenarios/datapack/load-tick.java.json) |

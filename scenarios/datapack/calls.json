@@ -1,0 +1,94 @@
+{
+  "description": "ネストした関数、関数タグの順序、return / return run / return fail、スコア条件、複数の実行者の順序",
+  "setup": [
+    "scoreboard objectives add result dummy",
+    "scoreboard objectives add identity dummy",
+    "data modify storage m2:calls failure set value {result:-1,success:-1}",
+    "data modify storage m2:calls trace set value []",
+    "data modify storage m2:calls executors set value []"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:calls/plain": [
+        "data modify storage m2:calls trace append value \"plain\"",
+        "return 7",
+        "data modify storage m2:calls trace append value \"unreachable plain\""
+      ],
+      "m2:calls/nested": [
+        "data modify storage m2:calls trace append value \"nested\"",
+        "return run function m2:calls/plain",
+        "data modify storage m2:calls trace append value \"unreachable nested\""
+      ],
+      "m2:calls/fail": [
+        "data modify storage m2:calls trace append value \"fail\"",
+        "return fail",
+        "data modify storage m2:calls trace append value \"unreachable fail\""
+      ],
+      "m2:calls/first": [
+        "data modify storage m2:calls trace append value \"first\""
+      ],
+      "m2:calls/second": [
+        "data modify storage m2:calls trace append value \"second\""
+      ],
+      "m2:calls/executor": [
+        "execute store result storage m2:scratch identity int 1 run scoreboard players get @s identity",
+        "data modify storage m2:calls executors append from storage m2:scratch identity"
+      ]
+    },
+    "functionTags": {
+      "m2:calls/ordered": {
+        "values": [
+          "m2:calls/second",
+          "m2:calls/first"
+        ]
+      }
+    }
+  },
+  "actions": [
+    {
+      "run": "execute store result score #return result store success score #return_success result run function m2:calls/nested"
+    },
+    {
+      "run": "execute store result storage m2:calls failure.result int 1 store success storage m2:calls failure.success int 1 run function m2:calls/fail"
+    },
+    {
+      "run": "execute if score #return result matches 7 run function #m2:calls/ordered"
+    },
+    {
+      "run": "execute if score #return result matches 8 run function m2:calls/fail"
+    },
+    {
+      "run": "summon minecraft:marker 13 -60 8 {Tags:[\"worker\",\"far\"]}"
+    },
+    {
+      "run": "summon minecraft:marker 9 -60 8 {Tags:[\"worker\",\"near\"]}"
+    },
+    {
+      "run": "summon minecraft:marker 11 -60 8 {Tags:[\"worker\",\"middle\"]}"
+    },
+    {
+      "run": "scoreboard players set @e[type=marker,tag=near] identity 1"
+    },
+    {
+      "run": "scoreboard players set @e[type=marker,tag=middle] identity 2"
+    },
+    {
+      "run": "scoreboard players set @e[type=marker,tag=far] identity 3"
+    },
+    {
+      "run": "execute positioned 8 -60 8 as @e[type=marker,tag=worker,sort=nearest] run function m2:calls/executor"
+    },
+    {
+      "run": "execute positioned 8 -60 8 as @e[type=marker,tag=worker,sort=furthest] run function m2:calls/executor"
+    }
+  ],
+  "observe": {
+    "scores": [
+      "result"
+    ],
+    "storage": [
+      "m2:calls"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

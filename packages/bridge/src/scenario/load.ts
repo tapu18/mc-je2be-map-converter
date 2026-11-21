@@ -22,7 +22,17 @@ export function loadScenarios(dir = scenariosDir): Scenario[] {
     });
   return walk(dir)
     .sort()
-    .map((p) => ({ ...(JSON.parse(readFileSync(p, "utf8")) as Scenario), id: relative(dir, p).replace(/\.json$/, "") }));
+    .map((p) => {
+      const s = { ...(JSON.parse(readFileSync(p, "utf8")) as Scenario), id: relative(dir, p).replace(/\.json$/, "") };
+      if (s.bedrockPending !== undefined) {
+        if (typeof s.bedrockPending !== "string" || !s.bedrockPending.trim() || s.bedrock || s.play || s.knownDiffs) {
+          throw new Error(`${s.id}: bedrockPending には理由が必要。bedrock、play、knownDiffs との併用はできない`);
+        }
+      } else if (s.datapack || s.observe.storage) {
+        throw new Error(`${s.id}: datapack または observe.storage には bedrockPending が必要`);
+      }
+      return s;
+    });
 }
 
 export function goldenPath(s: Scenario, dir = scenariosDir): string {

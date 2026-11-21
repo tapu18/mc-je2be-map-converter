@@ -1,0 +1,59 @@
+{
+  "description": "関数中の scoreboard operation の全演算子、負数の除算・剰余、加算時のオーバーフロー",
+  "setup": [
+    "scoreboard objectives add arithmetic dummy"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:scores/operations": [
+        "scoreboard players set #assign arithmetic 0",
+        "scoreboard players set #operand arithmetic 3",
+        "scoreboard players operation #assign arithmetic = #operand arithmetic",
+        "scoreboard players set #add arithmetic 7",
+        "scoreboard players set #operand arithmetic -3",
+        "scoreboard players operation #add arithmetic += #operand arithmetic",
+        "scoreboard players set #subtract arithmetic 7",
+        "scoreboard players set #operand arithmetic -3",
+        "scoreboard players operation #subtract arithmetic -= #operand arithmetic",
+        "scoreboard players set #multiply arithmetic 7",
+        "scoreboard players set #operand arithmetic -3",
+        "scoreboard players operation #multiply arithmetic *= #operand arithmetic",
+        "scoreboard players set #divide arithmetic -7",
+        "scoreboard players set #operand arithmetic 2",
+        "scoreboard players operation #divide arithmetic /= #operand arithmetic",
+        "scoreboard players set #modulo arithmetic -7",
+        "scoreboard players set #operand arithmetic 2",
+        "scoreboard players operation #modulo arithmetic %= #operand arithmetic",
+        "scoreboard players set #divide_negative_rhs arithmetic 7",
+        "scoreboard players set #operand arithmetic -2",
+        "scoreboard players operation #divide_negative_rhs arithmetic /= #operand arithmetic",
+        "scoreboard players set #modulo_negative_rhs arithmetic 7",
+        "scoreboard players set #operand arithmetic -2",
+        "scoreboard players operation #modulo_negative_rhs arithmetic %= #operand arithmetic",
+        "scoreboard players set #min arithmetic 5",
+        "scoreboard players set #operand arithmetic -2",
+        "scoreboard players operation #min arithmetic < #operand arithmetic",
+        "scoreboard players set #max arithmetic 5",
+        "scoreboard players set #operand arithmetic 9",
+        "scoreboard players operation #max arithmetic > #operand arithmetic",
+        "scoreboard players set #swap arithmetic 1",
+        "scoreboard players set #swap_source arithmetic 2",
+        "scoreboard players operation #swap arithmetic >< #swap_source arithmetic",
+        "scoreboard players set #overflow arithmetic 2147483647",
+        "scoreboard players set #operand arithmetic 1",
+        "scoreboard players operation #overflow arithmetic += #operand arithmetic"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "function m2:scores/operations"
+    }
+  ],
+  "observe": {
+    "scores": [
+      "arithmetic"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

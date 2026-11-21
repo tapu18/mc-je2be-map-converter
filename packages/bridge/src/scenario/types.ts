@@ -28,6 +28,8 @@ export type Action =
 export interface Observe {
   /** 見るスコアの目的変数 */
   scores?: string[];
+  /** Java の command storage の ID（名前空間:パス） */
+  storage?: string[];
   /** 見るブロックの範囲（両端を含む） */
   blocks?: { from: Vec3; to?: Vec3 }[];
   /** 見るエンティティ（このタグのどれかを持つもの） */
@@ -42,12 +44,21 @@ export interface EditionSteps {
   actions?: Action[];
 }
 
+export interface ScenarioDatapack {
+  /** 名前空間:パス → .mcfunction の行（先頭の / なし） */
+  functions: Record<string, string[]>;
+  /** 名前空間:パス → 関数タグの内容。minecraft:load / minecraft:tick もここに書く */
+  functionTags?: Record<string, { values: (string | { id: string; required?: boolean })[]; replace?: boolean }>;
+}
+
 export interface Scenario {
   /** ファイル名から付ける（JSON には書かなくてよい） */
   id?: string;
   description: string;
   /** 初期化。読み込み範囲（0..63）の中で行う */
   setup: string[];
+  /** Java の setup の後にワールドに追加して reload する */
+  datapack?: ScenarioDatapack;
   actions: Action[];
   observe: Observe;
   /**
@@ -58,6 +69,8 @@ export interface Scenario {
   play?: Action[];
   /** BE で実行する内容を変える場合（変換器ができるまでの手書きの対応）。省略時は同じものを実行する */
   bedrock?: EditionSteps;
+  /** BE の比較を実行できない理由。テストではスキップになる */
+  bedrockPending?: string;
   /** 既知の差分（調査済みのもの）。パスごとに理由を書く。ここにない差分はテストの失敗になる */
   knownDiffs?: Record<string, string>;
   /** 製品の受け入れ確認で必須の正規化パス。scores.t / blocks / entities 等。playでは必須 */
@@ -68,6 +81,7 @@ export interface Scenario {
 export interface NormalizedState {
   /** 目的変数 → 参加者 → 値 */
   scores?: Record<string, Record<string, number>>;
+  storage?: Record<string, unknown>;
   /** "x,y,z" → Java 形式のブロック（"minecraft:stone"、"minecraft:oak_stairs[facing=east,half=top]"）。対応がなければ undefined */
   blocks?: Record<string, string | { unmapped: string }>;
   /** "種類 タグ1,タグ2" → 数 */

@@ -290,7 +290,7 @@ M0 の結論（#11、2026-11-15 確定）：
   - 根拠：`poc/launcher/launcher.servers.test.ts`、`poc/launcher/results.json`（BDS 1.26.63.1、2026-11-15）
 - [x] `tick.json`、スクリプト、コマンドブロックのtick内の実行順
   - BE：毎tick「リピートコマンドブロック（チェーン含む） → `tick.json` の関数（記載順） → `system.runInterval` → `system.run` で積んだ処理 → `scriptevent` のハンドラ」。`system.run` は、スクリプトの処理中に積んだもの（`runInterval` 内）が、コマンドブロックの処理中に積んだものより先に動く
-  - Java：毎tick「`tick` 関数 → リピートコマンドブロック」と推定（RCONの直後から記録した並びによる）。BEとは逆だが、どちらも関数とコマンドブロックが交互に動く
+  - Java 26.3：`tick step` で進めた4 tick では、各 tick で `tick` 関数 → リピートコマンドブロックの順に動いた。両方が同じ tick 番号を記録した（#96、[実測データ](../scenarios/datapack/load-tick.java.json)）
   - リピートブロック同士の順序（#18、`poc/tick-order/cb-order.servers.test.ts`）：
     - 同じチャンク内：BE・Java とも置いた順（保存された順）。座標順ではない。再起動後も同じ
     - チャンク間：Java はセッション中は一定だが、再起動ごとに変わり得る（チャンクの読み込み順）。BE はおおむねチャンク順だが、tickによって入れ替わる（38tick中1〜2回）

@@ -1,4 +1,5 @@
 // そろえた結果どうしを比べ、差分と比べられなかった値を返す。サーバーに依存しない純粋な関数。
+import { isDeepStrictEqual } from "node:util";
 import type { CompareResult, Diff, NormalizedState } from "./types.ts";
 
 function compareMaps<T>(prefix: string, java: Record<string, T> | undefined, bedrock: Record<string, T> | undefined, diffs: Diff[], incomparable?: string[]): void {
@@ -19,6 +20,11 @@ export function compareStates(java: NormalizedState, bedrock: NormalizedState): 
   const incomparable: string[] = [];
   for (const obj of new Set([...Object.keys(java.scores ?? {}), ...Object.keys(bedrock.scores ?? {})])) {
     compareMaps(`scores.${obj}`, java.scores?.[obj], bedrock.scores?.[obj], diffs);
+  }
+  for (const id of new Set([...Object.keys(java.storage ?? {}), ...Object.keys(bedrock.storage ?? {})])) {
+    const j = java.storage?.[id];
+    const b = bedrock.storage?.[id];
+    if (!isDeepStrictEqual(j, b)) diffs.push({ path: `storage.${id}`, java: j, bedrock: b });
   }
   compareMaps("blocks", java.blocks, bedrock.blocks, diffs, incomparable);
   compareMaps("entities", java.entities, bedrock.entities, diffs);

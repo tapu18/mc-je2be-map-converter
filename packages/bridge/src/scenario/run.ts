@@ -10,6 +10,7 @@ import { JavaServer } from "../java.ts";
 import { paths, repoRoot } from "../paths.ts";
 import { rewriteResources } from "../rewrite-resources.ts";
 import { createDataPack, waitBedrockTicks } from "../poc-kit.ts";
+import { loadScenarioDatapack, startScenarioJava } from "./datapack.ts";
 import { normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./normalize.ts";
 import type { Action, NormalizedState, Scenario, ScenarioCommandBlock, Vec3 } from "./types.ts";
 
@@ -57,15 +58,17 @@ export async function javaAction(java: JavaServer, a: Action, log: string[]): Pr
 
 export async function runJava(s: Scenario): Promise<{ state: NormalizedState; log: string[] }> {
   const log: string[] = [];
-  const java = await JavaServer.start();
+  const java = await startScenarioJava(s.datapack);
   try {
     // tick を止め、シナリオの ticks だけ進める（決定的にするため）
     await java.exec("tick freeze");
     for (const c of s.setup) await javaAction(java, { run: c }, log);
+    if (s.datapack) await loadScenarioDatapack(java, s.datapack, log);
     for (const a of s.actions) await javaAction(java, a, log);
     for (const a of s.play ?? []) await javaAction(java, a, log);
     const dump = await java.dump({
       scores: !!(s.observe.scores || s.observe.entityScores),
+      storage: !!s.observe.storage,
       entities: !!s.observe.entityTags,
     });
     const blocks = [];
@@ -81,7 +84,13 @@ export async function runJava(s: Scenario): Promise<{ state: NormalizedState; lo
       }));
       return { ...e, nameTag: typeof name === "string" ? name : name?.text ?? "", scores };
     });
-    return { state: normalizeJava(s.observe, { ...(dump.scores ? { scores: dump.scores } : {}), blocks, ...(entities ? { entities } : {}) }), log };
+    const state = normalizeJava(s.observe, {
+      ...(dump.scores ? { scores: dump.scores } : {}),
+      ...(dump.storage ? { storage: dump.storage } : {}),
+      ...(entities ? { entities } : {}),
+      blocks,
+    });
+    return { state, log };
   } finally {
     await java.stop();
   }
@@ -151,6 +160,7 @@ function buildStructurePack(actions: Action[]): { dir: string; loads: Map<Action
 
 export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Promise<{ state: NormalizedState; log: string[] }> {
   const log: string[] = [];
+  if (s.bedrockPending) throw new ScenarioError(`${s.id}: BE は未実行 — ${s.bedrockPending}`);
   if (s.play && s.bedrock) throw new ScenarioError(`${s.id}: play（変換を通す）と bedrock は併用できない`);
   const converted = s.play ? await buildConvertedWorld(s, log) : undefined;
   // 変換を通すときは、setup と actions は変換前の Java ワールドで済んでいる
