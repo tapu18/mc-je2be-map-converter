@@ -1,0 +1,25 @@
+{
+  "description": "変換を通す（F5）：二つの起動で音と粒子を出す。ブロックの変化で各起動を観測し、音と粒子は別途 BDS のコマンド応答と実クライアントで確かめる",
+  "setup": [],
+  "actions": [
+    {
+      "commandBlocks": [
+        { "pos": [2, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "playsound minecraft:entity.experience_orb.pickup player @p 2.5 -59 1.5 1.5 0.7 0.25" },
+        { "pos": [2, -60, 3], "kind": "chain", "facing": "south", "command": "setblock 2 -59 2 minecraft:diamond_block" },
+        { "pos": [6, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "particle minecraft:flame 6.5 -58.5 0.5 0 0 0 0 1 normal" },
+        { "pos": [6, -60, 3], "kind": "chain", "facing": "south", "command": "setblock 6 -59 2 minecraft:emerald_block" },
+        { "pos": [10, -60, 5], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "playsound example:unmapped master @p" },
+        { "pos": [11, -60, 5], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "particle minecraft:dust{color:[1.0,0.0,0.0],scale:1.0} ~ ~ ~ 1 0 0 0.2 3 force @a" },
+        { "pos": [12, -60, 5], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "particle minecraft:elder_guardian ~ ~ ~" }
+      ]
+    }
+  ],
+  "play": [
+    { "run": "setblock 2 -60 1 minecraft:redstone_block" },
+    { "ticks": 5 },
+    { "run": "setblock 6 -60 1 minecraft:redstone_block" },
+    { "ticks": 5 }
+  ],
+  "observe": { "blocks": [{ "from": [2, -59, 2] }, { "from": [6, -59, 2] }] },
+  "requiredObservations": ["blocks"]
+}

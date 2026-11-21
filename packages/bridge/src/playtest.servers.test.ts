@@ -12,6 +12,7 @@ import { JavaServer } from "./java.ts";
 import { paths, repoRoot } from "./paths.ts";
 import { bedrockButton, geyserBlockMapper, javaButton, toPlaytest, type Playtest } from "./playtest.ts";
 import { waitBedrockTicks } from "./poc-kit.ts";
+import { rewriteResources } from "./rewrite-resources.ts";
 import { assessComparison, formatDiffs, unexpectedDiffs } from "./scenario/compare.ts";
 import { loadScenarios, readGolden } from "./scenario/load.ts";
 import { minimalBlockMapper, normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./scenario/normalize.ts";
@@ -124,13 +125,16 @@ async function runPlaytest(p: Playtest, known: Record<string, string> | undefine
   }
 }
 
-const tables = JSON.parse(readFileSync(join(paths.servers, "mappings", "mappings.json"), "utf8")) as MappingTables;
-const geyser = geyserBlockMapper(tables);
-const mapBlock: BedrockBlockMapper = (type, states) => geyser(type, states) ?? minimalBlockMapper(type, states);
-
 describe("playtest maps", () => {
-  // CLI は対象ワールドの版別文法を使う。CI では未生成のことがあるので先に用意する（convert-cli.servers.test.ts と同じ）
-  beforeAll(async () => { await setupJavaGrammar(javaGrammarSources().find((g) => g.version === "26.3")!); }, 600_000);
+  let mapBlock: BedrockBlockMapper;
+  beforeAll(async () => {
+    // このテストだけを実行する場合も、CLI に必要な対応表と版別文法を用意する。
+    const { mappingsJson } = await rewriteResources();
+    const tables = JSON.parse(readFileSync(mappingsJson, "utf8")) as MappingTables;
+    const geyser = geyserBlockMapper(tables);
+    mapBlock = (type, states) => geyser(type, states) ?? minimalBlockMapper(type, states);
+    await setupJavaGrammar(javaGrammarSources().find((g) => g.version === "26.3")!);
+  }, 600_000);
   for (const s of loadScenarios().filter((x) => x.play?.length)) {
     it(`${s.id}: buttons survive conversion and pressing them matches Java`, async () => {
       const p = toPlaytest(s);

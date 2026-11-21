@@ -145,6 +145,16 @@
 | BDS は `gamemode spectator @a`、`time query time`、`time add`、`weather rain 100`、`difficulty normal` を受理した。`weather rain 100` の直後に保存したワールドには、経過した19 tick を引いた `rainTime=81` が記録された | 同テストの変換出力と BDS の `level.dat` の読み戻し |
 | Java 1.20.5 が保存したコマンドブロックの旧 `time set noon`、`gamerule keepInventory`、`belowName`、JSON のスラッシュエスケープ、ボートのセレクタを、DataVersion 3837 の文法で読み、出力を BDS が受理した | 同ファイルの `rewrites command blocks saved by Java 1.20.5 with that world's grammar` |
 
+### 音と粒子のコマンド（#90）
+
+| 事実 | 根拠 |
+| --- | --- |
+| BDS 1.26.63.1 は固定 Geyser 表の `playsound_mapping` 由来の全 1,615 種類（JE 1,917 行）と、バニラ名前空間の `bedrock_id` 由来の全 81 種類（JE 92 行）を受理した。どの ID も成功件数 1 で、拒否された対応先 ID はなかった | `packages/bridge/src/sound-particles.servers.test.ts` の `checks every distinct mapped ID …`。入力一覧は `npm run setup:mappings` の生成した `mappings.json` の `sounds`・`particles` の値を重複排除したもの。音は同じ座標の試験用プレイヤーを対象とした |
+| 架空の `je2be.nonexistent.sound`、`minecraft:je2be_nonexistent_particle` と、対応表から除いた `geyseropt:ash` も成功件数 1 だった。カテゴリを付けた JE 形式の音と、拡散・速度・個数・`force` を付けた JE 形式の粒子は構文エラーだった | 同テストの対照入力。コマンド応答で確認できるのは書式とサーバーでの成功件数まで |
+| `playsound` の実行位置を対象から水平に 24 ブロック離すと、位置省略では成功件数 1、実行位置を `~ ~ ~` で渡すと 0 だった。明示位置で距離 24 のとき、音量 1・最小音量 0 では 0、音量を 2 または最小音量を 0.5 にすると 1 だった。同じ位置ではピッチ 0 と 2 のどちらも 1 だった | 同ファイルの `checks the distance, volume, pitch and minimum volume …` |
+| 変換シナリオで出力した `playsound random.orb @p 2.5 -59 1.5 1.5 0.7 0.25` と `particle minecraft:basic_flame_particle 6.5 -58.5 0.5` は試験用プレイヤーを置いた変換済みワールドで成功件数 1。ソースのカテゴリ、未対応 ID、色・拡散・速度・個数・表示範囲・表示対象は変換レポートに出た | 同ファイルの `checks converted scenario commands …` |
+| ボタン版の `sound-particles.mcworld` では、Java と BDS の両方でボタンを押すとダイヤモンド・エメラルドブロックが置かれた | `packages/bridge/src/playtest.servers.test.ts` の `convert/sound-particles`。音・粒子の実クライアント確認は `docs/output-validation.md` の #46 記録欄で追跡 |
+
 ## 安定リリースの版別文法の拡充（#70）
 
 | 事実 | 根拠 |

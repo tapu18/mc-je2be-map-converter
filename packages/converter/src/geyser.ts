@@ -102,7 +102,9 @@ export async function fetchGeyserSources(directory: string): Promise<void> {
 function commandIds(raw: unknown, field: "playsound_mapping" | "bedrock_id"): Record<string, string> {
   const entries: Record<string, string> = {};
   for (const [id, value] of Object.entries(object(raw, field))) {
-    const target = object(value, id)[field];
+    const row = object(value, id);
+    if (field === "bedrock_id" && ("level_event" in row || "particle_type" in row)) continue;
+    const target = row[field];
     if (typeof target !== "string" || target === "") continue;
     if (field === "bedrock_id" && !target.startsWith("minecraft:")) continue;
     if (field === "playsound_mapping" && !/^[a-z0-9_.]+$/.test(target)) continue;
