@@ -13,8 +13,12 @@ export interface BedrockStartOptions {
   world?: string;
   /** ベータAPIを有効にするか（既定: true） */
   betaApis?: boolean;
+  /** 製品の出力検証用。level.dat の実験・コマンド設定を補わない（world が必須） */
+  worldSettings?: "preserve";
+  /** 検証パックの準備待ち。起動失敗の検証で短縮する */
+  bridgeReadyTimeoutMs?: number;
   /** チャンクを読み込ませておく範囲（x, z の最小・最大）。既定は 0..63 */
-  tickingArea?: [number, number, number, number];
+  tickingArea?: [number, number, number, number] | false;
 }
 
 export interface BedrockResponse<T = unknown> {
@@ -35,7 +39,7 @@ function readManifest(dir: string): Manifest {
   return JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as Manifest;
 }
 
-async function writeProperties(dir: string, level: string): Promise<void> {
+async function writeProperties(dir: string, level: string, allowCheats = true): Promise<void> {
   const file = join(dir, "server.properties");
   let text = readFileSync(file, "utf8");
   const set = (key: string, value: string): void => {
@@ -43,7 +47,7 @@ async function writeProperties(dir: string, level: string): Promise<void> {
     text = re.test(text) ? text.replace(re, `${key}=${value}`) : `${text}\n${key}=${value}`;
   };
   set("level-name", level);
-  set("allow-cheats", "true");
+  set("allow-cheats", String(allowCheats));
   set("online-mode", "false");
   set("allow-list", "false");
   set("enable-lan-visibility", "false");
@@ -94,6 +98,7 @@ export class BedrockServer {
   }
 
   static async start(opts: BedrockStartOptions = {}): Promise<BedrockServer> {
+    if (opts.worldSettings === "preserve" && !opts.world) throw new Error("preserve requires an input world");
     const lock = new DirLock(paths.bedrockServer);
     lock.acquire();
     try {
@@ -139,6 +144,8 @@ export class BedrockServer {
     const merged = [...existing.filter((e) => !refs.some((r) => r.pack_id === e.pack_id)), ...refs];
     writeFileSync(refsPath, JSON.stringify(merged, null, 2));
 
+    if (opts.worldSettings === "preserve") return;
+
     // ベータAPIとコマンドの許可
     const datPath = join(worldDir, "level.dat");
     const dat = readBedrockLevelDat(new Uint8Array(readFileSync(datPath)));
@@ -158,7 +165,10 @@ export class BedrockServer {
   /** 準備済みのワールドでサーバーを起動し、検証パックと読み込み範囲が使えるまで待つ。 */
   private static async spawn(opts: BedrockStartOptions, lock: DirLock): Promise<BedrockServer> {
     const dir = paths.bedrockServer;
-    await writeProperties(dir, LEVEL);
+    const allowCheats = opts.worldSettings === "preserve"
+      ? readBedrockLevelDat(new Uint8Array(readFileSync(join(dir, "worlds", LEVEL, "level.dat")))).root.tag.value.get("cheatsEnabled")?.value === 1
+      : true;
+    await writeProperties(dir, LEVEL, allowCheats);
     const proc = new ServerProcess("./bedrock_server", [], {
       cwd: dir,
       env: { LD_LIBRARY_PATH: "." },
@@ -167,7 +177,9 @@ export class BedrockServer {
     const server = new BedrockServer(proc, lock, opts);
     try {
       await proc.waitFor((l) => l.includes("Server started"), 120_000, "bedrock server start");
-      await proc.waitFor((l) => l.includes("JE2BE_READY"), 60_000, "bridge pack ready");
+      await proc.waitFor((l) => l.includes("JE2BE_READY"), opts.bridgeReadyTimeoutMs ?? 60_000, "bridge pack ready");
+
+      if (opts.tickingArea === false) return server;
 
       const [x0, z0, x1, z1] = opts.tickingArea ?? [0, 0, 63, 63];
       proc.write(`tickingarea add ${x0} 0 ${z0} ${x1} 0 ${z1} je2be`);
@@ -179,6 +191,7 @@ export class BedrockServer {
       return server;
     } catch (e) {
       proc.kill();
+      await proc.exited;
       throw e;
     }
   }

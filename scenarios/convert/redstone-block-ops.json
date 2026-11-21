@@ -22,5 +22,6 @@
       { "from": [10, -60, 20], "to": [13, -60, 22] },
       { "from": [6, -59, 2] }
     ]
-  }
+  },
+  "requiredObservations": ["blocks"]
 }

@@ -25,5 +25,6 @@
     { "run": "setblock 2 -60 1 minecraft:redstone_block" },
     { "ticks": 5 }
   ],
-  "observe": { "scores": ["t"], "entityTags": ["probe"] }
+  "observe": { "scores": ["t"], "entityTags": ["probe"] },
+  "requiredObservations": ["scores.t", "entities"]
 }
