@@ -1,0 +1,5 @@
+{
+  "format_version": 2,
+  "header": { "name": "Custom dust PoC", "description": "Dust appearance experiment", "uuid": "8118d4b8-f7a5-413a-8d47-107ad8b4a703", "version": [0, 1, 0], "min_engine_version": [1, 26, 60] },
+  "modules": [{ "type": "resources", "uuid": "8118d4b8-f7a5-413a-8d47-107ad8b4a704", "version": [0, 1, 0] }]
+}

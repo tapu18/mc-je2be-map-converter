@@ -1,0 +1,41 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Custom particle PoC",
+    "description": "起動口のPoC（scriptevent とカスタムコマンド）",
+    "uuid": "8118d4b8-f7a5-413a-8d47-107ad8b4a701",
+    "version": [
+      0,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      60
+    ]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "8118d4b8-f7a5-413a-8d47-107ad8b4a702",
+      "version": [
+        0,
+        1,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.12.0-beta"
+    },
+    {
+      "module_name": "@minecraft/server-gametest",
+      "version": "1.0.0-beta"
+    }
+  ]
+}

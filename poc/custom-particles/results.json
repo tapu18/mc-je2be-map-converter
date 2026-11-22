@@ -1,0 +1,133 @@
+{
+  "runs": [
+    [
+      {
+        "event": "handler",
+        "tick": 22,
+        "result": "ReferenceError: Native function [Dimension::spawnParticle] cannot be used in restricted execution."
+      },
+      {
+        "event": "deferred",
+        "tick": 22,
+        "handlerTick": 22,
+        "result": "ok"
+      },
+      {
+        "event": "sample",
+        "count": 1,
+        "targeted": "ok",
+        "elapsedMs": 1,
+        "tick": 24,
+        "nextTick": 25,
+        "nextMs": 48,
+        "tickIntervalMs": 50
+      },
+      {
+        "event": "sample",
+        "count": 100,
+        "targeted": "ok",
+        "elapsedMs": 8,
+        "tick": 27,
+        "nextTick": 28,
+        "nextMs": 47,
+        "tickIntervalMs": 50
+      },
+      {
+        "event": "sample",
+        "count": 1000,
+        "targeted": "ok",
+        "elapsedMs": 32,
+        "tick": 30,
+        "nextTick": 31,
+        "nextMs": 47,
+        "tickIntervalMs": 49
+      }
+    ],
+    [
+      {
+        "event": "handler",
+        "tick": 33,
+        "result": "ReferenceError: Native function [Dimension::spawnParticle] cannot be used in restricted execution."
+      },
+      {
+        "event": "deferred",
+        "tick": 33,
+        "handlerTick": 33,
+        "result": "ok"
+      },
+      {
+        "event": "sample",
+        "count": 1,
+        "targeted": "ok",
+        "elapsedMs": 0,
+        "tick": 35,
+        "nextTick": 36,
+        "nextMs": 48,
+        "tickIntervalMs": 50
+      },
+      {
+        "event": "sample",
+        "count": 100,
+        "targeted": "ok",
+        "elapsedMs": 8,
+        "tick": 38,
+        "nextTick": 39,
+        "nextMs": 48,
+        "tickIntervalMs": 50
+      },
+      {
+        "event": "sample",
+        "count": 1000,
+        "targeted": "ok",
+        "elapsedMs": 36,
+        "tick": 41,
+        "nextTick": 42,
+        "nextMs": 47,
+        "tickIntervalMs": 49
+      }
+    ],
+    [
+      {
+        "event": "handler",
+        "tick": 43,
+        "result": "ReferenceError: Native function [Dimension::spawnParticle] cannot be used in restricted execution."
+      },
+      {
+        "event": "deferred",
+        "tick": 43,
+        "handlerTick": 43,
+        "result": "ok"
+      },
+      {
+        "event": "sample",
+        "count": 1,
+        "targeted": "ok",
+        "elapsedMs": 0,
+        "tick": 44,
+        "nextTick": 45,
+        "nextMs": 50,
+        "tickIntervalMs": 51
+      },
+      {
+        "event": "sample",
+        "count": 100,
+        "targeted": "ok",
+        "elapsedMs": 4,
+        "tick": 47,
+        "nextTick": 48,
+        "nextMs": 50,
+        "tickIntervalMs": 51
+      },
+      {
+        "event": "sample",
+        "count": 1000,
+        "targeted": "ok",
+        "elapsedMs": 34,
+        "tick": 49,
+        "nextTick": 50,
+        "nextMs": 47,
+        "tickIntervalMs": 49
+      }
+    ]
+  ]
+}
