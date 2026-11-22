@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { rewriteCommand, textFormatFor, type MappingTables } from "@je2be/core";
 import { loadRewriteContext } from "@je2be/converter";
+import { applyVerdicts } from "./compatibility-verdicts.ts";
 import { attachCorpus } from "./compatibility-corpus.ts";
 import { executableShapes, methods, probeShape, registries, rowKey, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
 
@@ -12,6 +13,7 @@ const { values } = parseArgs({ options: {
   commands: { type: "string" },
   definitions: { type: "string" },
   previous: { type: "string" },
+  verdicts: { type: "string" },
 } });
 if (!values.out || Boolean(values.commands) !== Boolean(values.definitions)) {
   throw new Error("Usage: npm run ledger:compatibility -- --out DIR [--commands PRIVATE.jsonl --definitions PRIVATE.jsonl] [--previous LEDGER.jsonl]");
@@ -118,6 +120,7 @@ for (const [family, kind] of [["click", "Click"], ["hover", "Hover"]] as const) 
 
 const corpus = values.commands && values.definitions
   ? await attachCorpus(rows, { commands: values.commands, definitions: values.definitions }, context) : null;
+const overrides = applyVerdicts(rows, values.verdicts ?? join(root, "docs/compatibility-verdicts.jsonl"));
 const sorted = [...rows.keys()].sort().map(key => rows.get(key)!);
 const jsonLines = (items: readonly unknown[]) => items.map(item => JSON.stringify(item) + "\n").join("");
 const percent = (n: number, d: number) => d ? (100 * n / d).toFixed(2) + "%" : "—";
@@ -188,11 +191,11 @@ function diff(previous: string) {
   return { added, removed, changed };
 }
 
-const changes = values.previous ? diff(values.previous) : undefined;
+const changes = { ...(values.previous ? diff(values.previous) : { added: [], removed: [], changed: [] }), overrides };
 mkdirSync(values.out, { recursive: true });
 writeFileSync(join(values.out, "compatibility.jsonl"), jsonLines(sorted));
 writeFileSync(join(values.out, "compatibility-summary.md"), summary());
 writeFileSync(join(values.out, "compatibility-sources.json"), JSON.stringify({
   schemaVersion: 1, java: versions.java, bedrock: versions.bedrock, geyser: mappings.source, corpus,
 }, null, 2) + "\n");
-if (changes) writeFileSync(join(values.out, "compatibility-diff.json"), JSON.stringify(changes, null, 2) + "\n");
+writeFileSync(join(values.out, "compatibility-diff.json"), JSON.stringify(changes, null, 2) + "\n");
