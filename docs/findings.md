@@ -261,3 +261,13 @@ Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観�
 ### ランタイム用パーサ・文法・対応表の読み込み（#141）
 
 Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込んだ PoC は BDS 1.26.63.1 で3回とも初回コマンドをパースできた。起動要求からパースまで 602 / 783 / 613 ms、スクリプト内の JSON.parse は 159 / 193 / 178 ms、パックの圧縮前合計は 12,624,623 bytes。測定範囲・環境と限界は [PoC](../poc/runtime-load/README.md)、記録は [results.json](../poc/runtime-load/results.json)。
+
+### 独自粒子の Script API 呼び出し（#147）
+
+固定 BDS 1.26.63.1 で `poc/custom-particles/custom-particles.servers.test.ts` を実行し、
+`results.json` に３反復を記録した。カスタムコマンドのハンドラ内の
+`Dimension.spawnParticle` は restricted execution の例外となり、`system.run` 内の呼び出しは
+同じ tick に例外なく戻った。GameTest の試験用プレイヤーに対する `Player.spawnParticle` も
+例外なく戻った。サーバーの成否は粒子の実表示、対象外プレイヤーへの非表示、距離や `force` の
+再現を示さない。測定はパックなしでの API 呼び出しであり、リソースの読み込み・見た目を検証しない。
+`results.json` の時間はこの環境での単発測定であり、一般的な性能保証ではない。
