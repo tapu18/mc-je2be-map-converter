@@ -124,11 +124,29 @@ function probeArgument(name: string, node: CommandTreeNode): string | undefined 
   return Object.hasOwn(examples, parser) ? examples[parser] : undefined;
 }
 
-export function probeShape(context: RewriteContext, id: string, path: { name: string; node: CommandTreeNode }[]): Verdict {
+/** One representative command and one-at-a-time numeric boundary variants for a shape.
+ * Missing argument types are explicit: callers must not count a partial command as a probe. */
+export function shapeProbes(path: { name: string; node: CommandTreeNode }[]): { commands: string[]; missing: string[] } {
   const parts = path.map(({ name, node }) => node.type === "literal" ? name : probeArgument(name, node));
+  const missing = [...new Set(path.flatMap(({ node }, i) => parts[i] === undefined ? [node.parser ?? "<missing parser>"] : []))];
+  if (missing.length) return { commands: [], missing };
+  const commands = new Set([parts.join(" ")]);
+  for (const [i, { node }] of path.entries()) {
+    if (!node.parser || !["brigadier:integer", "brigadier:long", "brigadier:float", "brigadier:double"].includes(node.parser)) continue;
+    for (const bound of [node.properties?.min, node.properties?.max]) {
+      if (typeof bound !== "number" || !Number.isFinite(bound)) continue;
+      const variant = [...parts];
+      variant[i] = String(bound);
+      commands.add(variant.join(" "));
+    }
+  }
+  return { commands: [...commands], missing };
+}
+
+export function probeShape(context: RewriteContext, id: string, path: { name: string; node: CommandTreeNode }[]): Verdict {
   const source = "packages/core/src/command/rewrite.ts";
-  if (parts.includes(undefined)) return unknown(source, 112);
-  const probe = parts.join(" ");
+  const probe = shapeProbes(path).commands[0];
+  if (probe === undefined) return unknown(source, 112);
   const parsed = context.parser.parse(probe);
   if (!parsed.ok || terminalShape(context.parser.root, parsed.nodes) !== id) return unknown(source, 112);
   const result = rewriteCommand(probe, context);

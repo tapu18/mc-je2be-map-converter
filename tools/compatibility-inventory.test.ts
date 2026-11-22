@@ -1,6 +1,17 @@
 import { expect, it } from "vitest";
 import { CommandParser, type CommandTreeNode } from "@je2be/core";
-import { executableShapes, terminalShape } from "./compatibility-inventory.ts";
+import { executableShapes, shapeProbes, terminalShape } from "./compatibility-inventory.ts";
+
+it("generates numeric boundary probes without silently dropping unknown arguments", () => {
+  const path: { name: string; node: CommandTreeNode }[] = [
+    { name: "test", node: { type: "literal" } },
+    { name: "count", node: { type: "argument", parser: "brigadier:integer", properties: { min: 1, max: 5 } } },
+    { name: "enabled", node: { type: "argument", parser: "brigadier:bool" } },
+  ];
+  expect(shapeProbes(path)).toEqual({ commands: ["test 1 true", "test 5 true"], missing: [] });
+  expect(shapeProbes([...path, { name: "x", node: { type: "argument", parser: "unknown" } }]))
+    .toEqual({ commands: [], missing: ["unknown"] });
+});
 
 it("enumerates executable report nodes and joins nested commands and aliases to those keys", () => {
   const tree: CommandTreeNode = {
