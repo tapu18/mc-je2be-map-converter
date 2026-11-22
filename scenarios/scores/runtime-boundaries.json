@@ -1,0 +1,38 @@
+{
+  "description": "偽プレイヤー名、UUID 文字列とゼロ除算の境界",
+  "setup": [
+    "scoreboard objectives add t dummy",
+    "scoreboard objectives add divisor dummy"
+  ],
+  "actions": [
+    {
+      "run": "scoreboard players set #hidden t 12"
+    },
+    {
+      "run": "scoreboard players set abcdefghijabcdefghijabcdefghijabcdefghij t 40"
+    },
+    {
+      "run": "scoreboard players set xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx t 41"
+    },
+    {
+      "run": "scoreboard players set xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx t 256"
+    },
+    {
+      "run": "scoreboard players set 12345678-1234-1234-1234-123456789abc t 36"
+    },
+    {
+      "run": "scoreboard players set dividend t 7"
+    },
+    {
+      "run": "scoreboard players set #zero divisor 0"
+    },
+    {
+      "run": "scoreboard players operation dividend t /= #zero divisor"
+    }
+  ],
+  "observe": {
+    "scores": [
+      "t"
+    ]
+  }
+}
