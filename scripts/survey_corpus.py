@@ -3,6 +3,7 @@
 Never publish the scratch JSONL. Input archives are opened read-only, never extracted.
 """
 import argparse, collections, gzip, io, json, re, sys, zipfile
+from contextlib import ExitStack
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import extract_command_blocks as ex
@@ -175,7 +176,7 @@ def geometry(z, base, cbs, count):
     count['comparator_command_block_pairs'] += pairs
 
 
-def packs(z, prefix, dv, emit, count, next_fn):
+def packs(z, prefix, dv, emit, count, next_fn, emit_definition=None):
     names = z.namelist()
     for name in names:
         if not name.startswith(prefix):
@@ -197,15 +198,17 @@ def packs(z, prefix, dv, emit, count, next_fn):
                         'predicates':'predicate','loot_table':'loot_table','loot_tables':'loot_table'}[m[1]]
             count[category + '.files'] += 1
             obj = read_json(z, name, count)
+            if emit_definition is not None:
+                emit_definition(category, obj)
             walk_json(obj, count, category)
             if category == 'loot_table' and isinstance(obj, dict):
                 count['loot_table.pools'] += len(obj.get('pools', []))
         if prefix and name.lower().endswith('.zip'):
             with zipfile.ZipFile(io.BytesIO(z.read(name))) as child:
-                packs(child, '', dv, emit, count, next_fn)
+                packs(child, '', dv, emit, count, next_fn, emit_definition)
 
 
-def scan(z, emit, count, next_fn):
+def scan(z, emit, count, next_fn, emit_definition=None):
     resources(z, count)
     names = z.namelist()
     levels = [n for n in names if n == 'level.dat' or n.endswith('/level.dat')]
@@ -224,7 +227,7 @@ def scan(z, emit, count, next_fn):
             if c['cmd'].strip():
                 emit({'source':'cb', 'cmd':c['cmd'], 'dataVersion':dv, 'packFormat':None})
                 count['nonempty_command_blocks'] += 1
-        packs(z, base + 'datapacks/', dv, world_emit, count, next_fn)
+        packs(z, base + 'datapacks/', dv, world_emit, count, next_fn, emit_definition)
         writes(cbs, [r['cmd'] for r in world_rows], count)
     if not levels and 'pack.mcmeta' in names and any(n.startswith('data/') for n in names):
         count['datapack_only'] += 1
@@ -232,7 +235,7 @@ def scan(z, emit, count, next_fn):
         def pack_emit(row):
             rows.append(row)
             emit(row)
-        packs(z, '', None, pack_emit, count, next_fn)
+        packs(z, '', None, pack_emit, count, next_fn, emit_definition)
         writes([], [r['cmd'] for r in rows], count)
         return
     # Recurse all embedded ZIPs for resource packs, but do not double-count world datapacks.
@@ -242,13 +245,14 @@ def scan(z, emit, count, next_fn):
                 if any(name.startswith(lv[:-len('level.dat')] + 'datapacks/') for lv in levels):
                     resources(child, count)
                 else:
-                    scan(child, emit, count, next_fn)
+                    scan(child, emit, count, next_fn, emit_definition)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('input', type=Path)
     ap.add_argument('--commands', required=True, type=Path)
+    ap.add_argument('--definitions', type=Path, help='private datapack JSONL for the compatibility ledger')
     args = ap.parse_args()
     paths = sorted(args.input.glob('*.zip')) if args.input.is_dir() else [args.input]
     if not paths:
@@ -256,12 +260,16 @@ def main():
     count = collections.Counter(archives=len(paths)); fid = [0]
     # Fail closed: no swallowed archive/NBT/JSON errors, no exception text with private data.
     try:
-        with args.commands.open('x', encoding='utf-8') as output:
+        with ExitStack() as files:
+            output = files.enter_context(args.commands.open('x', encoding='utf-8'))
+            definitions = files.enter_context(args.definitions.open('x', encoding='utf-8')) if args.definitions else None
             for i, path in enumerate(paths):
                 def emit(row):
                     output.write(json.dumps({'map':i, **row}, ensure_ascii=False) + '\n')
+                def emit_definition(category, obj):
+                    definitions.write(json.dumps({'map':i, 'category':category, 'definition':obj}, ensure_ascii=False) + '\n')
                 with zipfile.ZipFile(path) as z:
-                    scan(z, emit, count, fid)
+                    scan(z, emit, count, fid, emit_definition if definitions is not None else None)
     except Exception:
         raise SystemExit('Survey failed; inspect inputs locally. No complete aggregate was produced.') from None
     print(json.dumps(dict(sorted(count.items())), indent=2))
