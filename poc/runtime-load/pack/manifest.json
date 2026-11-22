@@ -1,0 +1,37 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "runtime load measurement",
+    "description": "起動口のPoC（scriptevent とカスタムコマンド）",
+    "uuid": "b2e83ed3-0c93-4b32-9441-928d10a255e1",
+    "version": [
+      0,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      60
+    ]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "84df1095-690b-470c-8a12-bad80f443d19",
+      "version": [
+        0,
+        1,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.12.0-beta"
+    }
+  ]
+}

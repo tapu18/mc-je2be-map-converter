@@ -257,3 +257,7 @@ Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観�
 | ゼロ除数による `/=` の後、被除数 7 は両版で変わらなかった | 同上。成否はこのシナリオでは比較していない |
 | 同じゼロ除算をコマンドブロックから実行すると、条件付き後続は Java では動かず BE では動いた | `scenarios/scores/zero-division-success.json` と Java 正解データ |
 | 固定 UUID を持つ防具立てに対し、その UUID 文字列でスコアを設定すると Java では実体に 7 が付いた。BE で防具立てと同じ文字列の保持者を作っても実体にはスコアが付かなかった | `scenarios/scores/uuid-holder.json` と Java 正解データ |
+
+### ランタイム用パーサ・文法・対応表の読み込み（#141）
+
+Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込んだ PoC は BDS 1.26.63.1 で3回とも初回コマンドをパースできた。起動要求からパースまで 602 / 783 / 613 ms、スクリプト内の JSON.parse は 159 / 193 / 178 ms、パックの圧縮前合計は 12,624,623 bytes。測定範囲・環境と限界は [PoC](../poc/runtime-load/README.md)、記録は [results.json](../poc/runtime-load/results.json)。

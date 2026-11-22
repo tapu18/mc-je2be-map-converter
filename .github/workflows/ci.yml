@@ -83,6 +83,9 @@ jobs:
       # EULAへの同意はリポジトリの所有者が承認済み（CLAUDE.md 参照）
       - if: steps.gate.outputs.run == 'true'
         run: npm run setup:servers
+      - name: 対応表の生成（runtime-load PoC）
+        if: steps.gate.outputs.run == 'true' && matrix.group == 'misc'
+        run: npm run setup:mappings
       - name: 実機テスト（${{ matrix.group }}）
         if: steps.gate.outputs.run == 'true'
         env:
