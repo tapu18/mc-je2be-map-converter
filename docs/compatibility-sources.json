@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "java": {
+    "version": "26.3",
+    "dataVersion": 5023,
+    "url": "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar",
+    "sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c"
+  },
+  "bedrock": {
+    "version": "1.26.63.1",
+    "url": "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.63.1.zip"
+  },
+  "geyser": {
+    "repository": "https://github.com/GeyserMC/mappings",
+    "revision": "e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7",
+    "javaVersion": "26.3",
+    "bedrockVersion": "1.26.60",
+    "sha256": {
+      "blocks.nbt": "efc9305b53fc170dd153eb417e003a61f2b17f924592892726ecffc3dce58536",
+      "items.json": "89ec17a95b005e5dac170d7834a18da79952c914e8f29201f6fe9a1cdb992179",
+      "sounds.json": "b5ce4ad1d345e75d1519049808b1d03a2ac303e48cfbe18d7dcd8bb6b8758bf9",
+      "particles.json": "3ac0ead88d6cf42f00da739ba8da228660ef3f2044ec3a2e8d53a80161428df8",
+      "LICENSE": "4f49de5134b13de98672e8f870aae5d36f5b415086fb1c6fdf832b78c47c7094",
+      "java-blocks.json": "7a0de8aaf7b04d00c40b8ffdc4cfe75184cff2e821d336a020573201867105a4"
+    }
+  },
+  "corpus": {
+    "archivesWithInput": 19,
+    "familyMaps": {
+      "advancement_trigger": 8,
+      "attribute": 4,
+      "click": 2,
+      "command": 16,
+      "component": 12,
+      "effect": 14,
+      "entity": 15,
+      "game_rule": 6,
+      "hover": 2,
+      "loot_condition": 6,
+      "loot_entry": 7,
+      "loot_function": 5,
+      "particle": 12,
+      "sound": 13
+    },
+    "definitionFiles": 1325,
+    "commands": {
+      "total": 115487,
+      "unavailable": 18924,
+      "macro": 3630,
+      "invalid": 58,
+      "unmatched": 605,
+      "matched": 92270,
+      "output": 14874,
+      "outputWithWarnings": 2550
+    }
+  }
+}
