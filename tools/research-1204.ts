@@ -1,6 +1,6 @@
 // #145: 非公開 JSONL を読み、コマンド本文を出さずに集計する。
 import { readFileSync } from "node:fs";
-import { CommandParser, type CommandTreeNode } from "@je2be/core";
+import { ARGUMENT_PARSERS, CommandParser, readResourceLocation, readSnbtCompound, type ArgumentParser, type CommandTreeNode } from "@je2be/core";
 import { loadRewriteContext, staticCommandCoverage } from "@je2be/converter";
 
 const input = process.argv[2];
@@ -25,6 +25,16 @@ const context = { ...base, parser: new CommandParser(JSON.parse(readFileSync(rep
 const statuses: Record<string, number> = {};
 const markers = { itemBraces: 0, itemComponents: 0, tagPath: 0, componentsPath: 0, textCommand: 0 };
 const parsedMarkers = { itemComponents: 0, tagPath: 0, componentsPath: 0, text: 0 };
+// 調査専用の旧アイテム引数。出力可能率には使わない。
+const originals = [ARGUMENT_PARSERS["minecraft:item_stack"]!, ARGUMENT_PARSERS["minecraft:item_predicate"]!];
+const legacyItem = (predicate: boolean): ArgumentParser => (r) => {
+  const tag = predicate && r.peek() === "#";
+  if (tag) r.skip();
+  const id = readResourceLocation(r);
+  if (r.peek() === "{") readSnbtCompound(r);
+  return predicate ? { kind: "itemPredicate", id, tag, alternatives: [] } : { kind: "item", id, tag: false, components: [] };
+};
+const legacyMarkers = { parsed: 0, itemBraces: 0, tagPath: 0, componentsPath: 0, text: 0 };
 let total = 0;
 for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
   const row = JSON.parse(line) as { dataVersion: number | null; source: "cb" | "fn"; cmd: string };
@@ -41,6 +51,21 @@ for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
       if (values.some(v => v?.kind === "nbtPath" && v.path.some(p => p.kind === "key" && p.key === "components"))) parsedMarkers.componentsPath++;
       if (values.some(v => v?.kind === "text")) parsedMarkers.text++;
     }
+    ARGUMENT_PARSERS["minecraft:item_stack"] = legacyItem(false);
+    ARGUMENT_PARSERS["minecraft:item_predicate"] = legacyItem(true);
+    try {
+      const legacy = context.parser.parse(row.cmd);
+      if (legacy.ok) {
+        legacyMarkers.parsed++;
+        if (legacy.nodes.some(n => (n.parser === "minecraft:item_stack" || n.parser === "minecraft:item_predicate") && row.cmd.slice(n.start, n.end).includes("{"))) legacyMarkers.itemBraces++;
+        if (legacy.nodes.some(n => n.value?.kind === "nbtPath" && n.value.path.some(p => p.kind === "key" && p.key === "tag"))) legacyMarkers.tagPath++;
+        if (legacy.nodes.some(n => n.value?.kind === "nbtPath" && n.value.path.some(p => p.kind === "key" && p.key === "components"))) legacyMarkers.componentsPath++;
+        if (legacy.nodes.some(n => n.value?.kind === "text")) legacyMarkers.text++;
+      }
+    } finally {
+      ARGUMENT_PARSERS["minecraft:item_stack"] = originals[0]!;
+      ARGUMENT_PARSERS["minecraft:item_predicate"] = originals[1]!;
+    }
   }
   // 表層一致の下限・候補数。文法解析できない行や文字列中の一致も含む。
   if (/\b(?:give|clear|item)\b[^\n]*\b(?:minecraft:)?[a-z_]+\s*\{/.test(row.cmd)) markers.itemBraces++;
@@ -49,4 +74,4 @@ for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
   if (/(?:^|[.\s])components(?:[.\[\s]|$)/.test(row.cmd)) markers.componentsPath++;
   if (/\b(?:tellraw|title|bossbar|team)\b/.test(row.cmd)) markers.textCommand++;
 }
-console.log(JSON.stringify({ shapes: { old: old.size, newer: newer.size, common, oldOnly: old.size - common, newOnly: newer.size - common }, total, statuses, parsedMarkers, markers }, null, 2));
+console.log(JSON.stringify({ shapes: { old: old.size, newer: newer.size, common, oldOnly: old.size - common, newOnly: newer.size - common }, total, statuses, parsedMarkers, legacyMarkers, markers }, null, 2));
