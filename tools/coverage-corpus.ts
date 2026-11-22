@@ -1,3 +1,4 @@
+import { corpusContext, type CorpusVersion } from "./corpus-grammar.ts";
 // dump_commands.py のJSONLを読む。出力は集計値と文法上の型だけ。
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -18,20 +19,19 @@ const statuses: StaticStatus[] = ["unchanged", "rewritten", "unsupported", "inva
 const routes: PlannedRoute[] = ["native-candidate", "runtime-required", "unresolved"];
 const empty = () => ({ total: 0, warnings: 0, statuses: Object.fromEntries(statuses.map(s => [s, 0])) as Record<StaticStatus, number>, routes: Object.fromEntries(routes.map(s => [s, 0])) as Record<PlannedRoute, number> });
 const all = empty();
+const differences = new Map<string, number>();
 const byMap = new Map<number, ReturnType<typeof empty>>();
 const bySource = new Map<string, ReturnType<typeof empty>>();
 const patterns = new Map<string, { cb: number; fn: number }>();
 for (const line of readFileSync(input, "utf8").split("\n").filter(s => s.trim())) {
-  const row = JSON.parse(line) as { map: number; source: "cb" | "fn"; cmd: string; dataVersion: number | null; packFormat: number | null };
+  const row = JSON.parse(line) as { map: number; source: "cb" | "fn"; cmd: string } & CorpusVersion;
   if (!Number.isSafeInteger(row.map) || !["cb", "fn"].includes(row.source) || typeof row.cmd !== "string") throw new Error("invalid corpus row");
-  const selection = selectCommandGrammar(grammars, { ...(row.dataVersion === null ? {} : { dataVersion: row.dataVersion }), ...(row.packFormat === null ? {} : { packFormat: row.packFormat }) });
-  let context: RewriteContext | undefined;
-  if (selection.ok) {
-    const g = selection.grammar;
-    context = contexts.get(g.version);
-    if (!context) { context = { ...base, parser: new CommandParser(loadGrammarTree(g), { textFormat: g.textFormat }) }; contexts.set(g.version, context); }
-  }
+  const chosen = corpusContext(row, row.cmd, grammars, base, contexts);
+  const context = chosen.context;
   const verdict = staticCommandCoverage(row.cmd, row.source, context);
+  if (chosen.different && verdict.status !== "macro") {
+    for (const key of ["全体", row.source, `map-${row.map}`]) differences.set(key, (differences.get(key) ?? 0) + 1);
+  }
   if (!byMap.has(row.map)) byMap.set(row.map, empty());
   if (!bySource.has(row.source)) bySource.set(row.source, empty());
   for (const tally of [all, byMap.get(row.map)!, bySource.get(row.source)!]) {
@@ -43,10 +43,10 @@ for (const line of readFileSync(input, "utf8").split("\n").filter(s => s.trim())
 const percent = (n: number, d: number) => d ? `${(100 * n / d).toFixed(2)}%` : "-";
 console.log("静的な行単位の出力可否。実行成功・チェーンの出力可否・クリア可能性ではない。ランタイムは未実装。\n");
 console.log(`ID対応とブロック既定値は固定JE ${fixed.java.version} の資材を使用。旧版のID・状態との差は未対応に含み得る。\n`);
-console.log("| 区分 | 行数 | 無変更で出力 | 書換で出力 | 未対応 | 構文不受理 | マクロ | 文法なし | パース成功率 | 出力可能率 | 警告あり |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+console.log("| 区分 | 行数 | 無変更で出力 | 書換で出力 | 未対応 | 構文不受理 | マクロ | 文法なし | 範囲内で結果が異なる | パース成功率 | 出力可能率 | 警告あり |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
 for (const [label, t] of [["全体", all], ...bySource, ...[...byMap].sort(([a], [b]) => a - b).map(([n, t]) => [`map-${n}`, t])] as [string, ReturnType<typeof empty>][]) {
   const s = t.statuses; const parsed = s.unchanged + s.rewritten + s.unsupported;
-  console.log(`| ${label} | ${t.total} | ${s.unchanged} | ${s.rewritten} | ${s.unsupported} | ${s.invalid} | ${s.macro} | ${s.unavailable} | ${percent(parsed, parsed + s.invalid)} | ${percent(s.unchanged + s.rewritten, t.total)} | ${t.warnings} |`);
+  console.log(`| ${label} | ${t.total} | ${s.unchanged} | ${s.rewritten} | ${s.unsupported} | ${s.invalid} | ${s.macro} | ${s.unavailable - (differences.get(label) ?? 0)} | ${differences.get(label) ?? 0} | ${percent(parsed, parsed + s.invalid)} | ${percent(s.unchanged + s.rewritten, t.total)} | ${t.warnings} |`);
 }
 console.log("\n設計上の経路（別集計、全行を分母）。関数は出力可能な行もランタイムへ。CBのnativeはチェーン確認前の候補。\n\n| 経路 | 行数 | 全行比 |\n| --- | ---: | ---: |");
 for (const route of routes) console.log(`| ${route} | ${all.routes[route]} | ${percent(all.routes[route], all.total)} |`);

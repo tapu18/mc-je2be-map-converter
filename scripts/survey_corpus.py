@@ -190,7 +190,7 @@ def packs(z, prefix, dv, emit, count, next_fn, emit_definition=None):
             if not rows:
                 count['empty_functions'] += 1
             for cmd in rows:
-                emit({'source':'fn', 'function':fid, 'cmd':cmd, 'dataVersion':dv, 'packFormat':pack_format(z, pack)})
+                emit({'source':'fn', 'function':fid, 'cmd':cmd, 'dataVersion':dv, 'packFormatRange':pack_format(z, pack)})
             count['function_lines'] += len(rows)
         m = re.search(r'/data/[^/]+/(advancements?|predicates?|loot_tables?)/.*\.json$', '/' + name)
         if m:
@@ -225,7 +225,7 @@ def scan(z, emit, count, next_fn, emit_definition=None):
             emit(row)
         for c in cbs:
             if c['cmd'].strip():
-                emit({'source':'cb', 'cmd':c['cmd'], 'dataVersion':dv, 'packFormat':None})
+                emit({'source':'cb', 'cmd':c['cmd'], 'dataVersion':dv, 'packFormatRange':None})
                 count['nonempty_command_blocks'] += 1
         packs(z, base + 'datapacks/', dv, world_emit, count, next_fn, emit_definition)
         writes(cbs, [r['cmd'] for r in world_rows], count)

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readPackFormatRange } from "./pack-format.ts";
 import { selectCommandGrammar, type CommandGrammar } from "./grammar.ts";
 import { textFormatFor } from "./version.ts";
 import { ARGUMENT_PARSERS } from "./arguments.ts";
@@ -41,5 +42,20 @@ describe("versioned command grammar selection", () => {
     for (const input of ["{text:'x'}", '{"text":"x",}', '{"text":"x"']) {
       expect(() => ARGUMENT_PARSERS["minecraft:component"]!(new StringReader(input), undefined, { textFormat: "json" })).toThrow();
     }
+  });
+});
+
+describe("pack format ranges", () => {
+  it.each([
+    [{ pack: { min_format: 107, max_format: 121 } }, { min: [107, 0], max: [121, 0] }],
+    [{ pack: { min_format: [107, 1], max_format: [121, 2] } }, { min: [107, 1], max: [121, 2] }],
+    [{ pack: { pack_format: 41 } }, { min: [41, 0], max: [41, 0] }],
+    [{ pack: { pack_format: 41, supported_formats: [41, 71] } }, { min: [41, 0], max: [71, 0] }],
+    [{ pack: { supported_formats: { min_inclusive: 41, max_inclusive: 71 } } }, { min: [41, 0], max: [71, 0] }],
+    [{ pack: { min_format: 71, max_format: 41 } }, undefined],
+  ])("reads %j", (input, expected) => expect(readPackFormatRange(input)).toEqual(expected));
+  it("selects only when all candidates agree", () => {
+    expect(selectCommandGrammar(catalog, { packFormatRange: { min: [41, 0], max: [41, 0] } })).toMatchObject({ ok: true });
+    expect(selectCommandGrammar(catalog, { packFormatRange: { min: [41, 0], max: [71, 0] } })).toMatchObject({ ok: false, reason: "ambiguous" });
   });
 });
