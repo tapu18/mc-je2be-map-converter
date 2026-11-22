@@ -1,0 +1,190 @@
+{
+  "description": "追加 execute 修飾句の座標・向き・高さ・条件と成功数",
+  "setup": [
+    "scoreboard objectives add probe dummy",
+    "data modify storage probe:result values set value {}",
+    "forceload add -16 0",
+    "summon armor_stand 12 -60 12 {Tags:[\"target\"],NoGravity:1b,Rotation:[90f,30f]}",
+    "setblock 20 70 20 stone",
+    "setblock 20 71 20 water",
+    "setblock 20 72 20 oak_leaves[persistent=true]",
+    "setblock 24 70 20 stone",
+    "setblock 25 70 20 dirt",
+    "setblock 28 70 20 stone",
+    "setblock 29 70 20 dirt",
+    "setblock 32 70 20 stone",
+    "setblock 33 70 20 gold_block",
+    "scoreboard players set #all_match probe -1",
+    "scoreboard players set #all_mismatch probe -1",
+    "scoreboard players set #masked_match probe -1",
+    "scoreboard players set #masked_mismatch probe -1",
+    "scoreboard players set #loaded probe -1",
+    "scoreboard players set #unloaded probe -1",
+    "scoreboard players set #overworld probe -1",
+    "scoreboard players set #not_nether probe -1",
+    "scoreboard players set #nether probe -1",
+    "setblock 30 70 20 gold_block",
+    "scoreboard players set #unloaded_if probe -1",
+    "scoreboard players set #wrong_dimension probe -1",
+    "scoreboard players set #all_diff probe -1",
+    "scoreboard players set #masked_diff probe -1"
+  ],
+  "datapack": {
+    "functions": {
+      "probe:align_xyz": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.align_xyz set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.align_xyz_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:align_xz": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.align_xz set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.align_xz_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:facing_feet": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.facing_feet set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.facing_feet_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:facing_eyes": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.facing_eyes set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.facing_eyes_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:rotated_as": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.rotated_as set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.rotated_as_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:positioned_as": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.positioned_as set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.positioned_as_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:world_surface": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.world_surface set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.world_surface_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:motion_blocking": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.motion_blocking set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.motion_blocking_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:motion_blocking_no_leaves": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.motion_blocking_no_leaves set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.motion_blocking_no_leaves_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ],
+      "probe:ocean_floor": [
+        "summon marker ~ ~ ~ {Tags:[\"capture\"]}",
+        "tp @e[type=marker,tag=capture,limit=1] ~ ~ ~ ~ ~",
+        "data modify storage probe:result values.ocean_floor set from entity @e[type=marker,tag=capture,limit=1] Pos",
+        "data modify storage probe:result values.ocean_floor_rotation set from entity @e[type=marker,tag=capture,limit=1] Rotation",
+        "kill @e[type=marker,tag=capture]"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "execute positioned -1.2 -59.3 8.7 align xyz run function probe:align_xyz"
+    },
+    {
+      "run": "execute positioned -1.2 -59.3 8.7 align xz run function probe:align_xz"
+    },
+    {
+      "run": "execute positioned 8 -60 8 facing entity @e[type=armor_stand,tag=target,limit=1] feet run function probe:facing_feet"
+    },
+    {
+      "run": "execute positioned 8 -60 8 facing entity @e[type=armor_stand,tag=target,limit=1] eyes run function probe:facing_eyes"
+    },
+    {
+      "run": "execute rotated as @e[type=armor_stand,tag=target,limit=1] run function probe:rotated_as"
+    },
+    {
+      "run": "execute positioned as @e[type=armor_stand,tag=target,limit=1] run function probe:positioned_as"
+    },
+    {
+      "run": "execute positioned 20 0 20 positioned over world_surface run function probe:world_surface"
+    },
+    {
+      "run": "execute positioned 20 0 20 positioned over motion_blocking run function probe:motion_blocking"
+    },
+    {
+      "run": "execute positioned 20 0 20 positioned over motion_blocking_no_leaves run function probe:motion_blocking_no_leaves"
+    },
+    {
+      "run": "execute positioned 20 0 20 positioned over ocean_floor run function probe:ocean_floor"
+    },
+    {
+      "run": "execute store result score #all_match probe run execute if blocks 24 70 20 25 70 20 28 70 20 all"
+    },
+    {
+      "run": "execute store result score #all_mismatch probe run execute if blocks 24 70 20 25 70 20 32 70 20 all"
+    },
+    {
+      "run": "execute store result score #masked_match probe run execute if blocks 24 70 20 26 70 20 28 70 20 masked"
+    },
+    {
+      "run": "execute store result score #masked_mismatch probe run execute unless blocks 24 70 20 25 70 20 32 70 20 masked"
+    },
+    {
+      "run": "execute store result score #loaded probe run execute if loaded 8 -60 8"
+    },
+    {
+      "run": "execute store result score #unloaded probe run execute unless loaded 1000000 0 1000000"
+    },
+    {
+      "run": "execute store result score #overworld probe run execute if dimension minecraft:overworld"
+    },
+    {
+      "run": "execute store result score #not_nether probe run execute unless dimension minecraft:the_nether"
+    },
+    {
+      "run": "execute store result score #nether probe run execute in minecraft:the_nether if dimension minecraft:the_nether"
+    },
+    {
+      "run": "execute store result score #unloaded_if probe run execute if loaded 1000000 0 1000000"
+    },
+    {
+      "run": "execute store result score #wrong_dimension probe run execute if dimension minecraft:the_nether"
+    },
+    {
+      "run": "execute store result score #all_diff probe run execute unless blocks 24 70 20 25 70 20 32 70 20 all"
+    },
+    {
+      "run": "execute store result score #masked_diff probe run execute if blocks 24 70 20 25 70 20 32 70 20 masked"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "probe:result"
+    ],
+    "scores": [
+      "probe"
+    ]
+  },
+  "requiredObservations": [
+    "storage.probe:result",
+    "scores.probe"
+  ],
+  "bedrockPending": "M2 の execute とデータパック実行は未実装（#98・#102）"
+}

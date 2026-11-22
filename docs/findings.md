@@ -242,3 +242,9 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 ## schedule の保存・再起動（#123）
 
 Java 26.3 の [schedule-restart](../scenarios/datapack/schedule-restart.json) では、100 tick 後の関数を予約して 30 tick 進め、保存・停止して同じワールドを再起動した。再起動直後とさらに 50 tick 後は未実行、100 tick 後には実行済みだった（[記録](../scenarios/datapack/schedule-restart.java.json)）。予約時と関数の実行時のゲーム内時刻の差は 100 tick だった。したがって、この実験では停止前に進めた 30 tick を含め、予定は予約時からのゲーム内 tick を維持していた。再起動直後の残り時間は 50 tick より長く 100 tick 以下だった。起動中にも tick が進むため、再起動直後の正確な残り tick 数や長期停止中の実時間の影響はこの実験では測っていない。
+
+## execute の追加修飾句（#134）
+
+Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観測した（[正解データ](../scenarios/datapack/execute-extra.java.json)）。負座標の `align xyz` は [-2, -60, 8]、`align xz` は [-2, -59.3, 8] になった。防具立てへの `facing entity` は feet と eyes で pitch が異なり、`rotated as` は対象の [90, 30]、`positioned as` は対象の位置を得た。
+
+石・水・葉を積んだ列で `positioned over` の高さは world_surface と motion_blocking が 73、motion_blocking_no_leaves が 72、ocean_floor が 73 だった。この配置に限る観測である。`if blocks` は一致した2ブロックで all・masked とも結果 2、空気を含む範囲では masked が対応先の非空気を無視した。不一致、読み込み外チャンク、ディメンションの条件も同シナリオに記録した。
