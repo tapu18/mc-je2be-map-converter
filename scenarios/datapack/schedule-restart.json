@@ -1,16 +1,21 @@
 {
   "description": "保存と再起動をまたぐ schedule の残り時間",
   "setup": [
-    "data modify storage m2:probe trace set value []"
+    "data modify storage m2:probe trace set value []",
+    "scoreboard objectives add timing dummy"
   ],
   "datapack": {
     "functions": {
       "m2:probe/fire": [
-        "data modify storage m2:probe trace append value \"fired\""
+        "data modify storage m2:probe trace append value \"fired\"",
+        "execute store result score #fire timing run time query gametime"
       ]
     }
   },
   "actions": [
+    {
+      "run": "execute store result score #start timing run time query gametime"
+    },
     {
       "run": "schedule function m2:probe/fire 100t append"
     },
@@ -34,11 +39,26 @@
     },
     {
       "run": "data modify storage m2:probe after_100 set from storage m2:probe trace"
+    },
+    {
+      "run": "scoreboard players operation #elapsed timing = #fire timing"
+    },
+    {
+      "run": "scoreboard players operation #elapsed timing -= #start timing"
+    },
+    {
+      "run": "scoreboard players reset #fire timing"
+    },
+    {
+      "run": "scoreboard players reset #start timing"
     }
   ],
   "observe": {
     "storage": [
       "m2:probe"
+    ],
+    "scores": [
+      "timing"
     ]
   },
   "bedrockPending": "M2 のデータパック実行が未実装"
