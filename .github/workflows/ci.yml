@@ -9,7 +9,7 @@ on:
     - cron: "23 18 * * *" # 03:23 JST
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
