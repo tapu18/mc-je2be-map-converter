@@ -2,17 +2,7 @@
 
 Java版（JE）の配布ワールドを統合版（BE）で遊べる形に変換するコンバータ。地形は既存の変換器に任せ、コマンドブロック・データパック・Java専用エンティティの移植を担う。
 
-- 設計の正本: `docs/design.md`（`docs/design-notes.md` は初期の検討メモ。食い違えば design.md を優先）
-- 実測で判明した事実: `docs/findings.md`
-- 正解データのシナリオの書き方: `docs/scenarios.md`
-- Java コマンドの追加検証と警告レポート: `docs/command-validation.md`
-- 版別コマンド文法の生成・選択と実測: `docs/command-versions.md`
-- PoC の書き方と共通の小道具: `docs/poc.md`
-- 配布マップの静的な出力可否と設計上の経路: `docs/static-coverage.md`（`npm run coverage:corpus`。実行成功率ではない）
-- 配布マップの追加調査（NBTパス・関数単位の静的出力可否・コンパレーター・パック機能）: `docs/corpus-survey.md`（#15）
-- 配布マップのコマンドの型の頻度と、M1 の検証用マップに入れる型: `docs/corpus-patterns.md`
-- ID対応表の入手元・ライセンス比較と検証案: `docs/id-mapping-sources.md`（Geyser 採用承認済み。表示は `THIRD_PARTY_NOTICES.md`）
-- 作業の管理: GitHub の Issue・マイルストーン・PR（https://github.com/tapu18/mc-je2be-map-converter）。手順は `docs/workflow.md`
+- 文書の入口: [docs/README.md](docs/README.md)（設計・実測・開発手順の索引）
 - 開発は複数のAIエージェントが並行して進める。人は `needs-approval` の判断、段階の関門での承認、実クライアントでのプレイ確認を担う
 
 ## 構成
@@ -75,13 +65,13 @@ TypeScriptはNodeで直接実行する（型除去）。そのため enum、name
 
 ## 手順の落とし穴
 
-M0 で実際に起きた失敗。どれも手順書に書いただけで仕組みにはしていないため、読み落とすと再発する。将来は `tools/` のスクリプトにまとめる候補（未着手）。
+M0 で実際に起きた失敗と、その守り方。
 
-| 落とし穴 | 起きたこと | 守り方 | スクリプト化の候補 |
+| 落とし穴 | 起きたこと | 守り方 | 補足 |
 | --- | --- | --- | --- |
-| 積み上げた PR の base ブランチを先に消す | 上に積んでいた #17 が自動でクローズされた | 下の PR を `--delete-branch` なしでマージ → 上の PR の base を main に → 下のブランチを削除（`docs/workflow.md` 3節） | `tools/merge-pr.sh` |
-| push 直後に CI を待つ | CI が未登録で `gh pr checks --watch` がすぐ終わり、#28 を CI 前にマージした | `tools/wait-pr-ci.sh <PR番号>` で待つ | `tools/merge-pr.sh` に組み込む |
-| 新しい worktree でパックをビルドしていない | BDS の起動待ちでタイムアウトした（ブリッジは今はエラーで知らせる） | worktree を作ったら `npm ci && npm run setup:servers && npm run build:pack` | `tools/new-worktree.sh <Issue番号>` |
+| 積み上げた PR の base ブランチを先に消す | 上に積んでいた #17 が自動でクローズされた | `tools/merge-pr.sh <PR番号>` | 上の PR の base を変更してから削除 |
+| push 直後に CI を待つ | CI が未登録で `gh pr checks --watch` がすぐ終わり、#28 を CI 前にマージした | `tools/merge-pr.sh <PR番号>` で CI を待ってマージ | 単独で待つ場合は `tools/wait-pr-ci.sh` |
+| 新しい worktree でパックをビルドしていない | BDS の起動待ちでタイムアウトした（ブリッジは今はエラーで知らせる） | `tools/new-worktree.sh <Issue番号>` | 初期化に失敗した場合は worktree で再実行 |
 | RCON の応答を信じる | 長い応答が黙って切れ、記録が欠けた（#18 で修正） | Java の RCON の癖（`docs/findings.md`）を踏まえる。1コマンド 1,446 バイトまで | 修正済み（`packages/bridge/src/rcon.ts`） |
 | `pkill -f` で自分を止める | パターンがシェル自身のコマンドラインに一致し、シェルごと終了した | プロセスの停止はスクリプトファイルに書いて実行するか、PID を指定する | — |
 | 実行ごとに揺れる結果を固定する | #18 のテストが3回に1回失敗した | 新しい実機テストは3回流してから PR を出す。揺れる性質は期待値にしない | — |

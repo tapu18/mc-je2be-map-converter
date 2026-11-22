@@ -1,3 +1,4 @@
+import { cleanupMerged } from './agent-runner/cleanup.ts';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile, rename, open, unlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -222,7 +223,11 @@ async function main() {
       if (day !== state.day) { state.day = day; state.runs = 0; await save(); }
       if (await runManager(false)) return;
       for (const task of state.tasks) {
-        if (task.phase === 'done') continue;
+        if (task.phase === 'done') {
+          try { await cleanupMerged(task, root, stateDir, config.repo, config.base); }
+          catch (error) { log(`#${task.issue} 片付けを保留: ${String(error)}`); }
+          continue;
+        }
         const item = await issue(task.issue);
         if (item.state === 'CLOSED') { log(`#${task.issue} 完了（Issue はクローズ済み）`); task.phase = 'done'; await save(); continue; }
         if (task.phase !== 'claiming' && activeClaims(item.comments)[0] !== task.claim) {
