@@ -248,3 +248,11 @@ Java 26.3 の [schedule-restart](../scenarios/datapack/schedule-restart.json) �
 Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観測した（[正解データ](../scenarios/datapack/execute-extra.java.json)）。負座標の `align xyz` は [-2, -60, 8]、`align xz` は [-2, -59.3, 8] になった。防具立てへの `facing entity` は feet と eyes で pitch が異なり、`rotated as` は対象の [90, 30]、`positioned as` は対象の位置を得た。
 
 石・水・葉を積んだ列で `positioned over` の高さは world_surface と motion_blocking が 73、motion_blocking_no_leaves が 72、ocean_floor が 73 だった。この配置に限る観測である。`if blocks` は一致した2ブロックで all・masked とも結果 2、空気を含む範囲では masked が対応先の非空気を無視した。不一致、読み込み外チャンク、ディメンションの条件も同シナリオに記録した。
+
+### スコア保持者とゼロ除算（#140）
+
+| 実測 | 根拠 |
+| --- | --- |
+| Java 26.3 と BDS 1.26.63.1 で、`#hidden`、英字40・41文字、UUID形式の36文字を文字列の保持者として設定すると、記録した値は一致した。これは名前の最大長や、実在するエンティティとの対応を示さない | `scenarios/scores/runtime-boundaries.json` と Java 正解データ |
+| ゼロ除数による `/=` の後、被除数 7 は両版で変わらなかった | 同上。成否はこのシナリオでは比較していない |
+| 同じゼロ除算をコマンドブロックから実行すると、条件付き後続は Java では動かず BE では動いた | `scenarios/scores/zero-division-success.json` と Java 正解データ |
