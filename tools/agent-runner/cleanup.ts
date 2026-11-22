@@ -18,19 +18,21 @@ export async function cleanupMerged(task: Task, root: string, stateDir: string, 
   await git(['fetch', 'origin', base]);
   try { await git(['merge-base', '--is-ancestor', merged.headRefOid, `origin/${base}`]); } catch { return false; }
   const trees = await git(['worktree', 'list', '--porcelain']);
-  const tree = trees.split('\n\n').find(entry => entry.split('\n').includes(`worktree ${task.worktree}`));
+  const entries = trees.split('\n\n');
+  const tree = entries.find(entry => entry.split('\n').includes(`worktree ${task.worktree}`));
+  if (entries.some(entry => entry !== tree && entry.split('\n').includes(`branch refs/heads/${task.branch}`))) return false;
+  let local: string | undefined;
+  try { local = (await git(['rev-parse', '--verify', `refs/heads/${task.branch}`])).trim(); } catch { /* already removed */ }
+  if (local && local !== merged.headRefOid) return false;
+  const remote = (await git(['ls-remote', '--heads', 'origin', `refs/heads/${task.branch}`])).trim().split(/\s+/)[0];
+  if (remote && remote !== merged.headRefOid) return false;
   if (tree) {
     if (!tree.split('\n').includes(`branch refs/heads/${task.branch}`) || /\nlocked(?: |\n)/.test(tree)) return false;
     if ((await git(['status', '--porcelain', '--ignored'], task.worktree)).trim()) return false;
     if ((await git(['rev-parse', 'HEAD'], task.worktree)).trim() !== merged.headRefOid) return false;
     await git(['worktree', 'remove', task.worktree]);
   }
-  let local: string | undefined;
-  try { local = (await git(['rev-parse', '--verify', `refs/heads/${task.branch}`])).trim(); } catch { /* already removed */ }
-  if (local && local !== merged.headRefOid) return false;
   if (local) await git(['update-ref', '-d', `refs/heads/${task.branch}`, merged.headRefOid]);
-  const remote = (await git(['ls-remote', '--heads', 'origin', `refs/heads/${task.branch}`])).trim().split(/\s+/)[0];
-  if (remote && remote !== merged.headRefOid) return false;
   if (remote) await git(['push', 'origin', `--force-with-lease=refs/heads/${task.branch}:${merged.headRefOid}`, `:refs/heads/${task.branch}`]);
   return true;
 }
