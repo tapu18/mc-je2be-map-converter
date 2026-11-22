@@ -1,0 +1,13 @@
+{
+  "java": "26.3",
+  "state": {
+    "storage": {
+      "m2:probe": {
+        "result": {
+          "nether": 1,
+          "overworld": 1
+        }
+      }
+    }
+  }
+}

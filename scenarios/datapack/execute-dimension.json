@@ -1,0 +1,32 @@
+{
+  "description": "ディメンションごとの同じ座標にあるブロックを区別する",
+  "setup": [
+    "data modify storage m2:probe result set value {}"
+  ],
+  "datapack": {
+    "functions": {}
+  },
+  "actions": [
+    {
+      "run": "execute in minecraft:the_nether run forceload add 8 8"
+    },
+    {
+      "run": "execute in minecraft:the_nether run setblock 8 80 8 minecraft:gold_block"
+    },
+    {
+      "run": "execute in minecraft:overworld run setblock 8 80 8 minecraft:diamond_block"
+    },
+    {
+      "run": "execute in minecraft:the_nether if block 8 80 8 minecraft:gold_block run data modify storage m2:probe result.nether set value 1"
+    },
+    {
+      "run": "execute in minecraft:overworld if block 8 80 8 minecraft:diamond_block run data modify storage m2:probe result.overworld set value 1"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:probe"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

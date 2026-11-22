@@ -1,0 +1,42 @@
+{
+  "description": "storage のリスト操作、フィルター、削除、scale と条件",
+  "setup": [
+    "data modify storage m2:probe list set value [{id:1,v:10},{id:2,v:20},{id:1,v:30}]"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:probe/noop": [
+        "return 1"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "data modify storage m2:probe list prepend value {id:0,v:5}"
+    },
+    {
+      "run": "data modify storage m2:probe list insert 2 value {id:3,v:15}"
+    },
+    {
+      "run": "data modify storage m2:probe selected set from storage m2:probe list[{id:1}]"
+    },
+    {
+      "run": "data modify storage m2:probe last set from storage m2:probe list[-1].v"
+    },
+    {
+      "run": "execute store result storage m2:probe scaled int 1 run data get storage m2:probe list[1].v 0.5"
+    },
+    {
+      "run": "execute if data storage m2:probe list[{id:2}] run data modify storage m2:probe found set value 1b"
+    },
+    {
+      "run": "data remove storage m2:probe list[{id:1}]"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:probe"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

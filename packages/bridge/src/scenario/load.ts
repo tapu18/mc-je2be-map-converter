@@ -24,6 +24,10 @@ export function loadScenarios(dir = scenariosDir): Scenario[] {
     .sort()
     .map((p) => {
       const s = { ...(JSON.parse(readFileSync(p, "utf8")) as Scenario), id: relative(dir, p).replace(/\.json$/, "") };
+      if (s.play?.some((a) => "restart" in a) || s.bedrock?.actions?.some((a) => "restart" in a)
+        || (s.actions.some((a) => "restart" in a) && !s.bedrockPending)) {
+        throw new Error(`${s.id}: restart は bedrockPending の actions 専用`);
+      }
       if (s.bedrockPending !== undefined) {
         if (typeof s.bedrockPending !== "string" || !s.bedrockPending.trim() || s.bedrock || s.play || s.knownDiffs) {
           throw new Error(`${s.id}: bedrockPending には理由が必要。bedrock、play、knownDiffs との併用はできない`);

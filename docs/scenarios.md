@@ -31,6 +31,7 @@ Java版サーバーで実行した結果を正解として記録し、BE で実�
 - `run`：コマンドを1つ実行する。Java では誤り（`Unknown or incomplete command` など）があればシナリオの失敗になる。
 - `commandBlocks`：コマンドブロックを置く。`kind` は `impulse` / `chain` / `repeat`、`facing` は Java の向きの名前。`alwaysActive` の既定は true。
 - `ticks`：tick を進める。Java は `/tick freeze` の状態から `/tick step` で決定的に進む。BE は実時間で待つ（止められない）。
+- `restart: true`：Java を保存・停止して同じワールドを再起動し、再び tick を停止する。起動から停止までには tick が進み得るため、境界時刻の期待値には使わない。BE 未実行（`bedrockPending`）の `actions` 専用。
 - `observe`：比べる対象。スコアは目的変数ごと、ブロックは範囲、エンティティは指定のタグのどれかを持つものを「種類 タグ一覧」ごとに数える。
 - `bedrock`：BE で実行する内容を変える場合（変換器ができるまでの手書きの対応）。省略すると同じものを実行する。
 - `play`：変換を通すシナリオ（#61）。書くと、Java で `setup` と `actions` まで行ったワールドを保存して変換器（`convertWorld`：コマンドブロックのコマンドの書き換え＋Chunker＋エンティティとスコアの初期化パック）に通し、BE はその変換後のワールドから `play` を行う。Java は同じセッションのまま `play` を続ける。BE の操作を変えたいときは `bedrock` ではなく変換器を直す（`bedrock` とは併用できない）。例は `scenarios/convert/`

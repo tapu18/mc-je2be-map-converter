@@ -1,0 +1,52 @@
+{
+  "description": "execute の座標・向き・条件・ディメンション",
+  "setup": [
+    "data modify storage m2:probe result set value {}",
+    "summon marker 8 -60 8 {Tags:[\"target\"]}",
+    "setblock 8 -61 8 minecraft:stone"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:probe/yes": [
+        "return 1"
+      ],
+      "m2:probe/no": [
+        "return fail"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "execute as @e[type=marker,tag=target,limit=1] at @s positioned ^ ^ ^1 rotated 90 0 positioned ^ ^ ^1 run setblock ~ ~ ~ minecraft:gold_block"
+    },
+    {
+      "run": "execute positioned 8 -60 8 facing 10 -60 8 anchored eyes positioned ^ ^ ^1 run setblock ~ ~ ~ minecraft:diamond_block"
+    },
+    {
+      "run": "execute in minecraft:the_nether run data modify storage m2:probe result.dimension set value 1"
+    },
+    {
+      "run": "execute if entity @e[type=marker,tag=target] unless block 8 -61 8 minecraft:dirt if function m2:probe/yes unless function m2:probe/no if data storage m2:probe result run data modify storage m2:probe result.conditions set value 1"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:probe"
+    ],
+    "blocks": [
+      {
+        "from": [
+          6,
+          -60,
+          7
+        ],
+        "to": [
+          11,
+          -58,
+          11
+        ]
+      }
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}
