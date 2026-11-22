@@ -109,6 +109,10 @@ const examples: Record<string, string> = {
   "minecraft:entity_anchor": "feet", "minecraft:swizzle": "xyz", "minecraft:gamemode": "survival",
   "minecraft:operation": "+=", "minecraft:objective_criteria": "dummy", "minecraft:scoreboard_slot": "sidebar",
   "minecraft:int_range": "1", "minecraft:particle": "minecraft:flame",
+  "minecraft:float_range": "1", "minecraft:uuid": "00000000-0000-0000-0000-000000000000",
+  "minecraft:resource_location": "minecraft:probe", "minecraft:slot_source": "container.0",
+  "minecraft:template_rotation": "none", "minecraft:template_mirror": "none",
+  "minecraft:team": "probe", "minecraft:team_color": "red",
 };
 
 function probeArgument(name: string, node: CommandTreeNode): string | undefined {
