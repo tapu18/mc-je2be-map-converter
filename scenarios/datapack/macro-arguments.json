@@ -1,0 +1,42 @@
+{
+  "description": "直接指定、storage・entity・block のマクロ引数と欠落キー",
+  "setup": [
+    "data modify storage m2:probe trace set value []",
+    "summon marker 8 -60 8 {Tags:[\"macro_source\"],data:{value:42}}",
+    "setblock 9 -60 8 minecraft:chest",
+    "data merge block 9 -60 8 {CustomName:'\"chest\"'}"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:probe/macro": [
+        "$data modify storage m2:probe trace append value \"$(value)\""
+      ],
+      "m2:probe/block": [
+        "$data modify storage m2:probe block_x set value $(x)"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "function m2:probe/macro {value:12.5d}"
+    },
+    {
+      "run": "function m2:probe/macro {value:\"hello world\"}"
+    },
+    {
+      "run": "function m2:probe/macro with entity @e[type=marker,tag=macro_source,limit=1] data"
+    },
+    {
+      "run": "function m2:probe/block with block 9 -60 8"
+    },
+    {
+      "run": "execute store success storage m2:probe missing int 1 run function m2:probe/macro {other:1}"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:probe"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

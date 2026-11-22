@@ -22,6 +22,8 @@ export type Action =
   | { run: string }
   /** 指定 tick だけ進める。Java は /tick step で決定的に、BE は実時間で待つ */
   | { ticks: number }
+  /** Java の保存済みワールドを再起動する。BE 未実行シナリオ専用 */
+  | { restart: true }
   /** コマンドブロックを置く。Java は setblock、BE は .mcstructure で置く */
   | { commandBlocks: ScenarioCommandBlock[] };
 

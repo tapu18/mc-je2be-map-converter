@@ -1,0 +1,17 @@
+{
+  "java": "26.3",
+  "state": {
+    "storage": {
+      "m2:probe": {
+        "trace": [
+          "fired"
+        ],
+        "after_restart": [],
+        "after_50": [],
+        "after_100": [
+          "fired"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "description": "保存と再起動をまたぐ schedule の残り時間",
+  "setup": [
+    "data modify storage m2:probe trace set value []"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:probe/fire": [
+        "data modify storage m2:probe trace append value \"fired\""
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "schedule function m2:probe/fire 100t append"
+    },
+    {
+      "ticks": 30
+    },
+    {
+      "restart": true
+    },
+    {
+      "run": "data modify storage m2:probe after_restart set from storage m2:probe trace"
+    },
+    {
+      "ticks": 50
+    },
+    {
+      "run": "data modify storage m2:probe after_50 set from storage m2:probe trace"
+    },
+    {
+      "ticks": 50
+    },
+    {
+      "run": "data modify storage m2:probe after_100 set from storage m2:probe trace"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:probe"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}
