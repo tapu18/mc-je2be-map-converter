@@ -1,5 +1,7 @@
 # JE→BE 配布ワールド変換コンバータ 検討メモ
 
+初期案の検討経緯と当時の選択肢を参照するために保存する履歴資料。現在の方針・決定は [design.md](design.md) が正本であり、ここにある推奨や未決事項を現状として扱わない。
+
 2026-11-10 時点 / 原本: https://claude.ai/artifact/YMoJVawWXCp3jJfaV9fogL
 
 ## 概要と結論
