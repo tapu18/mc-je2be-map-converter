@@ -253,6 +253,7 @@ Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観�
 
 | 実測 | 根拠 |
 | --- | --- |
-| Java 26.3 と BDS 1.26.63.1 で、`#hidden`、英字40・41文字、UUID形式の36文字を文字列の保持者として設定すると、記録した値は一致した。これは名前の最大長や、実在するエンティティとの対応を示さない | `scenarios/scores/runtime-boundaries.json` と Java 正解データ |
+| Java 26.3 と BDS 1.26.63.1 で、`#hidden`、英字40・41・256文字、UUID形式の36文字を文字列の保持者として設定すると、記録した値は一致した。これは名前の最大長や、実在するエンティティとの対応を示さない | `scenarios/scores/runtime-boundaries.json` と Java 正解データ |
 | ゼロ除数による `/=` の後、被除数 7 は両版で変わらなかった | 同上。成否はこのシナリオでは比較していない |
 | 同じゼロ除算をコマンドブロックから実行すると、条件付き後続は Java では動かず BE では動いた | `scenarios/scores/zero-division-success.json` と Java 正解データ |
+| 固定 UUID を持つ防具立てに対し、その UUID 文字列でスコアを設定すると Java では実体に 7 が付いた。BE で防具立てと同じ文字列の保持者を作っても実体にはスコアが付かなかった | `scenarios/scores/uuid-holder.json` と Java 正解データ |
