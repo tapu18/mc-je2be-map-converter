@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import { command, CommandError } from './agent-runner/process.ts';
-import { agentArguments, AgentLaunchError } from './agent-runner/agent.ts';
+import { agentArguments, AgentLaunchError, failedBeforeWork, validateWorkerArgs } from './agent-runner/agent.ts';
 import { followProgress } from './agent-runner/progress.ts';
 import { managerConfig, managerDue, managerPrompt, managerReport } from './agent-runner/manager.ts';
 import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
@@ -61,6 +61,7 @@ async function main() {
   if (process.platform === 'win32') throw new Error('Use Linux/macOS (or WSL): process-group termination is required.');
   const input: unknown = JSON.parse(await readFile(resolve(values.config!), 'utf8'));
   const config = validateConfig(input);
+  validateWorkerArgs(config.agentArgs);
   const agentArgs = agentArguments(config.agent, config.agentArgs);
   const managerArgs = config.manager.enabled ? agentArguments(config.manager.agent, config.manager.agentArgs) : [];
   const root = (await command('git', ['rev-parse', '--show-toplevel'], { cwd: process.cwd() })).trim();
@@ -205,7 +206,8 @@ async function main() {
       } catch (error) {
         task.error = String(error);
         log(task.error);
-        if ((error instanceof CommandError && error.exitCode === 2) ||
+        if ((error instanceof CommandError && (error.exitCode === 2 ||
+              (error.exitCode !== null && await failedBeforeWork(logfile)))) ||
             ['ENOENT', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) {
           // Invalid invocation / missing executable is infrastructure failure, not work.
           task.attempts--;

@@ -20,7 +20,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerLog?: string[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -71,6 +71,7 @@ if (tool === 'git') {
     if (d.managerFails) process.exitCode = 1;
   } else {
     if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
+    if (d.workerLog) { for (const line of d.workerLog) out(line); writeFileSync(file, JSON.stringify(d)); process.exit(1); }
     out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
     if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
   }
@@ -216,6 +217,40 @@ it('stops the loop on CLI startup errors, shows diagnostics and refunds the atte
   await f.update(d => { d.launchFails = false; });
   await f.run();
   expect((await f.load()).prs).toHaveLength(1);
+});
+
+it('refunds a structured CLI failure before work and stops with its diagnostic', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.update(d => { d.workerLog = [
+    JSON.stringify({ type: 'thread.started', thread_id: 'test' }),
+    JSON.stringify({ type: 'turn.failed', error: { message: "The ' gpt-6.1-terra' model is not supported when using Codex with a ChatGPT account." } }),
+  ]; });
+  await expect(f.run()).rejects.toThrow('AI CLI could not start');
+  const state = await f.state();
+  expect(state.runs).toBe(0);
+  expect(state.tasks[0].attempts).toBe(0);
+  expect(state.tasks[0].error).toContain('model is not supported');
+  expect((await f.load()).issues[0]!.labels.some(label => label.name === 'status:blocked')).toBe(false);
+});
+
+it('counts a failure after work and refunds an early error event', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.update(d => { d.workerLog = [JSON.stringify({ type: 'item.completed', item: { type: 'command_execution' } }), JSON.stringify({ type: 'turn.failed' })]; });
+  await f.run();
+  expect((await f.state()).runs).toBe(1);
+  await f.update(d => { d.workerLog = [JSON.stringify({ type: 'error', message: 'authentication failed' })]; });
+  await expect(f.run()).rejects.toThrow('AI CLI could not start');
+  expect((await f.state()).runs).toBe(1);
+  expect((await f.state()).tasks[0].attempts).toBe(1);
+});
+
+it.each([['--model', ' bad'], ['--model=bad '], ['--model', "'bad'"], ['--model']])('rejects invalid model arguments before starting: %s', async (...args) => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agentArgs: args }));
+  await expect(f.run()).rejects.toThrow('Invalid --model value');
+  await expect(access(join(f.root, '.git'))).rejects.toThrow();
 });
 
 it('runs PM with independent agent/args and report, persists schedule, then resumes worker tasks', async () => {
