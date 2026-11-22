@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { selectCommandGrammar, type MappingTables } from "@je2be/core";
+import { writeWorldZip } from "./zip.ts";
 import { convertWorld } from "./convert.ts";
 import { GEYSER_SOURCE } from "./geyser-source.ts";
 import { loadJavaGrammars } from "./java-grammars.ts";
@@ -27,7 +27,7 @@ export function checkedOutputPaths(input: string, output: string, report?: strin
 
 export function packageMcworld(world: string, output: string): void {
   if (existsSync(output)) throw new Error("archive output exists");
-  execFileSync("python3", [fileURLToPath(new URL("./mcworld-zip.py", import.meta.url)), world, output], { stdio: "pipe", timeout: 600_000 });
+  writeWorldZip(world, output);
 }
 
 /** CLI用。原本をコピーして変換し、レポートと新規の出力だけを作る。 */
