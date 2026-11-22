@@ -155,7 +155,7 @@ function summary(): string {
   if (corpus) {
     const t = corpus.commands;
     lines.push("", `入力があったアーカイブ ${corpus.archivesWithInput} 本、進捗・predicate・ルートテーブル定義 ${corpus.definitionFiles} ファイル。`,
-      `全 ${t.total} 行のうち、版選択不能 ${t.unavailable}、マクロ ${t.macro}、構文不受理 ${t.invalid}、パース済みで形が対応づかない ${t.unmatched}。`,
+      `全 ${t.total} 行のうち、版選択不能 ${t.unavailable}、範囲内で結果が異なる ${t.different}、マクロ ${t.macro}、構文不受理 ${t.invalid}、パース済みで形が対応づかない ${t.unmatched}。`,
       `形が対応づいた ${t.matched} 行で書き換え器が出力したのは ${t.output} 行（${percent(t.output, t.matched)}、全入力の ${percent(t.output, t.total)}）。うち警告付き ${t.outputWithWarnings} 行。`);
     for (const [field, label] of [["lines", "行数"], ["definitions", "定義ファイル数"]] as const) {
       lines.push("", `## 未調査の頻度上位20件（${label}）`, "", `| 族 | 項目 | ${label} | 作品数 |`, "| --- | --- | ---: | ---: |");

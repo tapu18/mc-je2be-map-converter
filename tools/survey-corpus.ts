@@ -1,3 +1,4 @@
+import { corpusContext, type CorpusVersion } from "./corpus-grammar.ts";
 // #15: private JSONL in, aggregate JSON out. Never print command text or author IDs.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -40,16 +41,11 @@ function main(input: string) {
   const inc = (key: string) => { counts[key] = (counts[key] ?? 0) + 1; };
   const path = (category: string, value: string) => { const key = `${category}: ${value}`; paths.set(key, (paths.get(key) ?? 0) + 1); };
   for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
-    const row = JSON.parse(line) as { source: "cb" | "fn"; cmd: string; dataVersion: number | null; packFormat: number | null; function?: number };
-    const selection = selectCommandGrammar(grammars, { ...(row.dataVersion === null ? {} : { dataVersion: row.dataVersion }), ...(row.packFormat === null ? {} : { packFormat: row.packFormat }) });
-    let context: RewriteContext | undefined;
-    if (selection.ok) {
-      const g = selection.grammar;
-      context = contexts.get(g.version);
-      if (!context) { context = { ...base, parser: new CommandParser(loadGrammarTree(g), { textFormat: g.textFormat }) }; contexts.set(g.version, context); }
-    }
+    const row = JSON.parse(line) as { source: "cb" | "fn"; cmd: string; function?: number } & CorpusVersion;
+    const chosen = corpusContext(row, row.cmd, grammars, base, contexts);
+    const context = chosen.context;
     const verdict = staticCommandCoverage(row.cmd, row.source, context);
-    inc(`${row.source}.${verdict.status}`);
+    inc(`${row.source}.${chosen.different && verdict.status !== "macro" ? "different" : verdict.status}`);
     functions.push({ ...(row.function === undefined ? {} : { function: row.function }), status: verdict.status });
     if (verdict.status === "macro" || !context) continue;
     const parsed = context.parser.parse(row.cmd);
