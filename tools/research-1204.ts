@@ -24,6 +24,7 @@ const base = loadRewriteContext({ commandsJson: "servers/reports-26.3/reports/co
 const context = { ...base, parser: new CommandParser(JSON.parse(readFileSync(report("1.20.4"), "utf8")) as CommandTreeNode, { textFormat: "json" }) };
 const statuses: Record<string, number> = {};
 const markers = { itemBraces: 0, itemComponents: 0, tagPath: 0, componentsPath: 0, textCommand: 0 };
+const parsedMarkers = { itemComponents: 0, tagPath: 0, componentsPath: 0, text: 0 };
 let total = 0;
 for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
   const row = JSON.parse(line) as { dataVersion: number | null; source: "cb" | "fn"; cmd: string };
@@ -31,6 +32,16 @@ for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
   total++;
   const status = staticCommandCoverage(row.cmd, row.source, context).status;
   statuses[status] = (statuses[status] ?? 0) + 1;
+  if (status !== "macro") {
+    const parsed = context.parser.parse(row.cmd);
+    if (parsed.ok) {
+      const values = parsed.nodes.map(n => n.value);
+      if (values.some(v => v?.kind === "item" && v.components.length > 0 || v?.kind === "itemPredicate" && v.alternatives.length > 0)) parsedMarkers.itemComponents++;
+      if (values.some(v => v?.kind === "nbtPath" && v.path.some(p => p.kind === "key" && p.key === "tag"))) parsedMarkers.tagPath++;
+      if (values.some(v => v?.kind === "nbtPath" && v.path.some(p => p.kind === "key" && p.key === "components"))) parsedMarkers.componentsPath++;
+      if (values.some(v => v?.kind === "text")) parsedMarkers.text++;
+    }
+  }
   // 表層一致の下限・候補数。文法解析できない行や文字列中の一致も含む。
   if (/\b(?:give|clear|item)\b[^\n]*\b(?:minecraft:)?[a-z_]+\s*\{/.test(row.cmd)) markers.itemBraces++;
   if (/\b(?:give|clear|item)\b[^\n]*\b(?:minecraft:)?[a-z_]+\s*\[/.test(row.cmd)) markers.itemComponents++;
@@ -38,4 +49,4 @@ for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
   if (/(?:^|[.\s])components(?:[.\[\s]|$)/.test(row.cmd)) markers.componentsPath++;
   if (/\b(?:tellraw|title|bossbar|team)\b/.test(row.cmd)) markers.textCommand++;
 }
-console.log(JSON.stringify({ shapes: { old: old.size, newer: newer.size, common, oldOnly: old.size - common, newOnly: newer.size - common }, total, statuses, markers }, null, 2));
+console.log(JSON.stringify({ shapes: { old: old.size, newer: newer.size, common, oldOnly: old.size - common, newOnly: newer.size - common }, total, statuses, parsedMarkers, markers }, null, 2));
