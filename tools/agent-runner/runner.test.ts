@@ -20,7 +20,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -65,9 +65,15 @@ if (tool === 'git') {
     process.exit(2);
   }
   let prompt = ''; for await (const chunk of process.stdin) prompt += chunk;
-  if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
-  out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
-  if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
+  if (prompt.includes('の PM 巡回です')) {
+    (d.managerPrompts ??= []).push(prompt);
+    out({type:'item.completed', item:{type:'agent_message',text:'PM報告: 次は #7。承認待ちを確認しました。'}});
+    if (d.managerFails) process.exitCode = 1;
+  } else {
+    if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
+    out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
+    if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
+  }
 } else throw Error('Unexpected executable ' + tool);
 writeFileSync(file, JSON.stringify(d));
 if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode = 1;
@@ -86,7 +92,11 @@ if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode =
     throw new Error(`${error.message}\nstdout: ${error.stdout}\nstderr: ${error.stderr}\nsignal: ${error.signal}; code: ${error.code}`);
   });
   const state = async () => JSON.parse(await readFile(join(root, '.git', 'agent-runner', 'state.json'), 'utf8'));
-  return { root, config, run, load, update, state };
+  const updateState = async (fn: (d: any) => void) => {
+    const d = await state(); fn(d);
+    await writeFile(join(root, '.git', 'agent-runner', 'state.json'), JSON.stringify(d));
+  };
+  return { root, config, run, load, update, state, updateState };
 }
 
 it('dry-run only reads; excludes other claims and unclosed dependencies', async () => {
@@ -206,4 +216,68 @@ it('stops the loop on CLI startup errors, shows diagnostics and refunds the atte
   await f.update(d => { d.launchFails = false; });
   await f.run();
   expect((await f.load()).prs).toHaveLength(1);
+});
+
+it('runs PM with independent agent/args and report, persists schedule, then resumes worker tasks', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: {
+    enabled: true, agent: 'claude', agentArgs: ['--model', 'manager-model'], instructions: 'M1の依存を優先',
+  } }));
+  const result = await f.run();
+  expect(result.stdout).toContain('[PM]');
+  expect((await f.state()).runs).toBe(0);
+  expect((await f.state()).manager.runs).toBe(1);
+  expect((await f.state()).tasks).toHaveLength(0);
+  const calls = (await f.load()).calls;
+  expect(calls.filter(call => call[0] === 'claude')).toHaveLength(1);
+  expect(calls.find(call => call[0] === 'claude')).toContain('manager-model');
+  expect((await f.load()).managerPrompts![0]).toContain('M1の依存を優先');
+  expect(await readFile(join(f.root, '.git', 'agent-runner', 'manager-latest.md'), 'utf8')).toContain('PM報告');
+  await f.run(); // Claim work instead of starting PM again.
+  await f.run(); // Run codex worker.
+  expect((await f.load()).calls.filter(call => call[0] === 'claude')).toHaveLength(1);
+  expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
+  expect((await f.state()).runs).toBe(1);
+});
+
+it('runs PM early when no work is available, with cooldown and an independent daily cap', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, maxRunsPerDay: 2 } }));
+  await f.update(d => { d.issues[0]!.labels = [{ name: 'needs-approval' }]; });
+  await f.run();
+  await f.updateState(d => { d.manager.lastStartedAt -= 3_700_000; d.manager.lastFinishedAt -= 3_700_000; });
+  const idle = await f.run();
+  expect(idle.stdout).toContain('着手可能な作業なし');
+  expect((await f.state()).manager.runs).toBe(2);
+  await f.updateState(d => { d.manager.lastStartedAt = 0; d.manager.lastFinishedAt = 0; });
+  await f.run();
+  expect((await f.load()).managerPrompts).toHaveLength(2);
+  await f.updateState(d => { d.manager.day = '2000-01-01'; d.runs = 12; });
+  await f.run();
+  expect((await f.state()).manager.runs).toBe(1);
+  expect((await f.state()).runs).toBe(12);
+  expect((await f.load()).managerPrompts).toHaveLength(3);
+});
+
+it('keeps PM schedule after failure and stops/refunds startup failures without claiming work', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true } }));
+  await f.update(d => { d.launchFails = true; });
+  await expect(f.run()).rejects.toThrow('PM CLI could not start');
+  expect((await f.state()).manager).toBeUndefined();
+  expect((await f.state()).tasks).toHaveLength(0);
+  await f.update(d => { d.launchFails = false; d.managerFails = true; });
+  await f.run();
+  expect((await f.state()).manager.error).toContain('exit 1');
+  expect((await f.state()).manager.runs).toBe(1);
+  await f.run(); // Cooldown prevents another PM attempt; normal claim is allowed.
+  expect((await f.load()).managerPrompts).toHaveLength(1);
+});
+
+it('reports PM configuration during dry-run without starting either role', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, agent: 'claude' } }));
+  expect((await f.run('--dry-run')).stdout).toContain('PM: claude');
+  await expect(access(join(f.root, '.git'))).rejects.toThrow();
+  expect((await f.load()).calls.some(call => ['codex', 'claude'].includes(call[0]!))).toBe(false);
 });
