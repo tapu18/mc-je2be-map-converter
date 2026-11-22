@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { unzipSync, strFromU8 } from "fflate";
 import { gzipSync } from "node:zlib";
 import { writeNbt } from "@je2be/core";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -31,8 +31,9 @@ it("packages files at the world root with Unicode paths and never overwrites an 
   writeFileSync(join(world, "db", "日本語.ldb"), "fixture database");
   const output = join(dir, "result.mcworld");
   packageMcworld(world, output);
-  const entries = execFileSync("python3", ["-c", "import zipfile,sys,json\nwith zipfile.ZipFile(sys.argv[1]) as z: print(json.dumps({n:z.read(n).decode() for n in z.namelist()}))", output], { encoding: "utf8" });
-  expect(JSON.parse(entries)).toEqual({ "level.dat": "fixture level", "db/日本語.ldb": "fixture database" });
+  const entries = unzipSync(readFileSync(output));
+  expect(Object.fromEntries(Object.entries(entries).map(([name, data]) => [name, strFromU8(data)]))).toEqual({ "level.dat": "fixture level", "db/日本語.ldb": "fixture database" });
+  expect(readFileSync(join(world, "level.dat"), "utf8")).toBe("fixture level");
   const before = readFileSync(output);
   expect(() => packageMcworld(world, output)).toThrow(/exists/);
   expect(readFileSync(output)).toEqual(before);

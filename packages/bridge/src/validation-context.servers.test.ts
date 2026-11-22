@@ -1,5 +1,5 @@
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { writeWorldZip } from "@je2be/converter/zip";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -38,7 +38,7 @@ it("uses ZIP and directory definitions identically and preserves a saved world's
     }
     cpSync(join(dir, "first"), join(dir, "world/datapacks/first"), { recursive: true });
     const zip = join(dir, "first.zip");
-    execFileSync("python3", ["-c", "import pathlib,sys,zipfile\np=pathlib.Path(sys.argv[1])\nwith zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED) as z:\n for f in p.rglob('*'):\n  if f.is_file(): z.write(f, f.relative_to(p))", join(dir, "first"), zip]);
+    writeWorldZip(join(dir, "first"), zip);
     const originalZip = readFileSync(zip);
     const directory = await inspectJavaSyntax(commands, { datapacks: [join(dir, "first")] });
     const zipped = await inspectJavaSyntax(commands, { datapacks: [zip] });
