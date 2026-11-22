@@ -13,6 +13,14 @@ it("generates numeric boundary probes without silently dropping unknown argument
     .toEqual({ commands: [], missing: ["unknown"] });
 });
 
+it("generates inline probes and registry-specific values for supported arguments", () => {
+  const argument = (parser: string, properties?: Record<string, unknown>): { name: string; node: CommandTreeNode } =>
+    ({ name: "value", node: { type: "argument", parser, ...(properties ? { properties } : {}) } });
+  expect(shapeProbes([argument("minecraft:context_int_provider")]).commands).toEqual(['{type:"minecraft:constant",value:1}']);
+  expect(shapeProbes([argument("minecraft:resource", { registry: "minecraft:attribute" })]).commands).toEqual(["minecraft:max_health"]);
+  expect(shapeProbes([argument("minecraft:resource", { registry: "minecraft:unknown" })]).missing).toEqual(["minecraft:resource"]);
+});
+
 it("enumerates executable report nodes and joins nested commands and aliases to those keys", () => {
   const tree: CommandTreeNode = {
     type: "root", children: {

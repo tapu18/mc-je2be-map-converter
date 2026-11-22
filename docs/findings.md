@@ -261,3 +261,7 @@ Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観�
 ### ランタイム用パーサ・文法・対応表の読み込み（#141）
 
 Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込んだ PoC は BDS 1.26.63.1 で3回とも初回コマンドをパースできた。起動要求からパースまで 602 / 783 / 613 ms、スクリプト内の JSON.parse は 159 / 193 / 178 ms、パックの圧縮前合計は 12,624,623 bytes。測定範囲・環境と限界は [PoC](../poc/runtime-load/README.md)、記録は [results.json](../poc/runtime-load/results.json)。
+
+### コマンド形の候補（#112）
+
+Java 26.3 で `node tools/shape-java-audit.ts /tmp/shape-java-audit-112.json` を実行し、1,424 形の 1,520 候補を関数の読み込みで判定した。Java が 1,448 候補を受理し、パーサとの不一致は 72、パーサが到達した終端形の不一致は 0 だった。書き換えの結果は unsupported 1,298、unchanged 86、rewritten 136。Java の関数では使用できないコマンドや存在しない参照を含むため、この不一致数をパーサの欠陥数とは扱えない。BDS の全候補の構文判定は行っていない。

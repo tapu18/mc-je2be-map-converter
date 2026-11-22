@@ -159,6 +159,22 @@ const examples: Record<string, string> = {
   "minecraft:resource_location": "minecraft:probe", "minecraft:slot_source": "container.0",
   "minecraft:template_rotation": "none", "minecraft:template_mirror": "none",
   "minecraft:team": "probe", "minecraft:team_color": "red",
+  "minecraft:context_float_provider": '{type:"minecraft:constant",value:1.0}', "minecraft:context_int_provider": '{type:"minecraft:constant",value:1}',
+  "minecraft:function": "minecraft:probe", "minecraft:dialog": '{type:"minecraft:notice",title:"probe"}',
+  "minecraft:loot_predicate": '{type:"minecraft:random_chance",chance:1.0}', "minecraft:loot_modifier": '{type:"minecraft:set_count",count:1}',
+  "minecraft:loot_table": "minecraft:chests/simple_dungeon", "minecraft:item_slot": "container.0",
+  "minecraft:feature": "minecraft:oak", "minecraft:style": "{}", "minecraft:swing_animation": "whack",
+  "minecraft:resource_selector": "minecraft:probe", "minecraft:hex_color": "ffffff",
+};
+
+const registryExamples: Record<string, string> = {
+  "minecraft:advancement": "minecraft:story/root", "minecraft:worldgen/template_pool": "minecraft:empty",
+  "minecraft:worldgen/structure": "minecraft:village_plains", "minecraft:recipe": "minecraft:oak_planks",
+  "minecraft:attribute": "minecraft:max_health", "minecraft:damage_type": "minecraft:generic",
+  "minecraft:mob_effect": "minecraft:speed", "minecraft:enchantment": "minecraft:sharpness",
+  "minecraft:worldgen/biome": "minecraft:plains", "minecraft:entity_type": "minecraft:pig",
+  "minecraft:point_of_interest_type": "minecraft:home", "minecraft:world_clock": "minecraft:overworld",
+  "minecraft:timeline": "minecraft:overworld",
 };
 
 function probeArgument(name: string, node: CommandTreeNode): string | undefined {
@@ -169,6 +185,7 @@ function probeArgument(name: string, node: CommandTreeNode): string | undefined 
     return String(Math.min(max, Math.max(min, name === "count" ? 1 : 0)));
   }
   if (name === "sound" && parser.startsWith("minecraft:resource")) return "minecraft:entity.experience_orb.pickup";
+  if (typeof node.properties?.registry === "string" && registryExamples[node.properties.registry]) return registryExamples[node.properties.registry];
   if (node.properties?.registry === "minecraft:mob_effect") return "minecraft:speed";
   if (node.properties?.registry === "minecraft:time_marker") return "minecraft:day";
   return Object.hasOwn(examples, parser) ? examples[parser] : undefined;
