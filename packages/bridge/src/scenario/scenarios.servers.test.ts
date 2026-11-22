@@ -16,7 +16,13 @@ const servers = JSON.parse(readFileSync(join(repoRoot, "tools/servers.json"), "u
 const record = process.env.JE2BE_RECORD === "1";
 const ci = process.env.CI === "true";
 
-for (const s of loadScenarios()) {
+const scenarios = loadScenarios();
+const selection = process.env.JE2BE_SCENARIO_IDS;
+const ids: string[] = selection ? JSON.parse(selection) : [];
+const selected = selection ? scenarios.filter(({ id }) => ids.includes(id)) : scenarios;
+if (selection && (!ids.length || selected.length !== ids.length)) throw new Error("Invalid scenario selection");
+
+for (const s of selected) {
   describe(`scenario ${s.id}`, () => {
     it("java matches the golden data", async () => {
       const { state, log } = await runJava(s);

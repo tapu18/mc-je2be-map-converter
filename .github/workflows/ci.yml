@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: "23 18 * * *" # 03:23 JST
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -24,82 +26,71 @@ jobs:
       - run: npm ci
       - run: npm run check
 
-  # 実機テストはグループに分けて並列に動かす。割り当ては tools/server-test-groups.ts
-  # （どのグループにも当てはまらないテストは misc に入る）
-  servers:
-    name: servers / ${{ matrix.group }}
+  plan:
+    name: 実機テストの選択
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - group: scenarios
-          - group: bridge
-          - group: poc-a
-          - group: performance
-          - group: misc
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has_jobs: ${{ steps.plan.outputs.has_jobs }}
     steps:
       - uses: actions/checkout@v4
         with:
-          # performance の変更判定で base との差分を取るため
-          fetch-depth: 0
+          # PR のマージ結果とその base SHA を比較する
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - id: plan
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node tools/server-test-plan.ts
+
+  servers:
+    name: servers / ${{ matrix.name }}
+    needs: plan
+    if: needs.plan.outputs.has_jobs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: ${{ matrix.quarantine }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: node tools/server-test-groups.ts --check
-      - name: 流すかどうかを決める
-        id: gate
-        env:
-          GROUP: ${{ matrix.group }}
-          EVENT: ${{ github.event_name }}
-          BASE: ${{ github.base_ref }}
-        run: |
-          # performance は約2分半かかるため、PR では関連する変更があるときだけ流す（main への push では常に流す）
-          run=true
-          if [ "$GROUP" = performance ] && [ "$EVENT" = pull_request ]; then
-            changed="$(git diff --name-only "origin/$BASE"...HEAD)"
-            if ! echo "$changed" | grep -qE '^(poc/repeat-performance/|packages/|tools/servers\.json|package(-lock)?\.json|\.github/workflows/)'; then
-              run=false
-              echo "performance: 関連する変更がないため PR では省略（main への push で流す）"
-            fi
-          fi
-          echo "run=$run" >> "$GITHUB_OUTPUT"
       - name: サーバーのダウンロードをキャッシュ
-        if: steps.gate.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/je2be
           key: servers-${{ hashFiles('tools/servers.json') }}
       - name: 版別 Java のアーカイブをキャッシュ
-        if: steps.gate.outputs.run == 'true' && matrix.group == 'bridge'
+        if: matrix.group == 'grammar'
         uses: actions/cache@v4
         with:
           path: ~/.cache/je2be-grammars
           key: java-grammars-${{ hashFiles('tools/java-grammars.json', 'tools/servers.json') }}
           restore-keys: java-grammars-
       # EULAへの同意はリポジトリの所有者が承認済み（CLAUDE.md 参照）
-      - if: steps.gate.outputs.run == 'true'
-        run: npm run setup:servers
-      - name: 実機テスト（${{ matrix.group }}）
-        if: steps.gate.outputs.run == 'true'
+      - run: npm run setup:servers
+      - run: npm run build:pack
+      - name: 実機テスト
         env:
-          GROUP: ${{ matrix.group }}
-        run: |
-          files="$(node tools/server-test-groups.ts "$GROUP")"
-          # 空のまま vitest を呼ぶと全テストが流れるため、飛ばす
-          if [ -z "$files" ]; then echo "$GROUP: テストなし"; exit 0; fi
-          echo "$files" | tr ' ' '\n'
-          npm run build:pack
-          npx vitest run --config vitest.servers.config.ts $files
+          SERVER_TEST_FILES: ${{ toJSON(matrix.files) }}
+          JE2BE_SCENARIO_IDS: ${{ matrix.group == 'scenarios' && toJSON(matrix.scenarios) || '' }}
+          JE2BE_RETRY_REPORT: servers/test-retries.jsonl
+        run: node tools/run-server-test-job.ts
       - name: ログと実測結果を保存
-        if: always() && steps.gate.outputs.run == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: server-logs-${{ matrix.group }}
+          name: server-logs-${{ matrix.name }}
           path: |
             servers/*.log
+            servers/test-retries.jsonl
             poc/**/results*.json
           if-no-files-found: ignore

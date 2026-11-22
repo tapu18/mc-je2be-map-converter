@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
+    "rewriteRelativeImportExtensions": false,
     "composite": false,
     "declaration": false,
     "lib": ["ES2024"],

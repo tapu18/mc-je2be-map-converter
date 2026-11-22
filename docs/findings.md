@@ -238,3 +238,7 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 | storage とマクロ | `merge` は入れ子の既存キーを残し、指定したキーを更新・追加した。スコアを storage に保存し、2組の引数でマクロを呼ぶと、それぞれの名前に対応するスコア −7 と 12 が付いた | [storage-macro.java.json](../scenarios/datapack/storage-macro.java.json) |
 | 予約実行 | `append` の2件は予約から 2、4 tick 後に動いた。`replace` を使った関数は古い予約の 2 tick 後には動かず、5 tick 後に1回動いた。`clear` で取り消した 3、6 tick 後の2件は、7 tick 後まで記録されなかった | [schedule.java.json](../scenarios/datapack/schedule.java.json) |
 | load と tick | tick を止めて `reload` を済ませた時点の記録は空。最初の `tick step` で load が先に1回動いた。続く4組は各組で tick 関数 → 反復コマンドブロックの順に動き、各組の両方が同じ tick 番号 1〜4 を記録した | [load-tick.java.json](../scenarios/datapack/load-tick.java.json) |
+
+## 実機 CI の計時（#108）
+
+2026-11-21 の [main の CI 実行 44900032141](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/44900032141) では、Vitest の計時で正解シナリオ 15 本に約 206 秒、bridge グループに約 826 秒かかった。そのうち `versioned-grammar.servers.test.ts` は約 310 秒だった。変換シナリオの連続した BE 照合の完了間隔は約 19〜22 秒だった。ジョブ開始から実機テストのステップ開始までの時間は各グループで 40 秒以内だった。
