@@ -35,6 +35,7 @@ const legacyItem = (predicate: boolean): ArgumentParser => (r) => {
   return predicate ? { kind: "itemPredicate", id, tag, alternatives: [] } : { kind: "item", id, tag: false, components: [] };
 };
 const legacyMarkers = { parsed: 0, itemBraces: 0, tagPath: 0, componentsPath: 0, text: 0 };
+const legacyUnparsedRoots: Record<string, number> = {};
 let total = 0;
 for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
   const row = JSON.parse(line) as { dataVersion: number | null; source: "cb" | "fn"; cmd: string };
@@ -55,6 +56,10 @@ for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
     ARGUMENT_PARSERS["minecraft:item_predicate"] = legacyItem(true);
     try {
       const legacy = context.parser.parse(row.cmd);
+      if (!legacy.ok) {
+        const root = row.cmd.trim().replace(/^\//, "").split(/\s+/)[0] ?? "";
+        legacyUnparsedRoots[root] = (legacyUnparsedRoots[root] ?? 0) + 1;
+      }
       if (legacy.ok) {
         legacyMarkers.parsed++;
         if (legacy.nodes.some(n => (n.parser === "minecraft:item_stack" || n.parser === "minecraft:item_predicate") && row.cmd.slice(n.start, n.end).includes("{"))) legacyMarkers.itemBraces++;
@@ -74,4 +79,4 @@ for (const line of readFileSync(input, "utf8").split("\n").filter(Boolean)) {
   if (/(?:^|[.\s])components(?:[.\[\s]|$)/.test(row.cmd)) markers.componentsPath++;
   if (/\b(?:tellraw|title|bossbar|team)\b/.test(row.cmd)) markers.textCommand++;
 }
-console.log(JSON.stringify({ shapes: { old: old.size, newer: newer.size, common, oldOnly: old.size - common, newOnly: newer.size - common }, total, statuses, parsedMarkers, legacyMarkers, markers }, null, 2));
+console.log(JSON.stringify({ shapes: { old: old.size, newer: newer.size, common, oldOnly: old.size - common, newOnly: newer.size - common }, total, statuses, parsedMarkers, legacyMarkers, legacyUnparsedRoots, markers }, null, 2));
