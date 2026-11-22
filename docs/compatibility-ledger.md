@@ -75,3 +75,13 @@ Java・BE を更新したら、固定バージョンと対応表を更新して�
 出力の `compatibility-diff.json` は、キーの追加・削除と、方式・実装状況・欠落・担当・根拠の前後を一覧にする。
 頻度の変化は `compatibility-summary.md` と行の `frequency`、入力の差は `compatibility-sources.json` で確認する。
 確認後に `compatibility.jsonl`、`compatibility-summary.md`、`compatibility-sources.json` を `docs/` へ反映する。
+
+## 人が決めた判定
+
+[上書きファイル](compatibility-verdicts.jsonl) は1行1 JSON、キーは `family` と `id`。各キーは一度だけ書く。`method`、`implementation`、`issue`、`loss` は必要な欄だけ指定でき、省略した欄は機械判定を使う。`null` は明示的な上書き。各行に `evidence`（`confidence` は `measured` / `estimated` / `unconfirmed`、`source` は根拠、`scope` は確認範囲）を必ず記す。実測・推定・未確認の区別は [CLAUDE.md](../CLAUDE.md) に従う。
+
+```json
+{"family":"entity","id":"minecraft:example","method":"impossible","issue":106,"evidence":{"confidence":"unconfirmed","source":"Issue #106","scope":"調査対象の例"}}
+```
+
+生成器は既定でこのファイルを読み、`--verdicts FILE` で別の入力も指定できる。上書きは集計にも反映する。`compatibility-diff.json` は `--previous` がなくても出力し、`overrides.conflicts` に指定欄ごとの機械判定と上書き値、`overrides.missing` に生成元に存在しないキーの上書き行を残す。根拠の違いも出すため、差分は矛盾の自動判定ではなく確認対象である。消失キーは台帳に追加しない。
