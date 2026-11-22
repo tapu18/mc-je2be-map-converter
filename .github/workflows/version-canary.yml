@@ -1,0 +1,85 @@
+name: Version canary
+on:
+  schedule:
+    - cron: '19 3 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Detect and select candidates
+        id: detect
+        run: |
+          node tools/version-canary.ts
+          printf "## Candidate versions\n\n\x60\x60\x60json\n" >> "$GITHUB_STEP_SUMMARY"
+          cat servers/version-canary/versions.json >> "$GITHUB_STEP_SUMMARY"
+          printf "\n\x60\x60\x60\n" >> "$GITHUB_STEP_SUMMARY"
+      - name: Install candidate APIs
+        id: api
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm install 2>&1 | tee servers/version-canary/api-install.log
+          npm run check 2>&1 | tee servers/version-canary/api-check.log
+      - name: Set up servers and mappings
+        id: setup
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run setup:servers 2>&1 | tee servers/version-canary/setup.log
+          java_version=$(node -p "require('./tools/servers.json').java.version")
+          npm run setup:mappings -- --blocks "servers/reports-$java_version/reports/blocks.json" 2>&1 | tee servers/version-canary/mappings.log
+      - name: Test real servers
+        id: servers
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run test:servers 2>&1 | tee servers/version-canary/servers.log
+      - name: Re-record Java scenarios
+        id: record
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run scenarios:record 2>&1 | tee servers/version-canary/record.log
+      - name: Regenerate compatibility ledger
+        id: ledger
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run ledger:compatibility -- --out servers/version-canary/ledger --previous docs/compatibility.jsonl 2>&1 | tee servers/version-canary/ledger.log
+      - name: Collect changes and outcomes
+        if: always()
+        env:
+          DETECT: ${{ steps.detect.outcome }}
+          API: ${{ steps.api.outcome }}
+          SETUP: ${{ steps.setup.outcome }}
+          SERVERS: ${{ steps.servers.outcome }}
+          RECORD: ${{ steps.record.outcome }}
+          LEDGER: ${{ steps.ledger.outcome }}
+        run: |
+          mkdir -p servers/version-canary
+          git diff -- scenarios/ > servers/version-canary/scenarios.diff
+          printf 'detect=%s\napi=%s\nsetup=%s\nservers=%s\nrecord=%s\nledger=%s\n' "$DETECT" "$API" "$SETUP" "$SERVERS" "$RECORD" "$LEDGER" | tee servers/version-canary/outcomes.txt
+          cat servers/version-canary/outcomes.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: version-canary
+          path: |
+            servers/version-canary/*.json
+            servers/version-canary/*.log
+            servers/version-canary/*.txt
+            servers/version-canary/*.diff
+            servers/version-canary/ledger/
+            servers/*.log
+          if-no-files-found: warn
+      - name: Report failure
+        if: always() && (steps.detect.outcome != 'success' || steps.api.outcome != 'success' || steps.setup.outcome != 'success' || steps.servers.outcome != 'success' || steps.record.outcome != 'success' || steps.ledger.outcome != 'success')
+        run: exit 1
