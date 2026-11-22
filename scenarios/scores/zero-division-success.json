@@ -1,0 +1,47 @@
+{
+  "description": "ゼロ除算の成否を条件付きチェーンで観測する",
+  "setup": [
+    "scoreboard objectives add t dummy",
+    "scoreboard objectives add divisor dummy",
+    "scoreboard players set #value t 7",
+    "scoreboard players set #zero divisor 0"
+  ],
+  "actions": [
+    {
+      "commandBlocks": [
+        {
+          "pos": [
+            2,
+            -50,
+            2
+          ],
+          "kind": "impulse",
+          "facing": "south",
+          "command": "scoreboard players operation #value t /= #zero divisor"
+        },
+        {
+          "pos": [
+            2,
+            -50,
+            3
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #after t 1"
+        }
+      ]
+    },
+    {
+      "ticks": 5
+    }
+  ],
+  "observe": {
+    "scores": [
+      "t"
+    ]
+  },
+  "knownDiffs": {
+    "scores.t.#after": "ゼロ除算の条件付き後続は Java では実行されず、BE では実行された"
+  }
+}

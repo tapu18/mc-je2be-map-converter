@@ -42,6 +42,16 @@
       "particle": 13,
       "sound": 14
     },
+    "familyOutput": {
+      "command": 23198,
+      "sound": 1243,
+      "effect": 197,
+      "click": 61,
+      "entity": 543,
+      "particle": 58,
+      "game_rule": 5,
+      "hover": 2
+    },
     "definitionFiles": 1325,
     "commands": {
       "total": 115487,

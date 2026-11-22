@@ -37,8 +37,8 @@ npm install
 npm run setup:servers   # JRE 25、Java版サーバー、BDS、Chunker（地形変換器）を servers/ に取得し、データ生成のレポート（blocks.json など）を作る（EULA同意済みとして扱う。ユーザー承認済み）
 npm run setup:mappings  # 承認済み Geyser の固定ブロック・アイテム対応表を取得し、出典・MIT 表示と共に servers/mappings/ に生成する
 npm run setup:grammars  # 対象の安定版 JE の commands.json を別枠で生成する。特定の版だけなら -- 1.20.6 等を付ける
-npm run validate:commands -- <commands.jsonl> --datapack <ディレクトリまたはZIP> # --world <Javaワールド> で保存された有効パック構成も指定できる。ZIP は Python 3 が必要
-npm run convert:world -- <Javaワールド> --out <出力.mcworld|ディレクトリ> # 変換してBEワールドとレポートを出す。原本・既存出力は変更しない。.mcworld は Python 3 が必要
+npm run validate:commands -- <commands.jsonl> --datapack <ディレクトリまたはZIP> # --world <Javaワールド> で保存された有効パック構成も指定できる
+npm run convert:world -- <Javaワールド> --out <出力.mcworld|ディレクトリ> # 変換してBEワールドとレポートを出す。原本・既存出力は変更しない
 npm run check           # 型チェック＋Nodeだけのテスト。変更のたびに通す
 npm run test:servers    # 実サーバーを起動するテスト（*.servers.test.ts）。数十秒かかる
 ```
@@ -48,6 +48,7 @@ TypeScriptはNodeで直接実行する（型除去）。そのため enum、name
 ## 作業ルール
 
 - **`docs/workflow.md` の手順に従う。** Issue に `claim:` コメントを書いて着手し、worktree とブランチを分け、PR で CI を通してからマージする。区切りごとに Issue へ進捗をコメントし、途中で止まっても別のエージェントが再開できる状態にする。
+- **人の判断が必要な場合は、[判断と調査を分ける手順](docs/workflow.md#人へのエスカレーション)に従う。**
 - **実測した事実は `docs/findings.md` に根拠付きで残す。**
 - **Script APIの仕様は記憶で書かない。** `node_modules/@minecraft/server/index.d.ts`（固定バージョン）と、BDSでの実測を根拠にする。ベータAPIは使ってよいが、利用はホスト層に閉じ込める。
 - **Java側の正解は実サーバーで取る。** 期待値を手で書いたテストより、Java版サーバーで記録した結果との突き合わせを優先する。

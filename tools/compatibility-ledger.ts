@@ -6,7 +6,7 @@ import { rewriteCommand, textFormatFor, type MappingTables } from "@je2be/core";
 import { loadRewriteContext } from "@je2be/converter";
 import { applyVerdicts } from "./compatibility-verdicts.ts";
 import { attachCorpus } from "./compatibility-corpus.ts";
-import { executableShapes, methods, probeShape, registries, rowKey, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
+import { executableShapes, executeModifiers, methods, probeShape, registries, rowKey, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
 
 const { values } = parseArgs({ options: {
   out: { type: "string" },
@@ -102,8 +102,12 @@ function add(family: Family, id: string, javaSource: string, verdict: Verdict): 
   rows.set(key, { family, id, javaSource, ...verdict, frequency: null });
 }
 
+const modifiers = executeModifiers(context.parser.root);
 for (const [id, path] of executableShapes(context.parser.root)) {
-  add("command", id, "commands.json", probeShape(context, id, path));
+  add("command", id, "commands.json", modifiers.has(id) ? unknown("commands.json") : probeShape(context, id, path));
+}
+for (const id of modifiers.keys()) {
+  if (!rows.has(rowKey("command", id))) add("command", id, "commands.json", unknown("commands.json"));
 }
 for (const [family, registry] of Object.entries(registries) as [keyof typeof registries, string][]) {
   const entries = registryData["minecraft:" + registry]?.entries;
@@ -134,8 +138,8 @@ function summary(): string {
     "",
     `Java ${java} / BDS ${bedrock} / Geyser \`${mappings.source.revision}\`。再生成手順と数値の範囲は [互換性台帳](compatibility-ledger.md)。`,
     "",
-    "| 族 | 項目数 | 方式の内訳 | 台帳に対応づいた行・定義ファイル | 出力あり項目の頻度比 | 作品数 |",
-    "| --- | ---: | --- | ---: | ---: | ---: |",
+    "| 族 | 項目数 | 方式の内訳 | 台帳に対応づいた行・定義ファイル | 対応表・代表入力で出力ありと判定した項目の頻度比 | 書き換え器の出力行の割合 | 作品数 |",
+    "| --- | ---: | --- | ---: | ---: | ---: | ---: |",
   ];
   const weighted = (group: Row[], field: "lines" | "definitions") => {
     const observed = group.filter(row => row.frequency?.[field] != null);
@@ -149,7 +153,7 @@ function summary(): string {
     const line = weighted(group, "lines");
     const definition = weighted(group, "definitions");
     const maps = corpus ? (corpus.familyMaps[family] ?? 0) : null;
-    lines.push(`| ${family} | ${group.length} | ${countByMethod.filter(([, count]) => count).map(([m, count]) => `${m} ${count}`).join(" / ")} | ${showCount(line.count)} 行・${showCount(definition.count)} 定義 | ${line.percent === "—" ? definition.percent : line.percent} | ${showCount(maps)} |`);
+    lines.push(`| ${family} | ${group.length} | ${countByMethod.filter(([, count]) => count).map(([m, count]) => `${m} ${count}`).join(" / ")} | ${showCount(line.count)} 行・${showCount(definition.count)} 定義 | ${line.percent === "—" ? definition.percent : line.percent} | ${corpus && family !== "command" && line.count !== null ? percent(corpus.familyOutput[family] ?? 0, line.count) : "—"} | ${showCount(maps)} |`);
   }
   lines.push("", "| 方式 | 全項目数 |", "| --- | ---: |");
   for (const method of methods) lines.push(`| ${method} | ${sorted.filter(row => row.method === method).length} |`);
