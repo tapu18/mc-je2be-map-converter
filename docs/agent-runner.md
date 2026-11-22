@@ -71,7 +71,7 @@ Depends on: #12, #15
 
 AI は必要な依存取得・実装・検証・push・PR 作成を行う。完了条件の確認前は draft、確認できたら ready にする。管理側は完了条件の意味そのものを検証できないため、この ready 化を AI による完了確認として扱う。
 
-自動マージは、Issue が開いていて保留でなく、PR が ready、指定 base 宛て、Issue の closing reference があり、GitHub のマージ状態が `CLEAN` で、変更要求がない場合に限る。現在の CI の `check (型チェックとNodeのテスト)` と5つの `servers / ...` がすべて成功し、それ以外のチェックにも未完了・失敗がないことを要求する。チェックが未登録ならマージしない。CI のジョブ名を変えるときは `tools/agent-runner/policy.ts` の一覧も更新する。
+自動マージは、Issue が開いていて保留でなく、PR が ready、指定 base 宛て、Issue の closing reference があり、GitHub のマージ状態が `CLEAN` で、変更要求がない場合に限る。CI の `check (型チェックとNodeのテスト)` と集約チェック `servers / result` が成功し、それ以外のチェックにも未完了・失敗がないことを要求する。チェックが未登録ならマージしない。CI のジョブ名を変えるときは `tools/agent-runner/policy.ts` の一覧も更新する。
 
 `needs-approval` は Issue・PR のどちらにあっても保留する。承認コメントの自然言語判定は行わない。人が承認コメントを書き、該当する Issue / PR の `needs-approval` を外して再開させる。`status:blocked` / `status:paused` も再開時に解除する。積み上げた PR は base が違う間は自動マージしない。最初の版では積み上げの base 変更・ブランチ削除は自動化しない。
 

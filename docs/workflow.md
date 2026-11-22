@@ -53,7 +53,7 @@
 ### 3. PRを出してマージする
 
 1. `gh pr create` で PR を出す。本文に `Closes #<番号>` を書く（テンプレートあり）。
-2. CI の `check`、実機テストの選択、選択された `servers / <ジョブ>` が通るのを待つ。待つときは `tools/wait-pr-ci.sh <PR番号>` を使う（push 直後に実行が未登録のことがあるため、#28）。失敗したら直す。
+2. CI の `check` と、実機テストの選択・結果を集約する `servers / result` が通るのを待つ。待つときは `tools/wait-pr-ci.sh <PR番号>` を使う（push 直後に実行が未登録のことがあるため、#28）。失敗したら直す。
 3. マージの条件：
    - CI が通っている
    - Issue の完了条件を満たしている
@@ -121,3 +121,16 @@ PR の実機テストはマージ結果と base SHA の差分から `tools/serve
 - 設計（`docs/design.md`）の方針を変える必要がある
 - 外部への影響がある（新しいリポジトリやサービスの作成、公開、費用の発生）
 - ライセンスや配布マップの権利に関わる判断
+
+## サーバー・API の版上げ
+
+`Version canary` は毎週月曜に公式 BDS Linux 配布 API、Mojang の Java 安定版マニフェスト、npm の `@minecraft/*` beta、Chunker の最新リリースを照合する。Actions の `workflow_dispatch` でも起動できる。使い捨て checkout で候補版に差し替え、型・Node テスト、実サーバー、Java 正解データの再記録、互換性台帳の再生成を順に試す。main の固定版は更新しない。候補は BDS と同じ安定版系列の beta API を選び、npm の beta タグも記録する。配布元が期待した形式を返さない場合は失敗として扱う。
+
+Actions の `version-canary` artifact の `versions.json` に固定版・候補版・npm の beta タグ、`outcomes.txt` に各段階の結果がある。`api-*.log` は API と型、`setup.log` と `mappings.log` は配布物と ID 対応、`servers.log` は文法・保存形式・実サーバーの失敗を調べる入口。`record.log` と `scenarios.diff` は Java の再記録結果、`ledger/compatibility-diff.json` は ID と文法の台帳差分を示す。失敗箇所はログから個別に判断し、差分を自動的に正解とはしない。配布マップは CI に持ち込まず、台帳の頻度は未計数となる。検出に失敗した場合は Actions の検出ステップのログを見る。
+
+版を正式に上げる際は別の作業ブランチで次を行う。
+
+1. artifact の候補と公式配布元を確認し、`tools/servers.json` の URL・ハッシュ・Java DataVersion と `packages/*/package.json` の `@minecraft/*` を更新する。BE は BDS と API を同時に上げ、必要なら各パックの manifest の API 版も合わせる。`npm install` で lockfile を更新する。
+2. `npm ci && npm run setup:servers && npm run setup:mappings && npm run build:pack && npm run check && npm run test:servers` を実行する。新しい版に必要な JRE や対応表があれば、出典・版を確認して更新する。
+3. `npm run scenarios:record` で Java の正解を再記録し、差分の意味を実機で確認する。`docs/compatibility-ledger.md` の手順で台帳を再生成し、差分と根拠を確認して反映する。配布マップを使う場合は同文書の非公開入力の扱いに従う。
+4. API、ID、文法、保存形式の失敗をそれぞれ調査して修正し、実測と根拠を記録する。CI と関連する実機テストが通ることを確認して PR にする。

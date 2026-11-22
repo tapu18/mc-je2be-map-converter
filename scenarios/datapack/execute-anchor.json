@@ -1,0 +1,34 @@
+{
+  "description": "エンティティの足元と目を基準にしたローカル座標",
+  "setup": [
+    "summon armor_stand 8 -60 8 {Tags:[\"anchor\"],NoGravity:1b,Rotation:[0f,0f]}"
+  ],
+  "datapack": {
+    "functions": {}
+  },
+  "actions": [
+    {
+      "run": "execute as @e[type=armor_stand,tag=anchor,limit=1] at @s anchored feet positioned ^ ^ ^1 run setblock ~ ~ ~ minecraft:gold_block"
+    },
+    {
+      "run": "execute as @e[type=armor_stand,tag=anchor,limit=1] at @s anchored eyes positioned ^ ^ ^1 run setblock ~ ~ ~ minecraft:diamond_block"
+    }
+  ],
+  "observe": {
+    "blocks": [
+      {
+        "from": [
+          8,
+          -60,
+          9
+        ],
+        "to": [
+          8,
+          -58,
+          9
+        ]
+      }
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

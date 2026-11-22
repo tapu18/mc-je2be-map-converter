@@ -1,0 +1,36 @@
+{
+  "description": "日単位の小数を tick に変換して予約する",
+  "setup": [
+    "data modify storage m2:probe trace set value []"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:probe/day": [
+        "data modify storage m2:probe trace append value \"day\""
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "schedule function m2:probe/day 0.001d"
+    },
+    {
+      "ticks": 23
+    },
+    {
+      "run": "data modify storage m2:probe before set from storage m2:probe trace"
+    },
+    {
+      "ticks": 1
+    },
+    {
+      "run": "data modify storage m2:probe after set from storage m2:probe trace"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:probe"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

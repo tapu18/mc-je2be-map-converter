@@ -29,7 +29,7 @@ export interface PullRequest {
 
 export const requiredChecks = [
   'check (型チェックとNodeのテスト)',
-  ...['scenarios', 'bridge', 'poc-a', 'performance', 'misc'].map(g => `servers / ${g}`),
+  'servers / result',
 ];
 
 export function hasLabel(issue: Pick<Issue, 'labels'>, name: string): boolean {

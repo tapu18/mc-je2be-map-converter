@@ -1,0 +1,44 @@
+{
+  "description": "sort を指定しない複数実行者の列挙順",
+  "setup": [
+    "scoreboard objectives add identity dummy",
+    "data modify storage m2:probe trace set value []"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:probe/record": [
+        "execute store result storage m2:probe current int 1 run scoreboard players get @s identity",
+        "data modify storage m2:probe trace append from storage m2:probe current"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "summon marker 13 -60 8 {Tags:[\"worker\",\"first\"]}"
+    },
+    {
+      "run": "summon marker 9 -60 8 {Tags:[\"worker\",\"second\"]}"
+    },
+    {
+      "run": "summon marker 11 -60 8 {Tags:[\"worker\",\"third\"]}"
+    },
+    {
+      "run": "scoreboard players set @e[type=marker,tag=first] identity 1"
+    },
+    {
+      "run": "scoreboard players set @e[type=marker,tag=second] identity 2"
+    },
+    {
+      "run": "scoreboard players set @e[type=marker,tag=third] identity 3"
+    },
+    {
+      "run": "execute as @e[type=marker,tag=worker] run function m2:probe/record"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:probe"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

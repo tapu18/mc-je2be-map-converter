@@ -45,6 +45,8 @@ export async function javaAction(java: JavaServer, a: Action, log: string[]): Pr
     if (JAVA_ERROR.test(res)) throw new ScenarioError(`java: ${a.run}: ${res}`);
   } else if ("ticks" in a) {
     await javaTicks(java, a.ticks);
+  } else if ("restart" in a) {
+    throw new ScenarioError("restart is only supported in runJava");
   } else {
     for (const cb of a.commandBlocks) {
       const id = cb.kind === "impulse" ? "command_block" : cb.kind === "chain" ? "chain_command_block" : "repeating_command_block";
@@ -58,13 +60,20 @@ export async function javaAction(java: JavaServer, a: Action, log: string[]): Pr
 
 export async function runJava(s: Scenario): Promise<{ state: NormalizedState; log: string[] }> {
   const log: string[] = [];
-  const java = await startScenarioJava(s.datapack);
+  let java = await startScenarioJava(s.datapack);
   try {
     // tick を止め、シナリオの ticks だけ進める（決定的にするため）
     await java.exec("tick freeze");
     for (const c of s.setup) await javaAction(java, { run: c }, log);
     if (s.datapack) await loadScenarioDatapack(java, s.datapack, log);
-    for (const a of s.actions) await javaAction(java, a, log);
+    for (const a of s.actions) {
+      if ("restart" in a) {
+        await java.dump({});
+        java = await java.restart();
+        await java.exec("tick freeze");
+        log.push("> save and restart");
+      } else await javaAction(java, a, log);
+    }
     for (const a of s.play ?? []) await javaAction(java, a, log);
     const dump = await java.dump({
       scores: !!(s.observe.scores || s.observe.entityScores),
@@ -190,7 +199,8 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
     for (const a of actions) {
       if ("run" in a) await run(a.run);
       else if ("ticks" in a) await waitBedrockTicks(bds, a.ticks);
-      else {
+      else if ("restart" in a) throw new ScenarioError("bedrock: restart is not supported");
+      else if ("commandBlocks" in a) {
         const load = pack.loads.get(a)!;
         const res = await bds.exec(`structure load ${load.id} ${load.origin.join(" ")}`);
         log.push(`> structure load ${load.id}\n${JSON.stringify(res)}`);

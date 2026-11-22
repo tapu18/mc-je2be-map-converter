@@ -1,0 +1,56 @@
+{
+  "description": "秒・日単位と同 tick の関数・タグの予約",
+  "setup": [
+    "data modify storage m2:probe trace set value []"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:probe/a": [
+        "data modify storage m2:probe trace append value \"a\""
+      ],
+      "m2:probe/b": [
+        "data modify storage m2:probe trace append value \"b\""
+      ],
+      "m2:probe/c": [
+        "data modify storage m2:probe trace append value \"c\""
+      ]
+    },
+    "functionTags": {
+      "m2:probe/group": {
+        "values": [
+          "m2:probe/b",
+          "m2:probe/a"
+        ]
+      }
+    }
+  },
+  "actions": [
+    {
+      "run": "schedule function m2:probe/a 1s append"
+    },
+    {
+      "run": "schedule function m2:probe/b 20t append"
+    },
+    {
+      "run": "schedule function #m2:probe/group 1s append"
+    },
+    {
+      "run": "execute store success storage m2:probe day_scheduled int 1 run schedule function m2:probe/c 1d append"
+    },
+    {
+      "ticks": 20
+    },
+    {
+      "run": "data modify storage m2:probe after_second set from storage m2:probe trace"
+    },
+    {
+      "run": "execute store result storage m2:probe day_cleared int 1 run schedule clear m2:probe/c"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:probe"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行が未実装"
+}

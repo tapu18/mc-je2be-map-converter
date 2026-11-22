@@ -94,3 +94,19 @@ jobs:
             servers/test-retries.jsonl
             poc/**/results*.json
           if-no-files-found: ignore
+
+  result:
+    name: servers / result
+    needs: [plan, servers]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 選択された実機テストの結果
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          HAS_JOBS: ${{ needs.plan.outputs.has_jobs }}
+          SERVERS_RESULT: ${{ needs.servers.result }}
+        run: |
+          if [[ "$PLAN_RESULT" != success ]]; then exit 1; fi
+          if [[ "$HAS_JOBS" == true && "$SERVERS_RESULT" == success ]] || [[ "$HAS_JOBS" == false && "$SERVERS_RESULT" == skipped ]]; then exit 0; fi
+          exit 1
