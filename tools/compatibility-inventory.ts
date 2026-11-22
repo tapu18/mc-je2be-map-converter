@@ -55,6 +55,52 @@ export function executableShapes(tree: CommandTreeNode): Map<string, { name: str
   return shapes;
 }
 
+// Enumerate execute subclauses ending in a redirect back to execute.
+export function executeModifiers(tree: CommandTreeNode): Map<string, { name: string; node: CommandTreeNode }[]> {
+  const result = new Map<string, { name: string; node: CommandTreeNode }[]>();
+  const execute = tree.children?.execute;
+  if (!execute) return result;
+  function walk(node: CommandTreeNode, path: { name: string; node: CommandTreeNode }[]): void {
+    if (node.redirect?.length === 1 && node.redirect[0] === "execute") {
+      result.set(pathId(path.map(({ name, node }) => ({ name, ...(node.parser ? { parser: node.parser } : {}) }))), path);
+    }
+    for (const [name, child] of Object.entries(node.children ?? {})) walk(child, [...path, { name, node: child }]);
+  }
+  for (const [name, child] of Object.entries(execute.children ?? {})) walk(child, [{ name: "execute", node: execute }, { name, node: child }]);
+  return result;
+}
+
+const modifierCache = new WeakMap<CommandTreeNode, Map<string, { name: string; node: CommandTreeNode }[]>>();
+
+export function matchedModifiers(tree: CommandTreeNode, nodes: readonly ParsedNode[]): string[] {
+  let modifiers = modifierCache.get(tree);
+  if (!modifiers) { modifiers = executeModifiers(tree); modifierCache.set(tree, modifiers); }
+  const found = new Set<string>();
+  let cursor = tree;
+  let path: Step[] = [];
+  for (const node of nodes) {
+    if (node.jump === "root") { cursor = tree; path = []; }
+    else if (cursor.redirect) {
+      const redirect = cursor.redirect;
+      cursor = tree;
+      path = [];
+      for (const name of redirect) {
+        const destination = cursor.children?.[name];
+        if (!destination) throw new Error("Invalid Java grammar redirect");
+        cursor = destination;
+        path.push({ name, ...(cursor.parser ? { parser: cursor.parser } : {}) });
+      }
+    }
+    const child = cursor.children?.[node.name];
+    if (!child) throw new Error("Parsed node absent from Java grammar");
+    cursor = child;
+    path.push(node);
+    const id = pathId(path);
+    if (modifiers.has(id)) found.add(id);
+  }
+  return [...found];
+}
+
 // Replay the report's redirects against the parsed path, retaining only terminal executable nodes.
 export function terminalShape(tree: CommandTreeNode, nodes: readonly ParsedNode[]): string | undefined {
   let cursor = tree;

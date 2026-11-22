@@ -37,8 +37,26 @@ def function_lines(text):
 
 def pack_format(z, prefix):
     try:
-        meta = json.loads(z.read(prefix + "pack.mcmeta").decode("utf-8-sig"))
-        return meta.get("pack", {}).get("pack_format")
+        pack = json.loads(z.read(prefix + "pack.mcmeta").decode("utf-8-sig")).get("pack", {})
+        def version(value):
+            if type(value) is int and value >= 0:
+                return [value, 0]
+            if isinstance(value, list) and len(value) == 2 and all(type(x) is int and x >= 0 for x in value):
+                return value
+            return None
+        if "min_format" in pack or "max_format" in pack:
+            lo, hi = version(pack.get("min_format")), version(pack.get("max_format"))
+        elif "supported_formats" in pack:
+            supported = pack["supported_formats"]
+            if isinstance(supported, list) and len(supported) == 2:
+                lo, hi = version(supported[0]), version(supported[1])
+            elif isinstance(supported, dict):
+                lo, hi = version(supported.get("min_inclusive")), version(supported.get("max_inclusive"))
+            else:
+                lo = hi = version(supported)
+        else:
+            lo = hi = version(pack.get("pack_format"))
+        return {"min": lo, "max": hi} if lo is not None and hi is not None and lo <= hi else None
     except Exception:
         return None
 
@@ -83,14 +101,14 @@ def scan(z, emit):
         dv = data_version(z, base)
         for c in ex.command_blocks(z, base):
             if c["cmd"].strip():
-                emit({"dataVersion": dv, "packFormat": None, "source": "cb", "cmd": c["cmd"]})
+                emit({"dataVersion": dv, "packFormatRange": None, "source": "cb", "cmd": c["cmd"]})
         for pf, line in datapack_functions(z, base + "datapacks/"):
-            emit({"dataVersion": dv, "packFormat": pf, "source": "fn", "cmd": line})
+            emit({"dataVersion": dv, "packFormatRange": pf, "source": "fn", "cmd": line})
     if levels:
         return
     if "pack.mcmeta" in names and any(n.startswith("data/") for n in names):
         for pf, line in datapack_functions(z, ""):
-            emit({"dataVersion": None, "packFormat": pf, "source": "fn", "cmd": line})
+            emit({"dataVersion": None, "packFormatRange": pf, "source": "fn", "cmd": line})
         return
     for n in names:
         if n.lower().endswith(".zip") and "resource" not in n.lower():

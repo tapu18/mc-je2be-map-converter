@@ -246,3 +246,22 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 ## schedule の保存・再起動（#123）
 
 Java 26.3 の [schedule-restart](../scenarios/datapack/schedule-restart.json) では、100 tick 後の関数を予約して 30 tick 進め、保存・停止して同じワールドを再起動した。再起動直後とさらに 50 tick 後は未実行、100 tick 後には実行済みだった（[記録](../scenarios/datapack/schedule-restart.java.json)）。予約時と関数の実行時のゲーム内時刻の差は 100 tick だった。したがって、この実験では停止前に進めた 30 tick を含め、予定は予約時からのゲーム内 tick を維持していた。再起動直後の残り時間は 50 tick より長く 100 tick 以下だった。起動中にも tick が進むため、再起動直後の正確な残り tick 数や長期停止中の実時間の影響はこの実験では測っていない。
+
+## execute の追加修飾句（#134）
+
+Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観測した（[正解データ](../scenarios/datapack/execute-extra.java.json)）。負座標の `align xyz` は [-2, -60, 8]、`align xz` は [-2, -59.3, 8] になった。防具立てへの `facing entity` は feet と eyes で pitch が異なり、`rotated as` は対象の [90, 30]、`positioned as` は対象の位置を得た。
+
+石・水・葉を積んだ列で `positioned over` の高さは world_surface と motion_blocking が 73、motion_blocking_no_leaves が 72、ocean_floor が 73 だった。この配置に限る観測である。`if blocks` は一致した2ブロックで all・masked とも結果 2、空気を含む範囲では masked が対応先の非空気を無視した。不一致、読み込み外チャンク、ディメンションの条件も同シナリオに記録した。
+
+### スコア保持者とゼロ除算（#140）
+
+| 実測 | 根拠 |
+| --- | --- |
+| Java 26.3 と BDS 1.26.63.1 で、`#hidden`、英字40・41・256文字、UUID形式の36文字を文字列の保持者として設定すると、記録した値は一致した。これは名前の最大長や、実在するエンティティとの対応を示さない | `scenarios/scores/runtime-boundaries.json` と Java 正解データ |
+| ゼロ除数による `/=` の後、被除数 7 は両版で変わらなかった | 同上。成否はこのシナリオでは比較していない |
+| 同じゼロ除算をコマンドブロックから実行すると、条件付き後続は Java では動かず BE では動いた | `scenarios/scores/zero-division-success.json` と Java 正解データ |
+| 固定 UUID を持つ防具立てに対し、その UUID 文字列でスコアを設定すると Java では実体に 7 が付いた。BE で防具立てと同じ文字列の保持者を作っても実体にはスコアが付かなかった | `scenarios/scores/uuid-holder.json` と Java 正解データ |
+
+### ランタイム用パーサ・文法・対応表の読み込み（#141）
+
+Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込んだ PoC は BDS 1.26.63.1 で3回とも初回コマンドをパースできた。起動要求からパースまで 602 / 783 / 613 ms、スクリプト内の JSON.parse は 159 / 193 / 178 ms、パックの圧縮前合計は 12,624,623 bytes。測定範囲・環境と限界は [PoC](../poc/runtime-load/README.md)、記録は [results.json](../poc/runtime-load/results.json)。

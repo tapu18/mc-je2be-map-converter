@@ -4,14 +4,16 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { rewriteCommand, textFormatFor, type MappingTables } from "@je2be/core";
 import { loadRewriteContext } from "@je2be/converter";
+import { applyVerdicts } from "./compatibility-verdicts.ts";
 import { attachCorpus } from "./compatibility-corpus.ts";
-import { executableShapes, methods, probeShape, registries, rowKey, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
+import { executableShapes, executeModifiers, methods, probeShape, registries, rowKey, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
 
 const { values } = parseArgs({ options: {
   out: { type: "string" },
   commands: { type: "string" },
   definitions: { type: "string" },
   previous: { type: "string" },
+  verdicts: { type: "string" },
 } });
 if (!values.out || Boolean(values.commands) !== Boolean(values.definitions)) {
   throw new Error("Usage: npm run ledger:compatibility -- --out DIR [--commands PRIVATE.jsonl --definitions PRIVATE.jsonl] [--previous LEDGER.jsonl]");
@@ -100,8 +102,12 @@ function add(family: Family, id: string, javaSource: string, verdict: Verdict): 
   rows.set(key, { family, id, javaSource, ...verdict, frequency: null });
 }
 
+const modifiers = executeModifiers(context.parser.root);
 for (const [id, path] of executableShapes(context.parser.root)) {
-  add("command", id, "commands.json", probeShape(context, id, path));
+  add("command", id, "commands.json", modifiers.has(id) ? unknown("commands.json") : probeShape(context, id, path));
+}
+for (const id of modifiers.keys()) {
+  if (!rows.has(rowKey("command", id))) add("command", id, "commands.json", unknown("commands.json"));
 }
 for (const [family, registry] of Object.entries(registries) as [keyof typeof registries, string][]) {
   const entries = registryData["minecraft:" + registry]?.entries;
@@ -118,6 +124,7 @@ for (const [family, kind] of [["click", "Click"], ["hover", "Hover"]] as const) 
 
 const corpus = values.commands && values.definitions
   ? await attachCorpus(rows, { commands: values.commands, definitions: values.definitions }, context) : null;
+const overrides = applyVerdicts(rows, values.verdicts ?? join(root, "docs/compatibility-verdicts.jsonl"));
 const sorted = [...rows.keys()].sort().map(key => rows.get(key)!);
 const jsonLines = (items: readonly unknown[]) => items.map(item => JSON.stringify(item) + "\n").join("");
 const percent = (n: number, d: number) => d ? (100 * n / d).toFixed(2) + "%" : "—";
@@ -131,8 +138,8 @@ function summary(): string {
     "",
     `Java ${java} / BDS ${bedrock} / Geyser \`${mappings.source.revision}\`。再生成手順と数値の範囲は [互換性台帳](compatibility-ledger.md)。`,
     "",
-    "| 族 | 項目数 | 方式の内訳 | 台帳に対応づいた行・定義ファイル | 出力あり項目の頻度比 | 作品数 |",
-    "| --- | ---: | --- | ---: | ---: | ---: |",
+    "| 族 | 項目数 | 方式の内訳 | 台帳に対応づいた行・定義ファイル | 対応表・代表入力で出力ありと判定した項目の頻度比 | 書き換え器の出力行の割合 | 作品数 |",
+    "| --- | ---: | --- | ---: | ---: | ---: | ---: |",
   ];
   const weighted = (group: Row[], field: "lines" | "definitions") => {
     const observed = group.filter(row => row.frequency?.[field] != null);
@@ -146,7 +153,7 @@ function summary(): string {
     const line = weighted(group, "lines");
     const definition = weighted(group, "definitions");
     const maps = corpus ? (corpus.familyMaps[family] ?? 0) : null;
-    lines.push(`| ${family} | ${group.length} | ${countByMethod.filter(([, count]) => count).map(([m, count]) => `${m} ${count}`).join(" / ")} | ${showCount(line.count)} 行・${showCount(definition.count)} 定義 | ${line.percent === "—" ? definition.percent : line.percent} | ${showCount(maps)} |`);
+    lines.push(`| ${family} | ${group.length} | ${countByMethod.filter(([, count]) => count).map(([m, count]) => `${m} ${count}`).join(" / ")} | ${showCount(line.count)} 行・${showCount(definition.count)} 定義 | ${line.percent === "—" ? definition.percent : line.percent} | ${corpus && family !== "command" && line.count !== null ? percent(corpus.familyOutput[family] ?? 0, line.count) : "—"} | ${showCount(maps)} |`);
   }
   lines.push("", "| 方式 | 全項目数 |", "| --- | ---: |");
   for (const method of methods) lines.push(`| ${method} | ${sorted.filter(row => row.method === method).length} |`);
@@ -155,7 +162,7 @@ function summary(): string {
   if (corpus) {
     const t = corpus.commands;
     lines.push("", `入力があったアーカイブ ${corpus.archivesWithInput} 本、進捗・predicate・ルートテーブル定義 ${corpus.definitionFiles} ファイル。`,
-      `全 ${t.total} 行のうち、版選択不能 ${t.unavailable}、マクロ ${t.macro}、構文不受理 ${t.invalid}、パース済みで形が対応づかない ${t.unmatched}。`,
+      `全 ${t.total} 行のうち、版選択不能 ${t.unavailable}、範囲内で結果が異なる ${t.different}、マクロ ${t.macro}、構文不受理 ${t.invalid}、パース済みで形が対応づかない ${t.unmatched}。`,
       `形が対応づいた ${t.matched} 行で書き換え器が出力したのは ${t.output} 行（${percent(t.output, t.matched)}、全入力の ${percent(t.output, t.total)}）。うち警告付き ${t.outputWithWarnings} 行。`);
     for (const [field, label] of [["lines", "行数"], ["definitions", "定義ファイル数"]] as const) {
       lines.push("", `## 未調査の頻度上位20件（${label}）`, "", `| 族 | 項目 | ${label} | 作品数 |`, "| --- | --- | ---: | ---: |");
@@ -188,11 +195,11 @@ function diff(previous: string) {
   return { added, removed, changed };
 }
 
-const changes = values.previous ? diff(values.previous) : undefined;
+const changes = { ...(values.previous ? diff(values.previous) : { added: [], removed: [], changed: [] }), overrides };
 mkdirSync(values.out, { recursive: true });
 writeFileSync(join(values.out, "compatibility.jsonl"), jsonLines(sorted));
 writeFileSync(join(values.out, "compatibility-summary.md"), summary());
 writeFileSync(join(values.out, "compatibility-sources.json"), JSON.stringify({
   schemaVersion: 1, java: versions.java, bedrock: versions.bedrock, geyser: mappings.source, corpus,
 }, null, 2) + "\n");
-if (changes) writeFileSync(join(values.out, "compatibility-diff.json"), JSON.stringify(changes, null, 2) + "\n");
+writeFileSync(join(values.out, "compatibility-diff.json"), JSON.stringify(changes, null, 2) + "\n");

@@ -1,15 +1,16 @@
+import { corpusContext, type CorpusVersion } from "./corpus-grammar.ts";
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
 import { CommandParser, rewriteCommand, selectCommandGrammar, type NbtTag, type ParsedNode, type RewriteContext } from "@je2be/core";
 import { loadGrammarTree, loadJavaGrammars } from "@je2be/converter";
-import { rowKey, terminalShape, type Family, type Row } from "./compatibility-inventory.ts";
+import { matchedModifiers, rowKey, terminalShape, type Family, type Row } from "./compatibility-inventory.ts";
 
-type CommandLine = {
+type CommandLine = CorpusVersion & {
   map: number;
   source: "cb" | "fn";
   cmd: string;
   dataVersion: number | null;
-  packFormat: number | null;
+
 };
 type Definition = { map: number; category: "advancement" | "predicate" | "loot_table"; definition: unknown };
 type Usage = { lines: number; definitions: number; maps: Set<number> };
@@ -100,13 +101,14 @@ export async function attachCorpus(rows: Map<string, Row>, files: { commands: st
   if (!available.length) throw new Error("Run npm run setup:grammars before using corpus inputs");
   const contexts = new Map<string, RewriteContext>();
   const usage = new Map<string, Usage>();
-  const commands = { total: 0, unavailable: 0, macro: 0, invalid: 0, unmatched: 0,
+  const commands = { total: 0, unavailable: 0, different: 0, macro: 0, invalid: 0, unmatched: 0,
     matched: 0, output: 0, outputWithWarnings: 0 };
   const maps = new Set<number>();
+  const familyOutput: Partial<Record<Family, number>> = {};
   const mapsByFamily = new Map<Family, Set<number>>();
   let definitionFiles = 0;
 
-  const collect = (map: number, unit: "lines" | "definitions", collectKeys: (add: (family: Family, id: string) => void) => void) => {
+  const collect = (map: number, unit: "lines" | "definitions", collectKeys: (add: (family: Family, id: string) => void) => void, output = false) => {
     const keys = new Set<string>();
     collectKeys((family, id) => {
       const key = rowKey(family, id);
@@ -118,6 +120,7 @@ export async function attachCorpus(rows: Map<string, Row>, files: { commands: st
       entry.maps.add(map);
       usage.set(key, entry);
       const family = rows.get(key)!.family;
+      if (output && unit === "lines") familyOutput[family] = (familyOutput[family] ?? 0) + 1;
       const familyMaps = mapsByFamily.get(family) ?? new Set<number>();
       familyMaps.add(map);
       mapsByFamily.set(family, familyMaps);
@@ -131,24 +134,18 @@ export async function attachCorpus(rows: Map<string, Row>, files: { commands: st
       commands.total++;
       const text = row.cmd.trim();
       if (text.startsWith("$")) { commands.macro++; continue; }
-      const version = selectCommandGrammar(available, {
-        ...(row.dataVersion == null ? {} : { dataVersion: row.dataVersion }),
-        ...(row.packFormat == null ? {} : { packFormat: row.packFormat }),
-      });
-      if (!version.ok) { commands.unavailable++; continue; }
-      const grammar = version.grammar;
-      let context = contexts.get(grammar.version);
-      if (!context) {
-        context = { ...base, parser: new CommandParser(loadGrammarTree(grammar), { textFormat: grammar.textFormat }) };
-        contexts.set(grammar.version, context);
-      }
+      const chosen = corpusContext(row, text, available, base, contexts);
+      if (chosen.different) { commands.different++; continue; }
+      const context = chosen.context;
+      if (!context) { commands.unavailable++; continue; }
       const parsed = context.parser.parse(text);
       if (!parsed.ok) { commands.invalid++; continue; }
       const shape = terminalShape(context.parser.root, parsed.nodes);
+      const result = rewriteCommand(text, context);
+      const output = result.status === "unchanged" || result.status === "rewritten";
       if (shape && rows.has(rowKey("command", shape))) {
         commands.matched++;
-        const result = rewriteCommand(text, context);
-        if (result.status === "unchanged" || result.status === "rewritten") {
+        if (output) {
           commands.output++;
           if (result.issues.some(issue => issue.severity === "warning")) commands.outputWithWarnings++;
         }
@@ -157,8 +154,9 @@ export async function attachCorpus(rows: Map<string, Row>, files: { commands: st
       }
       collect(row.map, "lines", add => {
         if (shape) add("command", shape);
+        for (const modifier of matchedModifiers(context.parser.root, parsed.nodes)) add("command", modifier);
         commandReferences(parsed.nodes, add);
-      });
+      }, output);
     }
 
     for await (const row of jsonLines<Definition>(files.definitions)) {
@@ -181,5 +179,5 @@ export async function attachCorpus(rows: Map<string, Row>, files: { commands: st
     };
   }
   const familyMaps = Object.fromEntries([...mapsByFamily].sort(([a], [b]) => a.localeCompare(b)).map(([family, ids]) => [family, ids.size]));
-  return { archivesWithInput: maps.size, familyMaps, definitionFiles, commands };
+  return { archivesWithInput: maps.size, familyMaps, familyOutput, definitionFiles, commands };
 }

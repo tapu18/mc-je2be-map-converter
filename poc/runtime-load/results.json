@@ -1,0 +1,36 @@
+{
+  "sizes": {
+    "main.js": 492,
+    "data.js": 12574318,
+    "parser.js": 8648,
+    "arguments.js": 27692,
+    "reader.js": 4245,
+    "snbt.js": 8552
+  },
+  "runs": [
+    {
+      "start": 1795345804217,
+      "loaded": 1795345804376,
+      "end": 1795345804376,
+      "ok": true,
+      "mappingKeys": 6,
+      "startToParseMs": 602
+    },
+    {
+      "start": 1795345806324,
+      "loaded": 1795345806517,
+      "end": 1795345806517,
+      "ok": true,
+      "mappingKeys": 6,
+      "startToParseMs": 783
+    },
+    {
+      "start": 1795345807934,
+      "loaded": 1795345808112,
+      "end": 1795345808112,
+      "ok": true,
+      "mappingKeys": 6,
+      "startToParseMs": 613
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "description": "UUID 文字列による保持者とエンティティの対応",
+  "setup": [
+    "scoreboard objectives add t dummy"
+  ],
+  "actions": [
+    {
+      "run": "summon minecraft:armor_stand 20.5 -60 20.5 {UUID:[I;305419896,305402420,305402420,305419896],Tags:[\"uuid_probe\"],NoGravity:1b}"
+    },
+    {
+      "run": "scoreboard players set 12345678-1234-1234-1234-123412345678 t 7"
+    }
+  ],
+  "bedrock": {
+    "actions": [
+      {
+        "run": "summon armor_stand 20.5 -60 20.5"
+      },
+      {
+        "run": "tag @e[type=armor_stand,x=20,y=-61,z=20,dx=1,dy=2,dz=1] add uuid_probe"
+      },
+      {
+        "run": "scoreboard players set 12345678-1234-1234-1234-123412345678 t 7"
+      }
+    ]
+  },
+  "observe": {
+    "entityTags": [
+      "uuid_probe"
+    ],
+    "entityDetails": true,
+    "entityScores": [
+      "t"
+    ]
+  },
+  "knownDiffs": {
+    "entityDetails.minecraft:armor_stand uuid_probe": "Java では UUID の指定で実体にスコアが付き、BE では同じ文字列を指定しても実体に付かなかった"
+  }
+}

@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+import { commandGrammarCandidates, type PackFormatRange } from "@je2be/core";
 // 配布マップのコマンドのパース成功率を集計する（#13）。
 // 使い方:
 //   python3 -I scripts/dump_commands.py sample-map > <scratch>/commands.jsonl
@@ -18,7 +20,8 @@ import { loadJavaGrammars, loadGrammarTree, type JavaGrammarInstallation } from 
 interface Row {
   map: number;
   dataVersion: number | null;
-  packFormat: number | null;
+  packFormat?: number | null;
+  packFormatRange?: PackFormatRange | null;
   source: "cb" | "fn";
   cmd: string;
 }
@@ -50,8 +53,9 @@ interface Tally {
   macro: number;
   ok: number;
   unavailable: number;
+  different: number;
 }
-const tally = (): Tally => ({ total: 0, macro: 0, ok: 0, unavailable: 0 });
+const tally = (): Tally => ({ total: 0, macro: 0, ok: 0, unavailable: 0, different: 0 });
 const bySource: Record<string, Tally> = {};
 const byVersion: Record<string, Tally> = {};
 const byMap: Record<string, Tally> = {};
@@ -79,11 +83,17 @@ for (const row of rows) {
   }
   const selected = selectCommandGrammar(grammars, {
     ...(row.dataVersion === null ? {} : { dataVersion: row.dataVersion }),
-    ...(row.packFormat === null ? {} : { packFormat: row.packFormat }),
+    ...(row.packFormat == null ? {} : { packFormat: row.packFormat }),
+    ...(row.packFormatRange == null ? {} : { packFormatRange: row.packFormatRange }),
   });
   if (!tree && !selected.ok) {
-    bump("unavailable");
-    continue;
+    if (selected.reason !== "ambiguous") { bump("unavailable"); continue; }
+    const source = { ...(row.dataVersion == null ? {} : { dataVersion: row.dataVersion }), ...(row.packFormat == null ? {} : { packFormat: row.packFormat }), ...(row.packFormatRange == null ? {} : { packFormatRange: row.packFormatRange }) };
+    const candidates = commandGrammarCandidates(grammars, source);
+    const results = candidates.map(g => new CommandParser(loadGrammarTree(g), { textFormat: g.textFormat }).parse(cmd));
+    if (results.slice(1).some(result => !isDeepStrictEqual(result, results[0]))) { bump("different"); continue; }
+    // Identical parse results permit using a representative for the normal tally.
+    Object.assign(selected, { ok: true, grammar: candidates[0] });
   }
   const grammar = selected.ok ? selected.grammar : undefined;
   const format = grammar?.textFormat ?? textFormatFor(row.dataVersion ?? undefined, row.packFormat ?? undefined);
@@ -113,13 +123,13 @@ for (const row of rows) {
 }
 
 const rate = (t: Tally): string => {
-  const parsed = t.total - t.macro - t.unavailable;
+  const parsed = t.total - t.macro - t.unavailable - t.different;
   return parsed ? `${((t.ok / parsed) * 100).toFixed(1)}%` : "-";
 };
 const table = (title: string, data: Record<string, Tally>): void => {
-  console.log(`\n### ${title}\n\n| 区分 | 行数 | マクロ | 文法なし | パース対象 | 成功 | 成功率 |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |`);
+  console.log(`\n### ${title}\n\n| 区分 | 行数 | マクロ | 文法なし | 範囲内で結果が異なる | パース対象 | 成功 | 成功率 |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |`);
   for (const [k, t] of Object.entries(data).sort(([a], [b]) => a.localeCompare(b, "en", { numeric: true }))) {
-    console.log(`| ${k} | ${t.total} | ${t.macro} | ${t.unavailable} | ${t.total - t.macro - t.unavailable} | ${t.ok} | ${rate(t)} |`);
+    console.log(`| ${k} | ${t.total} | ${t.macro} | ${t.unavailable} | ${t.different} | ${t.total - t.macro - t.unavailable - t.different} | ${t.ok} | ${rate(t)} |`);
   }
 };
 const top = (title: string, data: Record<string, number>, n = 25): void => {
@@ -133,8 +143,9 @@ for (const t of Object.values(bySource)) {
   all.macro += t.macro;
   all.ok += t.ok;
   all.unavailable += t.unavailable;
+  all.different += t.different;
 }
-console.log(`文法: ${treePath ?? "DataVersion / pack_format ごとの固定版"}\n全体: ${all.total}行（マクロ ${all.macro}、文法なし ${all.unavailable}）、パース対象 ${all.total - all.macro - all.unavailable}、成功 ${all.ok}（${rate(all)}）`);
+console.log(`文法: ${treePath ?? "DataVersion / pack_format ごとの固定版"}\n全体: ${all.total}行（マクロ ${all.macro}、文法なし ${all.unavailable}、範囲内で結果が異なる ${all.different}）、パース対象 ${all.total - all.macro - all.unavailable - all.different}、成功 ${all.ok}（${rate(all)}）`);
 table("コマンドの出どころ別（cb=コマンドブロック、fn=関数）", bySource);
 table("ワールドの DataVersion 別", byVersion);
 table("マップ別（連番）", byMap);
