@@ -155,6 +155,26 @@ const examples: Record<string, string> = {
   "minecraft:entity_anchor": "feet", "minecraft:swizzle": "xyz", "minecraft:gamemode": "survival",
   "minecraft:operation": "+=", "minecraft:objective_criteria": "dummy", "minecraft:scoreboard_slot": "sidebar",
   "minecraft:int_range": "1", "minecraft:particle": "minecraft:flame",
+  "minecraft:float_range": "1", "minecraft:uuid": "00000000-0000-0000-0000-000000000000",
+  "minecraft:resource_location": "minecraft:probe", "minecraft:slot_source": "container.0",
+  "minecraft:template_rotation": "none", "minecraft:template_mirror": "none",
+  "minecraft:team": "probe", "minecraft:team_color": "red",
+  "minecraft:context_float_provider": '{type:"minecraft:constant",value:1.0}', "minecraft:context_int_provider": '{type:"minecraft:constant",value:1}',
+  "minecraft:function": "minecraft:probe", "minecraft:dialog": '{type:"minecraft:notice",title:"probe"}',
+  "minecraft:loot_predicate": '{type:"minecraft:random_chance",chance:1.0}', "minecraft:loot_modifier": '{type:"minecraft:set_count",count:1}',
+  "minecraft:loot_table": "minecraft:chests/simple_dungeon", "minecraft:item_slot": "container.0",
+  "minecraft:feature": "minecraft:oak", "minecraft:style": "{}", "minecraft:swing_animation": "whack",
+  "minecraft:resource_selector": "minecraft:probe", "minecraft:hex_color": "ffffff",
+};
+
+const registryExamples: Record<string, string> = {
+  "minecraft:advancement": "minecraft:story/root", "minecraft:worldgen/template_pool": "minecraft:empty",
+  "minecraft:worldgen/structure": "minecraft:village_plains", "minecraft:recipe": "minecraft:oak_planks",
+  "minecraft:attribute": "minecraft:max_health", "minecraft:damage_type": "minecraft:generic",
+  "minecraft:mob_effect": "minecraft:speed", "minecraft:enchantment": "minecraft:sharpness",
+  "minecraft:worldgen/biome": "minecraft:plains", "minecraft:entity_type": "minecraft:pig",
+  "minecraft:point_of_interest_type": "minecraft:home", "minecraft:world_clock": "minecraft:overworld",
+  "minecraft:timeline": "minecraft:overworld",
 };
 
 function probeArgument(name: string, node: CommandTreeNode): string | undefined {
@@ -165,16 +185,35 @@ function probeArgument(name: string, node: CommandTreeNode): string | undefined 
     return String(Math.min(max, Math.max(min, name === "count" ? 1 : 0)));
   }
   if (name === "sound" && parser.startsWith("minecraft:resource")) return "minecraft:entity.experience_orb.pickup";
+  if (typeof node.properties?.registry === "string" && registryExamples[node.properties.registry]) return registryExamples[node.properties.registry];
   if (node.properties?.registry === "minecraft:mob_effect") return "minecraft:speed";
   if (node.properties?.registry === "minecraft:time_marker") return "minecraft:day";
   return Object.hasOwn(examples, parser) ? examples[parser] : undefined;
 }
 
-export function probeShape(context: RewriteContext, id: string, path: { name: string; node: CommandTreeNode }[]): Verdict {
+/** One representative command and one-at-a-time numeric boundary variants for a shape.
+ * Missing argument types are explicit: callers must not count a partial command as a probe. */
+export function shapeProbes(path: { name: string; node: CommandTreeNode }[]): { commands: string[]; missing: string[] } {
   const parts = path.map(({ name, node }) => node.type === "literal" ? name : probeArgument(name, node));
+  const missing = [...new Set(path.flatMap(({ node }, i) => parts[i] === undefined ? [node.parser ?? "<missing parser>"] : []))];
+  if (missing.length) return { commands: [], missing };
+  const commands = new Set([parts.join(" ")]);
+  for (const [i, { node }] of path.entries()) {
+    if (!node.parser || !["brigadier:integer", "brigadier:long", "brigadier:float", "brigadier:double"].includes(node.parser)) continue;
+    for (const bound of [node.properties?.min, node.properties?.max]) {
+      if (typeof bound !== "number" || !Number.isFinite(bound)) continue;
+      const variant = [...parts];
+      variant[i] = String(bound);
+      commands.add(variant.join(" "));
+    }
+  }
+  return { commands: [...commands], missing };
+}
+
+export function probeShape(context: RewriteContext, id: string, path: { name: string; node: CommandTreeNode }[]): Verdict {
   const source = "packages/core/src/command/rewrite.ts";
-  if (parts.includes(undefined)) return unknown(source, 112);
-  const probe = parts.join(" ");
+  const probe = shapeProbes(path).commands[0];
+  if (probe === undefined) return unknown(source, 112);
   const parsed = context.parser.parse(probe);
   if (!parsed.ok || terminalShape(context.parser.root, parsed.nodes) !== id) return unknown(source, 112);
   const result = rewriteCommand(probe, context);

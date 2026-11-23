@@ -5,7 +5,6 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join, delimiter } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { requiredChecks } from './policy.ts';
 import type { Issue, PullRequest } from './policy.ts';
 
 const exec = promisify(execFile);
@@ -20,7 +19,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -44,6 +43,7 @@ if (tool === 'git') {
   else if (args[0] !== 'fetch') throw Error('Unexpected git ' + args);
 } else if (tool === 'gh') {
   if (args[0] === 'repo') out({nameWithOwner: 'owner/repo'});
+  else if (args[0] === 'run' && args[1] === 'list') out(d.runs ?? [{headSha:'abc',event:'pull_request',status:'completed',conclusion:'success'}]);
   else if (args[0] === 'pr' && args[1] === 'list') out(d.prs);
   else if (args[0] === 'pr' && args[1] === 'merge') { d.prs[0].state = 'MERGED'; d.issues[0].state = 'CLOSED'; }
   else if (args[0] === 'issue') {
@@ -65,9 +65,16 @@ if (tool === 'git') {
     process.exit(2);
   }
   let prompt = ''; for await (const chunk of process.stdin) prompt += chunk;
-  if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
-  out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
-  if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
+  if (prompt.includes('の PM 巡回です')) {
+    (d.managerPrompts ??= []).push(prompt);
+    out({type:'item.completed', item:{type:'agent_message',text:'PM報告: 次は #7。承認待ちを確認しました。'}});
+    if (d.managerFails) process.exitCode = 1;
+  } else {
+    if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
+    if (d.workerLog) { for (const line of d.workerLog) out(line); writeFileSync(file, JSON.stringify(d)); process.exit(1); }
+    out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
+    if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
+  }
 } else throw Error('Unexpected executable ' + tool);
 writeFileSync(file, JSON.stringify(d));
 if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode = 1;
@@ -86,7 +93,11 @@ if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode =
     throw new Error(`${error.message}\nstdout: ${error.stdout}\nstderr: ${error.stderr}\nsignal: ${error.signal}; code: ${error.code}`);
   });
   const state = async () => JSON.parse(await readFile(join(root, '.git', 'agent-runner', 'state.json'), 'utf8'));
-  return { root, config, run, load, update, state };
+  const updateState = async (fn: (d: any) => void) => {
+    const d = await state(); fn(d);
+    await writeFile(join(root, '.git', 'agent-runner', 'state.json'), JSON.stringify(d));
+  };
+  return { root, config, run, load, update, state, updateState };
 }
 
 it('dry-run only reads; excludes other claims and unclosed dependencies', async () => {
@@ -111,13 +122,28 @@ it('claims, resumes in its own worktree, waits for all CI, and merges with a SHA
   expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
   await f.run(); // absent CI must not merge or launch a second worker
   expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(false);
-  await f.update(d => { d.prs[0]!.statusCheckRollup = requiredChecks.map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })); });
+  await f.update(d => { d.prs[0]!.statusCheckRollup = ['check', 'servers / scenarios-1', 'servers / result'].map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })); });
   await f.run();
   const calls = (await f.load()).calls;
   expect(calls.find(call => call[2] === 'merge')).toContain('--match-head-commit');
   expect(calls.find(call => call[2] === 'merge')).toContain('abc');
   await f.run();
   expect((await f.state()).tasks[0].phase).toBe('done');
+}, 20_000);
+
+it('waits for the current CI workflow even when renamed checks have passed', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.run();
+  await f.update(d => {
+    d.prs[0]!.statusCheckRollup = [{ name: 'servers / result', status: 'COMPLETED', conclusion: 'SUCCESS' }];
+    d.runs = [];
+  });
+  await f.run();
+  expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(false);
+  await f.update(d => { d.runs = [{ headSha: 'abc', event: 'pull_request', status: 'completed', conclusion: 'success' }]; });
+  await f.run();
+  expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(true);
 }, 20_000);
 
 it('bounds worker retries, preserves state, and resumes a blocked task when made ready', async () => {
@@ -173,7 +199,7 @@ it('leaves passing approval waits alone and honors autoMerge=false', async () =>
   await f.run();
   await f.update(d => {
     d.issues[0]!.labels.push({ name: 'needs-approval' });
-    d.prs[0]!.statusCheckRollup = requiredChecks.map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
+    d.prs[0]!.statusCheckRollup = ['check', 'servers / scenarios-1', 'servers / result'].map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
   });
   await f.run();
   expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(false);
@@ -206,4 +232,102 @@ it('stops the loop on CLI startup errors, shows diagnostics and refunds the atte
   await f.update(d => { d.launchFails = false; });
   await f.run();
   expect((await f.load()).prs).toHaveLength(1);
+});
+
+it('refunds a structured CLI failure before work and stops with its diagnostic', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.update(d => { d.workerLog = [
+    JSON.stringify({ type: 'thread.started', thread_id: 'test' }),
+    JSON.stringify({ type: 'turn.failed', error: { message: "The ' gpt-6.1-terra' model is not supported when using Codex with a ChatGPT account." } }),
+  ]; });
+  await expect(f.run()).rejects.toThrow('AI CLI could not start');
+  const state = await f.state();
+  expect(state.runs).toBe(0);
+  expect(state.tasks[0].attempts).toBe(0);
+  expect(state.tasks[0].error).toContain('model is not supported');
+  expect((await f.load()).issues[0]!.labels.some(label => label.name === 'status:blocked')).toBe(false);
+});
+
+it('counts a failure after work and refunds an early error event', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.update(d => { d.workerLog = [JSON.stringify({ type: 'item.completed', item: { type: 'command_execution' } }), JSON.stringify({ type: 'turn.failed' })]; });
+  await f.run();
+  expect((await f.state()).runs).toBe(1);
+  await f.update(d => { d.workerLog = [JSON.stringify({ type: 'error', message: 'authentication failed' })]; });
+  await expect(f.run()).rejects.toThrow('AI CLI could not start');
+  expect((await f.state()).runs).toBe(1);
+  expect((await f.state()).tasks[0].attempts).toBe(1);
+});
+
+it.each([['--model', ' bad'], ['--model=bad '], ['--model', "'bad'"], ['--model']])('rejects invalid model arguments before starting: %s', async (...args) => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agentArgs: args }));
+  await expect(f.run()).rejects.toThrow('Invalid --model value');
+  await expect(access(join(f.root, '.git'))).rejects.toThrow();
+});
+
+it('runs PM with independent agent/args and report, persists schedule, then resumes worker tasks', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: {
+    enabled: true, agent: 'claude', agentArgs: ['--model', 'manager-model'], instructions: 'M1の依存を優先',
+  } }));
+  const result = await f.run();
+  expect(result.stdout).toContain('[PM]');
+  expect((await f.state()).runs).toBe(0);
+  expect((await f.state()).manager.runs).toBe(1);
+  expect((await f.state()).tasks).toHaveLength(0);
+  const calls = (await f.load()).calls;
+  expect(calls.filter(call => call[0] === 'claude')).toHaveLength(1);
+  expect(calls.find(call => call[0] === 'claude')).toContain('manager-model');
+  expect((await f.load()).managerPrompts![0]).toContain('M1の依存を優先');
+  expect(await readFile(join(f.root, '.git', 'agent-runner', 'manager-latest.md'), 'utf8')).toContain('PM報告');
+  await f.run(); // Claim work instead of starting PM again.
+  await f.run(); // Run codex worker.
+  expect((await f.load()).calls.filter(call => call[0] === 'claude')).toHaveLength(1);
+  expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
+  expect((await f.state()).runs).toBe(1);
+});
+
+it('runs PM early when no work is available, with cooldown and an independent daily cap', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, maxRunsPerDay: 2 } }));
+  await f.update(d => { d.issues[0]!.labels = [{ name: 'needs-approval' }]; });
+  await f.run();
+  await f.updateState(d => { d.manager.lastStartedAt -= 3_700_000; d.manager.lastFinishedAt -= 3_700_000; });
+  const idle = await f.run();
+  expect(idle.stdout).toContain('着手可能な作業なし');
+  expect((await f.state()).manager.runs).toBe(2);
+  await f.updateState(d => { d.manager.lastStartedAt = 0; d.manager.lastFinishedAt = 0; });
+  await f.run();
+  expect((await f.load()).managerPrompts).toHaveLength(2);
+  await f.updateState(d => { d.manager.day = '2000-01-01'; d.runs = 12; });
+  await f.run();
+  expect((await f.state()).manager.runs).toBe(1);
+  expect((await f.state()).runs).toBe(12);
+  expect((await f.load()).managerPrompts).toHaveLength(3);
+});
+
+it('keeps PM schedule after failure and stops/refunds startup failures without claiming work', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true } }));
+  await f.update(d => { d.launchFails = true; });
+  await expect(f.run()).rejects.toThrow('PM CLI could not start');
+  expect((await f.state()).manager).toBeUndefined();
+  expect((await f.state()).tasks).toHaveLength(0);
+  await f.update(d => { d.launchFails = false; d.managerFails = true; });
+  await f.run();
+  expect((await f.state()).manager.error).toContain('exit 1');
+  expect((await f.state()).manager.runs).toBe(1);
+  await f.run(); // Cooldown prevents another PM attempt; normal claim is allowed.
+  expect((await f.load()).managerPrompts).toHaveLength(1);
+});
+
+it('reports PM configuration during dry-run without starting either role', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, agent: 'claude' } }));
+  expect((await f.run('--dry-run')).stdout).toContain('PM: claude');
+  await expect(access(join(f.root, '.git'))).rejects.toThrow();
+  expect((await f.load()).calls.some(call => ['codex', 'claude'].includes(call[0]!))).toBe(false);
 });

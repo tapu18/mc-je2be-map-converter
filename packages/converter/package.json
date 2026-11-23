@@ -4,9 +4,15 @@
   "type": "module",
   "description": "変換器（Node）。Javaワールドからの抽出、コマンドの書き換え、地形変換器の呼び出し、BEワールドの出力",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./zip": "./src/zip.ts"
   },
   "dependencies": {
-    "@je2be/core": "*"
+    "@je2be/core": "*",
+    "adm-zip": "^0.6.1",
+    "fflate": "^0.8.3"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8"
   }
 }

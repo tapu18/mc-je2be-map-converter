@@ -40,8 +40,8 @@
 
 - **worktree を分ける。** 同じディレクトリで複数のエージェントが作業しない。
   ```sh
-  git worktree add ../je2be-<Issue番号> -b <Issue番号>-<短い説明> origin/main
-  cd ../je2be-<Issue番号> && npm ci && npm run setup:servers
+  tools/new-worktree.sh <Issue番号>
+  cd ../je2be-<Issue番号>
   ```
 - ブランチ名は `<Issue番号>-<短い説明>`（例：`3-poc-tick-order`）。
 - 1コミット1目的。`npm run check` が通る状態でコミットする。
@@ -61,6 +61,7 @@
 4. **条件を満たせば、エージェントが自分でマージしてよい**（2026-11-15 に所有者が許可）。作業中に判断が必要になった場合は、下記の手順で判断を待つ。
    - マージの方式は通常のマージコミット（`gh pr merge <番号> --merge`）。スカッシュは積み上げた PR で衝突を起こすため使わない。
    - マージ待ちの PR に依存する作業は、その PR のブランチから派生させ、PR の base をそのブランチにする（積み上げ）。
+   - `tools/merge-pr.sh <PR番号>` は main 宛て PR の CI を待ち、マージ後に直接の後続 PR を main に切り替えてから元ブランチを削除する。途中で失敗した場合は状態を確認し、以下を手動で続ける。
    - 積み上げた PR をマージする手順：
      1. 下の PR を `--delete-branch` を付けずにマージする（**base のブランチを先に消すと、上に積んだ PR が自動でクローズされる**）
      2. 上の PR の base を main に切り替える（`gh pr edit <番号> --base main`）。base が main 以外のままマージすると `Closes #番号` で Issue が閉じない

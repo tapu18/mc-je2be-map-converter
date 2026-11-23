@@ -1,13 +1,16 @@
+import { cleanupMerged } from './agent-runner/cleanup.ts';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile, rename, open, unlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import { command, CommandError } from './agent-runner/process.ts';
-import { agentArguments, AgentLaunchError } from './agent-runner/agent.ts';
+import { agentArguments, AgentLaunchError, failedBeforeWork, validateWorkerArgs } from './agent-runner/agent.ts';
 import { followProgress } from './agent-runner/progress.ts';
+import { managerConfig, managerDue, managerPrompt, managerReport } from './agent-runner/manager.ts';
+import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
 import { activeClaims, canMerge, checksFailed, dependencies, hasLabel } from './agent-runner/policy.ts';
-import type { Issue, PullRequest } from './agent-runner/policy.ts';
+import type { Issue, PullRequest, WorkflowRun } from './agent-runner/policy.ts';
 
 interface Config {
   repo: string;
@@ -20,6 +23,7 @@ interface Config {
   maxRunsPerDay: number;
   autoMerge: boolean;
   agentArgs: string[];
+  manager: ManagerConfig;
 }
 interface Task {
   issue: number;
@@ -36,6 +40,7 @@ interface State {
   day: string;
   runs: number;
   tasks: Task[];
+  manager?: ManagerState;
 }
 
 const { values } = parseArgs({ options: {
@@ -56,7 +61,9 @@ async function main() {
   if (process.platform === 'win32') throw new Error('Use Linux/macOS (or WSL): process-group termination is required.');
   const input: unknown = JSON.parse(await readFile(resolve(values.config!), 'utf8'));
   const config = validateConfig(input);
+  validateWorkerArgs(config.agentArgs);
   const agentArgs = agentArguments(config.agent, config.agentArgs);
+  const managerArgs = config.manager.enabled ? agentArguments(config.manager.agent, config.manager.agentArgs) : [];
   const root = (await command('git', ['rev-parse', '--show-toplevel'], { cwd: process.cwd() })).trim();
   const actualRepo = JSON.parse(await command('gh', ['repo', 'view', '--json', 'nameWithOwner'], { cwd: root, signal: abort.signal })) as { nameWithOwner: string };
   if (actualRepo.nameWithOwner.toLowerCase() !== config.repo.toLowerCase()) throw new Error('Config repo does not match the repository selected by gh in this checkout');
@@ -67,6 +74,7 @@ async function main() {
   const issue = (number: number) => json<Issue>(['issue', 'view', String(number), '--json', 'number,title,body,state,labels,comments']);
   const prs = (task: Task) => json<PullRequest[]>(['pr', 'list', '--head', task.branch, '--state', 'all', '--json',
     'number,state,isDraft,baseRefName,headRefName,headRefOid,mergeStateStatus,reviewDecision,labels,closingIssuesReferences,statusCheckRollup']);
+  const ciRuns = (pr: PullRequest) => json<WorkflowRun[]>(['run', 'list', '--workflow', 'ci.yml', '--branch', pr.headRefName, '--limit', '100', '--json', 'headSha,event,status,conclusion']);
   const ready = () => json<Issue[]>(['issue', 'list', '--state', 'open', '--label', 'status:ready', '--limit', '100',
     ...(config.milestone ? ['--milestone', config.milestone] : []), '--json', 'number,title,body,state,labels,comments']);
   const eligible = async (item: Issue) => {
@@ -78,6 +86,7 @@ async function main() {
   // Dry-run neither takes the lock nor creates state, claims, worktrees or CLI sessions.
   if (values['dry-run']) {
     log(`dry-run: ${config.repo}, ${config.agent}, base=${config.base}, autoMerge=${config.autoMerge}`);
+    log(`PM: ${config.manager.enabled ? `${config.manager.agent}, interval=${config.manager.intervalSeconds}s, idle=${config.manager.runWhenIdle}, daily limit=${config.manager.maxRunsPerDay}` : 'disabled'}`);
     for (const item of (await ready()).sort((a, b) => a.number - b.number)) {
       log(`#${item.number} ${await eligible(item) ? 'eligible' : 'skip'} ${item.title}`);
     }
@@ -102,6 +111,48 @@ async function main() {
     const save = async () => {
       await writeFile(`${statePath}.tmp`, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 });
       await rename(`${statePath}.tmp`, statePath);
+    };
+    const runManager = async (idle: boolean): Promise<boolean> => {
+      if (!managerDue(config.manager, state.manager, Date.now(), idle)) return false;
+      const previous = state.manager;
+      const day = new Date().toISOString().slice(0, 10);
+      const manager: ManagerState = {
+        day, runs: (previous?.day === day ? previous.runs : 0) + 1, lastStartedAt: Date.now(),
+      };
+      state.manager = manager;
+      await save(); // Record before spawning: restarting must not repeatedly launch PM.
+      const logfile = join(stateDir, `manager-${manager.lastStartedAt}.log`);
+      log(`[PM] ${idle ? '着手可能な作業なし' : '定期巡回'}: ${config.manager.agent} 起動（本日 ${manager.runs}/${config.manager.maxRunsPerDay}）、log=${logfile}`);
+      const progress = await followProgress(logfile, message => log(`[PM] ${message}`));
+      try {
+        await command(config.manager.agent, managerArgs, {
+          cwd: root, timeoutMs: config.manager.timeoutSeconds * 1000, signal: abort.signal, log: logfile,
+          input: managerPrompt(config.repo, config.base, config.milestone, config.manager.instructions, join(stateDir, 'manager-latest.md')),
+        });
+        const report = await managerReport(logfile);
+        const document = `# PM 巡回報告\n\n${new Date().toISOString()} / ${config.manager.agent}\n\n${report}\n`;
+        await writeFile(logfile.replace(/\.log$/, '.md'), document, { mode: 0o600 });
+        const latest = join(stateDir, 'manager-latest.md');
+        await writeFile(`${latest}.tmp`, document, { mode: 0o600 });
+        await rename(`${latest}.tmp`, latest);
+        log(`[PM] 完了。報告: ${latest}`);
+      } catch (error) {
+        manager.error = String(error);
+        log(`[PM] ${manager.error}`);
+        if ((error instanceof CommandError && error.exitCode === 2) ||
+            ['ENOENT', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) {
+          // Keep worker budgets and the previous PM schedule intact on invalid CLI setup.
+          if (previous) state.manager = previous;
+          else delete state.manager;
+          await save();
+          throw new AgentLaunchError(`PM CLI could not start. Fix manager configuration and restart.\n${manager.error}`);
+        }
+      } finally {
+        await progress.close();
+        // Do not overwrite the rolled-back state on startup failure.
+        if (state.manager === manager) { manager.lastFinishedAt = Date.now(); await save(); }
+      }
+      return true;
     };
     const status = async (number: number, next: string) => {
       const current = await issue(number);
@@ -156,7 +207,8 @@ async function main() {
       } catch (error) {
         task.error = String(error);
         log(task.error);
-        if ((error instanceof CommandError && error.exitCode === 2) ||
+        if ((error instanceof CommandError && (error.exitCode === 2 ||
+              (error.exitCode !== null && await failedBeforeWork(logfile)))) ||
             ['ENOENT', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) {
           // Invalid invocation / missing executable is infrastructure failure, not work.
           task.attempts--;
@@ -172,8 +224,13 @@ async function main() {
     const tick = async () => {
       const day = new Date().toISOString().slice(0, 10);
       if (day !== state.day) { state.day = day; state.runs = 0; await save(); }
+      if (await runManager(false)) return;
       for (const task of state.tasks) {
-        if (task.phase === 'done') continue;
+        if (task.phase === 'done') {
+          try { await cleanupMerged(task, root, stateDir, config.repo, config.base); }
+          catch (error) { log(`#${task.issue} 片付けを保留: ${String(error)}`); }
+          continue;
+        }
         const item = await issue(task.issue);
         if (item.state === 'CLOSED') { log(`#${task.issue} 完了（Issue はクローズ済み）`); task.phase = 'done'; await save(); continue; }
         if (task.phase !== 'claiming' && activeClaims(item.comments)[0] !== task.claim) {
@@ -212,11 +269,11 @@ async function main() {
         const pr = pulls.find(pr => pr.state === 'OPEN');
         if (pr) {
           if (hasLabel(pr, 'needs-approval')) { log(`#${task.issue} PR #${pr.number} 承認待ち`); continue; }
-          if (config.autoMerge && canMerge(item, pr, config.base)) {
+          if (config.autoMerge && canMerge(item, pr, config.base, await ciRuns(pr))) {
             // Recheck immediately; gh's SHA guard rejects head updates during merge.
             const freshIssue = await issue(task.issue);
             const fresh = (await prs(task)).find(p => p.number === pr.number);
-            if (fresh && canMerge(freshIssue, fresh, config.base)) {
+            if (fresh && canMerge(freshIssue, fresh, config.base, await ciRuns(fresh))) {
               await gh(['pr', 'merge', String(pr.number), '--merge', '--match-head-commit', fresh.headRefOid]);
               log(`Merged #${pr.number} for issue #${task.issue}`);
             }
@@ -235,6 +292,7 @@ async function main() {
         await run(task, item);
         return; // At most one worker per tick.
       }
+      // PM has its own budget; it may run even when worker runs are exhausted.
       if (state.runs >= config.maxRunsPerDay) { log(`日次起動上限 ${state.runs}/${config.maxRunsPerDay}。UTC の日付更新待ち`); return; }
       for (const candidate of (await ready()).sort((a, b) => a.number - b.number)) {
         if (state.tasks.some(task => task.issue === candidate.number) || !await eligible(candidate)) continue;
@@ -248,6 +306,7 @@ async function main() {
         // Reconcile claim ordering next tick before starting any implementation.
         return;
       }
+      if (await runManager(true)) return;
       log('巡回完了。着手可能な作業がなければ待機します。');
     };
 
@@ -271,7 +330,8 @@ function validateConfig(input: unknown): Config {
   const raw = input as Record<string, unknown>;
   const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxRunsPerDay: 12, autoMerge: true, agentArgs: [] };
   const config = { ...defaults, ...raw } as unknown as Config;
-  for (const key of Object.keys(raw)) if (![...Object.keys(defaults), 'repo', 'milestone'].includes(key)) throw new Error(`Unknown config key: ${key}`);
+  for (const key of Object.keys(raw)) if (![...Object.keys(defaults), 'repo', 'milestone', 'manager'].includes(key)) throw new Error(`Unknown config key: ${key}`);
+  config.manager = managerConfig(raw.manager);
   if (typeof config.repo !== 'string' || !/^[\w.-]+\/[\w.-]+$/.test(config.repo)) throw new Error('repo must be owner/repository');
   if (!['codex', 'claude'].includes(config.agent)) throw new Error('agent must be codex or claude');
   if (typeof config.base !== 'string' || !/^[\w][\w./-]*$/.test(config.base)) throw new Error('Invalid base branch');
