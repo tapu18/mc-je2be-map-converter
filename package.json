@@ -23,7 +23,8 @@
     "evaluate:gimmicks": "node tools/evaluate-gimmicks.ts",
     "coverage:corpus": "node tools/coverage-corpus.ts",
     "scenarios:record": "npm run build:pack && JE2BE_RECORD=1 vitest run --config vitest.servers.config.ts packages/bridge/src/scenario -t java",
-    "ledger:compatibility": "node tools/compatibility-ledger.ts"
+    "ledger:compatibility": "node tools/compatibility-ledger.ts",
+    "decisions": "node tools/decisions.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.6",

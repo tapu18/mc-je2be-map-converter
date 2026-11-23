@@ -32,6 +32,8 @@ it('builds the PM prompt with the target, previous report and optional extra ins
   expect(prompt).toContain('対象マイルストーン: M2');
   expect(prompt).toContain('/state/manager-latest.md');
   expect(prompt).toContain('## 追加の指示\n依存を優先');
+  expect(prompt).toContain('docs/roles.md');
+  expect(prompt).toContain('npm run decisions -- --update');
   const plain = managerPrompt('o/r', 'main', undefined, '', '/state/manager-latest.md');
   expect(plain).toContain('指定なし');
   expect(plain).not.toContain('追加の指示');
