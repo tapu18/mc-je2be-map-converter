@@ -276,6 +276,9 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 
 合成した 1.20.4 ワールドを Java 26.3 で開いた実サーバーテストでは、コマンドブロックの `Command` と関数ファイルの文字列が保存され、チェスト内アイテムの `CustomModelData` は `minecraft:custom_model_data` に移った。防具立ての `CustomName` の内容も残った。対象はテスト内の各1例である。根拠は `packages/bridge/src/upgrade-1204.servers.test.ts`（3回成功）、再現方法と文法・コーパスの調査は `docs/research-1204.md`。
 
+### コマンド形の参照先と実験設定（#166）
+
+Java 26.3 の関数読み込みで、`minecart_improvements` を有効にすると `max_minecart_speed` の監査候補 6 件は受理された。また `test` の参照先を同梱の `minecraft:always_pass`、`time` の timeline を `minecraft:day` に変えた 13 件は受理された。関数を実行せずに測定した。再現手順と個々の候補は `docs/command-shape-audit.md` の #166 の表を参照。
 ### BDS の関数読み込みによる構文検査（#165）
 
 BDS 1.26.63.1 の使い捨てワールドで、合成コマンドを 1 行ずつ別のビヘイビアーパック関数に置き、関数を呼び出さずに起動ログを調べた（`tools/shape-bedrock-audit.ts`、`shape-bedrock-audit.servers.test.ts`）。`time set noon` は読み込みエラーなし、`time set bogus`、不正な effect、存在しないコマンド名はそれぞれ関数名と行番号を含む読み込みエラーになった。読み込み後に副作用のある対照の scoreboard objective を新規作成でき、対照の関数が読み込み時に実行されていないことも確認した。直接実行と異なり、この対照では引数の不正を区別できた。関数内で使えるコマンドや参照の制約、実行時の成否・意味の一致、すべての不正引数は未検証であり、エラーなしを一般的な完全受理の証明とはしない。
