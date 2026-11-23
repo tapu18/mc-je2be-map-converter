@@ -6,10 +6,7 @@
 
 ## 役割
 
-| 役割 | 担うこと |
-| --- | --- |
-| 人（リポジトリ所有者） | `needs-approval` の判断、段階の関門（M0の完了など）の承認、実クライアントでのプレイ確認 |
-| エージェント | Issue の着手から PR のマージまで。新しく見つけた作業の Issue 化 |
+所有者（人）・PM（AI）・worker（AI）の3つ。責任、してよいこと・しないこと、受け渡しの形は [roles.md](roles.md) に定める。この文書の手順は、主に worker が Issue を完了させるためのもの。
 
 ## 管理の単位
 
@@ -24,7 +21,9 @@
 | `status:in-review` | PR を提出済み。CI やレビュー待ち。マージされると Issue は閉じる |
 | `status:paused` | 中断。再開手順が Issue のコメントにある |
 | `status:blocked` | 他の Issue か人の判断を待っている |
-| `needs-approval` | 人の判断待ち。判断が出るまでその Issue には着手しない |
+| `needs-approval` | 所有者の判断待ち（判断の Issue）。判断が出るまでその Issue には着手しない |
+| `owner-task` | 所有者にしかできない作業（プレイ確認、作者への依頼など） |
+| `owner-inbox` | 判断の受付（ピン留めの Issue、1件だけ。[roles.md](roles.md#判断の受付)） |
 | `type:*` / `area:*` | 種類と分野 |
 
 ## 作業の流れ
@@ -91,9 +90,9 @@
 - 外部への影響がある（新しいリポジトリやサービスの作成、公開、費用の発生）
 - ライセンスや配布マップの権利に関わる判断
 
-判断の Issue には、選択肢・推奨・各案の影響を書き、所有者がその Issue だけで選べるようにする。調査・比較・PoC がまだ必要なら、着手可能な子 Issue に分ける。子の本文先頭に `親（判断）: #番号`、親の本文に `Depends on: #子` を書く。子の提案は `docs/proposals/<名前>.md` に「未承認の提案」と明記して置く。承認後に親の作業で `docs/design.md` を更新する。
+判断の Issue は、テンプレート「判断」（`.github/ISSUE_TEMPLATE/decision.yml`）の節（問い・選択肢・推奨）で書き、所有者がその Issue だけで選べるようにする。書き方は [roles.md の判断の Issue の書き方](roles.md#判断の-issue-の書き方)。所有者には[判断の受付](roles.md#判断の受付)の一覧で届く。調査・比較・PoC がまだ必要なら、着手可能な子 Issue に分ける。子の本文先頭に `親（判断）: #番号`、親の本文に `Depends on: #子` を書く。子の提案は `docs/proposals/<名前>.md` に「未承認の提案」と明記して置く。承認後に親の作業で `docs/design.md` を更新する。
 
-判断が出たら、まず親の Issue にその内容を記録し、`needs-approval` を外してから、必要な実装の Issue に進む。
+判断が出たら、まず親の Issue にその内容を記録し（形は [roles.md の受け渡し](roles.md#受け渡し)）、`needs-approval` を外してから、必要な実装の Issue に進む。判断の受付で受けた答えなら、元のコメントに「記録しました → #番号」と返信し、`npm run decisions -- --update` で一覧を更新する。
 
 ## サーバー・API の版上げ
 
