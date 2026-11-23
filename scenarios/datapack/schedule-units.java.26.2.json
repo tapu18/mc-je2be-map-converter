@@ -1,0 +1,23 @@
+{
+  "java": "26.2",
+  "state": {
+    "storage": {
+      "m2:probe": {
+        "after_second": [
+          "a",
+          "b",
+          "b",
+          "a"
+        ],
+        "trace": [
+          "a",
+          "b",
+          "b",
+          "a"
+        ],
+        "day_scheduled": 1,
+        "day_cleared": 1
+      }
+    }
+  }
+}

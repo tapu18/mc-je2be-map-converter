@@ -284,6 +284,6 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 | --- | --- | --- |
 | 1.20.6、1.21.4 | `datapack/entity-nbt` | storage へのコピーは `HandItems` / `ArmorItems` のリスト（出力の `hand` / `armor`）で、26.3 は `equipment.mainhand`。同じ CustomName 入力について、前者は `"Probe"` を含む文字列、後者は `{"text":"Probe"}` を含む文字列。表示名が同じかはこの記録では測っていない（#219）。 |
 | 1.20.6、1.21.4 | `datapack/execute-extra` | `#all_mismatch`、`#masked_diff`、`#unloaded_if`、`#wrong_dimension` が 0 で存在し、26.3 の記録には存在しない。発生箇所の切り分けは #220。 |
-| 1.21.11 | 差なし | 21シナリオの state が 26.3 と一致。 |
+| 1.21.11、26.2 | 差なし | 21シナリオの state が 26.3 と一致。 |
 
 上記以外のシナリオには差がなかった。各版の具体的な値は対応する正解 JSON を参照。NBT の数値型は正規化時に一部省かれる（`docs/scenarios.md`）。

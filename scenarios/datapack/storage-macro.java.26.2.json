@@ -1,0 +1,58 @@
+{
+  "java": "26.2",
+  "state": {
+    "scores": {
+      "macro": {
+        "#first": -7,
+        "#second": 12,
+        "#input": -7
+      }
+    },
+    "storage": {
+      "m2:data": {
+        "args": {
+          "amount": -7,
+          "extra": {
+            "add": 4,
+            "keep": 1,
+            "change": 3
+          },
+          "name": "first"
+        },
+        "next": {
+          "amount": 12,
+          "extra": {
+            "add": 4,
+            "keep": 1,
+            "change": 3
+          },
+          "name": "second"
+        },
+        "history": [
+          {
+            "amount": -7,
+            "extra": {
+              "add": 4,
+              "keep": 1,
+              "change": 3
+            },
+            "name": "first"
+          },
+          {
+            "amount": 12,
+            "extra": {
+              "add": 4,
+              "keep": 1,
+              "change": 3
+            },
+            "name": "second"
+          }
+        ],
+        "labels": [
+          "first",
+          "second"
+        ]
+      }
+    }
+  }
+}
