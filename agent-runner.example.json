@@ -7,5 +7,16 @@
   "maxAttempts": 3,
   "maxRunsPerDay": 12,
   "autoMerge": true,
-  "agentArgs": ["--approve-for-me"]
+  "agentArgs": ["--approve-for-me"],
+  "manager": {
+    "enabled": true,
+    "agent": "claude",
+    "agentArgs": [],
+    "intervalSeconds": 21600,
+    "runWhenIdle": true,
+    "minIntervalSeconds": 3600,
+    "timeoutSeconds": 3600,
+    "maxRunsPerDay": 3,
+    "instructions": ""
+  }
 }

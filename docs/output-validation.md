@@ -59,7 +59,7 @@ npm run convert:world -- <Javaワールド> --out <出力.mcworld>   # ディレ
 
 - 入力ワールドは一時領域へコピーしてから変換し、原本は変更しない。既存の出力・レポートは上書きせずエラーにする
 - 必要な資材（JRE・Chunker・版別文法・blocks.json・固定Geyser対応表と表示）がなければエラーにする。`setup:servers`・`setup:mappings`・`setup:grammars` を実行する
-- .mcworld はワールド直下（level.dat・db・behavior_packs・world_behavior_packs.json 等）をアーカイブの直下に置く。Python 3 が必要
+- .mcworld はワールド直下（level.dat・db・behavior_packs・world_behavior_packs.json 等）をアーカイブの直下に置く
 - Geyser の出典・MIT表示（`LICENSE.geyser.txt`・`NOTICE.geyser.txt`）をワールド直下と初期化パックに同梱する
 - レポート（既定は `<出力>.report.json`）は常に `status: "partial"`、`clientVerification: "not-performed"`、`clearConfirmed: false` で、未対応・省略したコマンドの件数と未実装の範囲（`limitations`）を載せる
 

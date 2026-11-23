@@ -21,17 +21,17 @@
 | --- | --- |
 | `status:ready` | 着手可能。担当なし |
 | `status:in-progress` | 作業中。担当は Issue の `claim:` コメントで示す |
-| `status:in-review` | PR を提出済み。CI 待ち、または `needs-approval` の承認待ち。マージされると Issue は閉じる |
+| `status:in-review` | PR を提出済み。CI やレビュー待ち。マージされると Issue は閉じる |
 | `status:paused` | 中断。再開手順が Issue のコメントにある |
 | `status:blocked` | 他の Issue か人の判断を待っている |
-| `needs-approval` | 人の承認が必要。PRをマージする前に承認をもらう |
+| `needs-approval` | 人の判断待ち。判断が出るまでその Issue には着手しない |
 | `type:*` / `area:*` | 種類と分野 |
 
 ## 作業の流れ
 
 ### 1. 着手する
 
-1. `gh issue list --label status:ready --milestone "<現在の段階>"` から選ぶ。依存（Issueの「依存」欄）が終わっていないものは選ばない。
+1. `gh issue list --label status:ready --milestone "<現在の段階>"` から選ぶ。`needs-approval` が付いたものや、依存（Issueの「依存」欄）が終わっていないものは選ばない。
 2. ラベルを `status:in-progress` に付け替え、`claim: <エージェント名>（ブランチ <ブランチ名>）` とコメントする。
 3. コメントを読み直し、自分より前に別の `claim:` があれば手を引く（先に書いた方が担当）。
 4. エージェント名は作業ごとに一意にする（例：`claude-poc-tick`）。全員が同じGitHubアカウントを使うため、assignee では区別できない。
@@ -40,8 +40,8 @@
 
 - **worktree を分ける。** 同じディレクトリで複数のエージェントが作業しない。
   ```sh
-  git worktree add ../je2be-<Issue番号> -b <Issue番号>-<短い説明> origin/main
-  cd ../je2be-<Issue番号> && npm ci && npm run setup:servers
+  tools/new-worktree.sh <Issue番号>
+  cd ../je2be-<Issue番号>
   ```
 - ブランチ名は `<Issue番号>-<短い説明>`（例：`3-poc-tick-order`）。
 - 1コミット1目的。`npm run check` が通る状態でコミットする。
@@ -57,10 +57,11 @@
 3. マージの条件：
    - CI が通っている
    - Issue の完了条件を満たしている
-   - `needs-approval` が付いた Issue・PR は、人の承認コメントがある
-4. **条件を満たせば、エージェントが自分でマージしてよい**（2026-11-15 に所有者が許可）。`needs-approval` の PR は、承認コメントを得るまでマージしない。待つ間は Issue のラベルを `status:in-review` にして次の Issue に進む。
+   - 必要な人の判断が該当する Issue に記録されている
+4. **条件を満たせば、エージェントが自分でマージしてよい**（2026-11-15 に所有者が許可）。作業中に判断が必要になった場合は、下記の手順で判断を待つ。
    - マージの方式は通常のマージコミット（`gh pr merge <番号> --merge`）。スカッシュは積み上げた PR で衝突を起こすため使わない。
    - マージ待ちの PR に依存する作業は、その PR のブランチから派生させ、PR の base をそのブランチにする（積み上げ）。
+   - `tools/merge-pr.sh <PR番号>` は main 宛て PR の CI を待ち、マージ後に直接の後続 PR を main に切り替えてから元ブランチを削除する。途中で失敗した場合は状態を確認し、以下を手動で続ける。
    - 積み上げた PR をマージする手順：
      1. 下の PR を `--delete-branch` を付けずにマージする（**base のブランチを先に消すと、上に積んだ PR が自動でクローズされる**）
      2. 上の PR の base を main に切り替える（`gh pr edit <番号> --base main`）。base が main 以外のままマージすると `Closes #番号` で Issue が閉じない
@@ -116,11 +117,15 @@ PR の実機テストはマージ結果と base SHA の差分から `tools/serve
 
 人の判断がチャットなど GitHub の外で示された場合は、受け取ったエージェントが該当する Issue にコメントとして記録する（日付と判断の内容）。ほかのエージェントはその記録を承認として扱う。
 
-次の場合は作業を止め、Issue に `needs-approval` を付けて質問を書く。
+次の場合は作業を止め、判断の Issue に `needs-approval` を付ける。判断が出るまでその Issue には着手しない。
 
 - 設計（`docs/design.md`）の方針を変える必要がある
 - 外部への影響がある（新しいリポジトリやサービスの作成、公開、費用の発生）
 - ライセンスや配布マップの権利に関わる判断
+
+判断の Issue には、選択肢・推奨・各案の影響を書き、所有者がその Issue だけで選べるようにする。調査・比較・PoC がまだ必要なら、着手可能な子 Issue に分ける。子の本文先頭に `親（判断）: #番号`、親の本文に `Depends on: #子` を書く。子の提案は `docs/proposals/<名前>.md` に「未承認の提案」と明記して置く。承認後に親の作業で `docs/design.md` を更新する。
+
+判断が出たら、まず親の Issue にその内容を記録し、`needs-approval` を外してから、必要な実装の Issue に進む。
 
 ## サーバー・API の版上げ
 
