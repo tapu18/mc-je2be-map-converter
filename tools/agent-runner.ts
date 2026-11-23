@@ -240,7 +240,7 @@ async function main() {
       if (await runManager(false)) return;
       for (const task of state.tasks) {
         if (task.phase === 'done') {
-          try { await cleanupMerged(task, root, stateDir, config.repo, config.base); }
+          try { await cleanupMerged(task, root, stateDir, config.repo, config.base, undefined, reason => log(`#${task.issue} 片付けを保留: ${reason}`)); }
           catch (error) { log(`#${task.issue} 片付けを保留: ${String(error)}`); }
           continue;
         }
