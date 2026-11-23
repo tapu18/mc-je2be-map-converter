@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      include_quarantine:
+        description: Run the isolated nightly tests too
+        type: boolean
+        default: false
   schedule:
     - cron: "23 18 * * *" # 03:23 JST
 
@@ -44,6 +49,7 @@ jobs:
       - id: plan
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          INCLUDE_QUARANTINE: ${{ inputs.include_quarantine }}
         run: node tools/server-test-plan.ts
 
   servers:
