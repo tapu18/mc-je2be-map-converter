@@ -279,3 +279,5 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 ### Actions の定期実行（#222）
 
 2026-11-23 UTC の Actions API では schedule の実行履歴が 0 件で、CI と Version canary の workflow はともに active、Actions は enabled だった。隔離登録が空の状態で `include_quarantine=true` を指定した [手動 CI](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154796628) は成功し、隔離ジョブは生成されなかった。
+
+同日の [手動 Version canary](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154550420) は検出、API、セットアップ、実機、Java 再記録、台帳生成がすべて成功し、`scenarios.diff` は空だった。artifact の候補は Java 26.3、BDS 1.26.66.1、Chunker 1.21.0 で、固定 BDS 1.26.63.1 との差を検出した。版上げの追跡は #227。
