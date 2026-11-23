@@ -275,3 +275,7 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 ### Java 1.20.4 ワールドの更新（#145）
 
 合成した 1.20.4 ワールドを Java 26.3 で開いた実サーバーテストでは、コマンドブロックの `Command` と関数ファイルの文字列が保存され、チェスト内アイテムの `CustomModelData` は `minecraft:custom_model_data` に移った。防具立ての `CustomName` の内容も残った。対象はテスト内の各1例である。根拠は `packages/bridge/src/upgrade-1204.servers.test.ts`（3回成功）、再現方法と文法・コーパスの調査は `docs/research-1204.md`。
+
+### コマンド形の参照先と実験設定（#166）
+
+Java 26.3 の関数読み込みで、`minecart_improvements` を有効にすると `max_minecart_speed` の監査候補 6 件は受理された。また `test` の参照先を同梱の `minecraft:always_pass`、`time` の timeline を `minecraft:day` に変えた 13 件は受理された。関数を実行せずに測定した。再現手順と個々の候補は `docs/command-shape-audit.md` の #166 の表を参照。
