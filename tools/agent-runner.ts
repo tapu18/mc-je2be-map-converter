@@ -41,6 +41,8 @@ interface State {
   runs: number;
   tasks: Task[];
   manager?: ManagerState;
+  codeWarning?: string;
+  startupCode?: string[];
 }
 
 const { values } = parseArgs({ options: {
@@ -65,6 +67,8 @@ async function main() {
   const agentArgs = agentArguments(config.agent, config.agentArgs);
   const managerArgs = config.manager.enabled ? agentArguments(config.manager.agent, config.manager.agentArgs) : [];
   const root = (await command('git', ['rev-parse', '--show-toplevel'], { cwd: process.cwd() })).trim();
+  const codeAt = async (ref: string) => (await command('git', ['rev-parse', `${ref}:tools/agent-runner.ts`, `${ref}:tools/agent-runner`], { cwd: root, signal: abort.signal })).trim().split('\n');
+  const startupCode = await codeAt('HEAD');
   const actualRepo = JSON.parse(await command('gh', ['repo', 'view', '--json', 'nameWithOwner'], { cwd: root, signal: abort.signal })) as { nameWithOwner: string };
   if (actualRepo.nameWithOwner.toLowerCase() !== config.repo.toLowerCase()) throw new Error('Config repo does not match the repository selected by gh in this checkout');
   const common = resolve(root, (await command('git', ['rev-parse', '--git-common-dir'], { cwd: root })).trim());
@@ -108,6 +112,8 @@ async function main() {
       state = { version: 1, repo: config.repo, day: '', runs: 0, tasks: [] };
     }
     if (state.version !== 1 || state.repo !== config.repo || !Array.isArray(state.tasks)) throw new Error('State version/repository mismatch');
+    state.startupCode = startupCode;
+    delete state.codeWarning;
     const save = async () => {
       await writeFile(`${statePath}.tmp`, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 });
       await rename(`${statePath}.tmp`, statePath);
@@ -127,7 +133,7 @@ async function main() {
       try {
         await command(config.manager.agent, managerArgs, {
           cwd: root, timeoutMs: config.manager.timeoutSeconds * 1000, signal: abort.signal, log: logfile,
-          input: managerPrompt(config.repo, config.base, config.milestone, config.manager.instructions, join(stateDir, 'manager-latest.md')),
+          input: managerPrompt(config.repo, config.base, config.milestone, config.manager.instructions, join(stateDir, 'manager-latest.md')) + (state.codeWarning ? `\n\n${state.codeWarning}` : ''),
         });
         const report = await managerReport(logfile);
         const document = `# PM 巡回報告\n\n${new Date().toISOString()} / ${config.manager.agent}\n\n${report}\n`;
@@ -222,6 +228,13 @@ async function main() {
     };
 
     const tick = async () => {
+      await command('git', ['fetch', 'origin', config.base], { cwd: root, signal: abort.signal });
+      const baseCode = await codeAt(`origin/${config.base}`);
+      if (startupCode.some ( (hash, index) => hash !== baseCode[index])) {
+        state.codeWarning = '管理プログラムのコードが更新された。再起動が必要';
+        log(state.codeWarning);
+      } else delete state.codeWarning;
+      await save();
       const day = new Date().toISOString().slice(0, 10);
       if (day !== state.day) { state.day = day; state.runs = 0; await save(); }
       if (await runManager(false)) return;
