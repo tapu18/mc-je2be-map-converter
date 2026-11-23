@@ -10,7 +10,7 @@ import { JavaServer } from "../java.ts";
 import { paths, repoRoot } from "../paths.ts";
 import { rewriteResources } from "../rewrite-resources.ts";
 import { createDataPack, waitBedrockTicks } from "../poc-kit.ts";
-import { loadScenarioDatapack, startScenarioJava } from "./datapack.ts";
+import { loadScenarioDatapack, startScenarioJava, type ScenarioJavaVersion } from "./datapack.ts";
 import { normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./normalize.ts";
 import type { Action, NormalizedState, Scenario, ScenarioCommandBlock, Vec3 } from "./types.ts";
 
@@ -58,14 +58,14 @@ export async function javaAction(java: JavaServer, a: Action, log: string[]): Pr
   }
 }
 
-export async function runJava(s: Scenario): Promise<{ state: NormalizedState; log: string[] }> {
+export async function runJava(s: Scenario, version?: ScenarioJavaVersion): Promise<{ state: NormalizedState; log: string[] }> {
   const log: string[] = [];
-  let java = await startScenarioJava(s.datapack);
+  let java = await startScenarioJava(s.datapack, version);
   try {
     // tick を止め、シナリオの ticks だけ進める（決定的にするため）
     await java.exec("tick freeze");
     for (const c of s.setup) await javaAction(java, { run: c }, log);
-    if (s.datapack) await loadScenarioDatapack(java, s.datapack, log);
+    if (s.datapack) await loadScenarioDatapack(java, s.datapack, log, version);
     for (const a of s.actions) {
       if ("restart" in a) {
         await java.dump({});

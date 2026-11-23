@@ -1,0 +1,23 @@
+{
+  "java": "1.21.4",
+  "state": {
+    "entities": {
+      "minecraft:armor_stand uuid_probe": 1
+    },
+    "entityDetails": {
+      "minecraft:armor_stand uuid_probe": [
+        {
+          "name": "",
+          "block": [
+            20,
+            -60,
+            20
+          ],
+          "scores": {
+            "t": 7
+          }
+        }
+      ]
+    }
+  }
+}

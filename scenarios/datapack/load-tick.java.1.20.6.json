@@ -1,0 +1,52 @@
+{
+  "java": "1.20.6",
+  "state": {
+    "scores": {
+      "clock": {
+        "#tick": 4
+      }
+    },
+    "storage": {
+      "m2:clock": {
+        "trace": [
+          {
+            "source": "load"
+          },
+          {
+            "source": "tick",
+            "tick": 1
+          },
+          {
+            "source": "block",
+            "tick": 1
+          },
+          {
+            "source": "tick",
+            "tick": 2
+          },
+          {
+            "source": "block",
+            "tick": 2
+          },
+          {
+            "source": "tick",
+            "tick": 3
+          },
+          {
+            "source": "block",
+            "tick": 3
+          },
+          {
+            "source": "tick",
+            "tick": 4
+          },
+          {
+            "source": "block",
+            "tick": 4
+          }
+        ],
+        "after_reload": []
+      }
+    }
+  }
+}

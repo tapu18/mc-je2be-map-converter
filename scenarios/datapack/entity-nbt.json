@@ -1,0 +1,30 @@
+{
+  "description": "エンティティ名と装備の NBT を storage にコピーし、版ごとの表現を観測する",
+  "setup": [
+    "summon minecraft:armor_stand 0 -60 0 {Tags:[\"probe\"],CustomName:'{\"text\":\"Probe\"}'}",
+    "item replace entity @e[type=minecraft:armor_stand,tag=probe,limit=1] weapon.mainhand with minecraft:stone"
+  ],
+  "actions": [
+    {
+      "run": "data modify storage m2:entity name set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] CustomName"
+    },
+    {
+      "run": "data modify storage m2:entity hand set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] HandItems"
+    },
+    {
+      "run": "data modify storage m2:entity armor set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] ArmorItems"
+    },
+    {
+      "run": "data modify storage m2:entity equipment set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] equipment"
+    },
+    {
+      "run": "execute store result storage m2:entity health int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Health"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:entity"
+    ]
+  },
+  "bedrockPending": "Java の版ごとの NBT を調べる"
+}

@@ -1,0 +1,34 @@
+{
+  "java": "1.21.11",
+  "state": {
+    "scores": {
+      "result": {
+        "#return": 7,
+        "#return_success": 1
+      }
+    },
+    "storage": {
+      "m2:calls": {
+        "trace": [
+          "nested",
+          "plain",
+          "fail",
+          "second",
+          "first"
+        ],
+        "failure": {
+          "result": 0,
+          "success": 0
+        },
+        "executors": [
+          1,
+          2,
+          3,
+          3,
+          2,
+          1
+        ]
+      }
+    }
+  }
+}
