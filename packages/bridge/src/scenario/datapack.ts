@@ -20,7 +20,7 @@ function write(path: string, body: string): void {
   writeFileSync(path, body);
 }
 
-export interface ScenarioJavaVersion { runtime: NonNullable<JavaStartOptions["runtime"]>; packFormat: number; functionDirectory: "function" | "functions" }
+export interface ScenarioJavaVersion { runtime: NonNullable<JavaStartOptions["runtime"]>; packFormat: number; packMinor: number; functionDirectory: "function" | "functions" }
 
 export async function startScenarioJava(datapack?: ScenarioDatapack, version?: ScenarioJavaVersion): Promise<JavaServer> {
   if (!datapack) return JavaServer.start({ ...(version ? { runtime: version.runtime } : {}) });
@@ -29,7 +29,7 @@ export async function startScenarioJava(datapack?: ScenarioDatapack, version?: S
   const pack = join(work, PACK);
   try {
     write(join(pack, "pack.mcmeta"), JSON.stringify({
-      pack: version ? { description: "je2be scenario", pack_format: version.packFormat } : { description: "je2be scenario", min_format: 121, max_format: 121 },
+      pack: version && version.packFormat <= 81 ? { description: "je2be scenario", pack_format: version.packFormat } : version ? { description: "je2be scenario", min_format: [version.packFormat, version.packMinor], max_format: [version.packFormat, version.packMinor] } : { description: "je2be scenario", min_format: 121, max_format: 121 },
     }));
     return await JavaServer.start({ ...(version ? { runtime: version.runtime } : {}), datapacks: [pack], initialEnabledPacks: ["vanilla", `file/${PACK}`] });
   } finally {

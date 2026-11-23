@@ -15,9 +15,9 @@ import { runBedrock, runJava } from "./run.ts";
 const servers = JSON.parse(readFileSync(join(repoRoot, "tools/servers.json"), "utf8")) as { java: { version: string } };
 const version = process.env.JE2BE_JAVA_VERSION;
 if (version && !/^\d+\.\d+(?:\.\d+)?$/.test(version)) throw new Error("Invalid Java version");
-const grammar = version ? JSON.parse(readFileSync(join(paths.servers, "grammars", version, "grammar.json"), "utf8")) as { version: string; packFormat: number; source: { functionDirectory: "function" | "functions" } } : undefined;
+const grammar = version ? JSON.parse(readFileSync(join(paths.servers, "grammars", version, "grammar.json"), "utf8")) as { version: string; packFormat: number; packMinor: number; source: { functionDirectory: "function" | "functions" } } : undefined;
 if (grammar && grammar.version !== version) throw new Error("Java version mismatch");
-const runtime = grammar ? { runtime: { java: paths.java, serverDirectory: join(paths.servers, "grammars", version!, "server") }, packFormat: grammar.packFormat, functionDirectory: grammar.source.functionDirectory } : undefined;
+const runtime = grammar ? { runtime: { java: paths.java, serverDirectory: join(paths.servers, "grammars", version!, "server") }, packFormat: grammar.packFormat, packMinor: grammar.packMinor, functionDirectory: grammar.source.functionDirectory } : undefined;
 const record = process.env.JE2BE_RECORD === "1";
 const ci = process.env.CI === "true";
 
