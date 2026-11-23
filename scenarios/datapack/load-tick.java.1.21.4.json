@@ -17,7 +17,15 @@
             "tick": 1
           },
           {
+            "source": "block",
+            "tick": 1
+          },
+          {
             "source": "tick",
+            "tick": 2
+          },
+          {
+            "source": "block",
             "tick": 2
           },
           {
@@ -25,7 +33,15 @@
             "tick": 3
           },
           {
+            "source": "block",
+            "tick": 3
+          },
+          {
             "source": "tick",
+            "tick": 4
+          },
+          {
+            "source": "block",
             "tick": 4
           }
         ],
