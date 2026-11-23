@@ -271,3 +271,7 @@ Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込�
 Java 26.3 で `node tools/shape-java-audit.ts /tmp/shape-java-audit-112.json` を実行し、1,424 形の 1,520 候補を関数の読み込みで判定した。Java が 1,448 候補を受理し、パーサとの不一致は 72、パーサが到達した終端形の不一致は 0 だった。書き換えの結果は unsupported 1,298、unchanged 86、rewritten 136。Java の関数では使用できないコマンドや存在しない参照を含むため、この不一致数をパーサの欠陥数とは扱えない。BDS の全候補の構文判定は行っていない。
 
 BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のうち書き換え結果が rewritten または unchanged の 222 件を `BedrockServer.exec` で直接実行したところ、いずれも例外を返さなかった。一方、対照の `time set bogus` も例外なし・successCount 0 だった。同じ実験で不正な effect 引数、不正なブロック ID、不正なコマンド名は構文エラーを返した。したがって直接実行で例外がないことも、全引数の構文受理の証拠にはできない。
+
+### Java 1.20.4 ワールドの更新（#145）
+
+合成した 1.20.4 ワールドを Java 26.3 で開いた実サーバーテストでは、コマンドブロックの `Command` と関数ファイルの文字列が保存され、チェスト内アイテムの `CustomModelData` は `minecraft:custom_model_data` に移った。防具立ての `CustomName` の内容も残った。対象はテスト内の各1例である。根拠は `packages/bridge/src/upgrade-1204.servers.test.ts`（3回成功）、再現方法と文法・コーパスの調査は `docs/research-1204.md`。
