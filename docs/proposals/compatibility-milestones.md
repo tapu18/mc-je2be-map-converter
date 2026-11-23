@@ -1,6 +1,6 @@
 # 互換性の族と段階の組み直し案（#106）
 
-所有者は段階の組み直しと詳細を委ねた（[#106 の判断記録](https://github.com/tapu18/mc-je2be-map-converter/issues/106#issuecomment-7096756298)）。下記の案 A を採用し、design.md 7章と GitHub のマイルストーンに反映する。具体的な段階の関門は引き続き所有者に確認する。各族 Issue は全行の追跡先であり、1 PR に収まる子 Issue に分割する。行の `issue` は追跡先であって、方式が実証済みであることを意味しない。
+所有者は段階の組み直しと詳細を委ねた（[#106 の判断記録](https://github.com/tapu18/mc-je2be-map-converter/issues/106#issuecomment-7096756298)）。下記の案 A を採用し、design.md 7章と GitHub のマイルストーンに反映する。具体的な段階の関門は引き続き所有者に確認する。各族 Issue は `family` を介した全行の追跡先であり、1 PR に収まる子 Issue に分割する。行の `issue` は個別判定の追跡に残し、方式が実証済みであることを意味しない。
 
 ## 採用した計画
 
