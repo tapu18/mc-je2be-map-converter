@@ -265,3 +265,16 @@ Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込�
 ### コマンドブロックとマクロ（#155）
 
 Java 26.3 の [実サーバーテスト](../packages/bridge/src/macro-command-block.servers.test.ts)では、コマンドブロックに `$` で始まる行を保存できたが、その行はスコアを変更しなかった。同じテストでは、コマンドブロックからインライン compound と storage の両方式でマクロ関数を呼ぶと、展開した命令がスコアを変更した。これはこのテストの入力に限った観測で、他のコマンドや版すべての挙動を保証するものではない。
+
+### マクロの具体値による型紙試探（#155、暫定）
+
+非公開コーパスの抽出結果を `tools/probe-macro-corpus.ts` で集計した。2026-11-23 時点のコーパスはマクロ 3,630 行・穴 4,089 個で、行頭の命令名に穴があるのは 1 行だった。Java 26.3 の文法で各行の全穴に同一の候補値を代入したところ、3,615 行で少なくとも一例がパースされ、15 行はどの候補でもパースできなかった。型の内訳は同スクリプトで再現できる。これは固定率ではない。異なる値や複数穴の組合せを網羅しておらず、元のワールドの版とも限らない。
+
+再現手順（配布マップや抽出データを公開しない）:
+
+```sh
+python3 -I scripts/dump_commands.py /home/tapukoko/code/mc-je2be-map-converter/sample-map > /tmp/issue155-commands.jsonl
+node tools/probe-macro-corpus.ts /tmp/issue155-commands.jsonl servers/reports-26.3/reports/commands.json
+```
+
+同環境で Java 26.3 の `commands.json` は 583,592 bytes、`servers/mappings/mappings.json` は 10,357,025 bytes（`wc -c`）。これは元データのサイズであり、実際に同梱が必要な範囲や起動時メモリの測定ではない。
