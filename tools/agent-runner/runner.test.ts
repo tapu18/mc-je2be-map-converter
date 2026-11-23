@@ -5,7 +5,6 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join, delimiter } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { requiredChecks } from './policy.ts';
 import type { Issue, PullRequest } from './policy.ts';
 
 const exec = promisify(execFile);
@@ -20,7 +19,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerLog?: string[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -44,6 +43,7 @@ if (tool === 'git') {
   else if (args[0] !== 'fetch') throw Error('Unexpected git ' + args);
 } else if (tool === 'gh') {
   if (args[0] === 'repo') out({nameWithOwner: 'owner/repo'});
+  else if (args[0] === 'run' && args[1] === 'list') out(d.runs ?? [{headSha:'abc',event:'pull_request',status:'completed',conclusion:'success'}]);
   else if (args[0] === 'pr' && args[1] === 'list') out(d.prs);
   else if (args[0] === 'pr' && args[1] === 'merge') { d.prs[0].state = 'MERGED'; d.issues[0].state = 'CLOSED'; }
   else if (args[0] === 'issue') {
@@ -122,13 +122,28 @@ it('claims, resumes in its own worktree, waits for all CI, and merges with a SHA
   expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
   await f.run(); // absent CI must not merge or launch a second worker
   expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(false);
-  await f.update(d => { d.prs[0]!.statusCheckRollup = requiredChecks.map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })); });
+  await f.update(d => { d.prs[0]!.statusCheckRollup = ['check', 'servers / scenarios-1', 'servers / result'].map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })); });
   await f.run();
   const calls = (await f.load()).calls;
   expect(calls.find(call => call[2] === 'merge')).toContain('--match-head-commit');
   expect(calls.find(call => call[2] === 'merge')).toContain('abc');
   await f.run();
   expect((await f.state()).tasks[0].phase).toBe('done');
+}, 20_000);
+
+it('waits for the current CI workflow even when renamed checks have passed', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.run();
+  await f.update(d => {
+    d.prs[0]!.statusCheckRollup = [{ name: 'servers / result', status: 'COMPLETED', conclusion: 'SUCCESS' }];
+    d.runs = [];
+  });
+  await f.run();
+  expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(false);
+  await f.update(d => { d.runs = [{ headSha: 'abc', event: 'pull_request', status: 'completed', conclusion: 'success' }]; });
+  await f.run();
+  expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(true);
 }, 20_000);
 
 it('bounds worker retries, preserves state, and resumes a blocked task when made ready', async () => {
@@ -184,7 +199,7 @@ it('leaves passing approval waits alone and honors autoMerge=false', async () =>
   await f.run();
   await f.update(d => {
     d.issues[0]!.labels.push({ name: 'needs-approval' });
-    d.prs[0]!.statusCheckRollup = requiredChecks.map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
+    d.prs[0]!.statusCheckRollup = ['check', 'servers / scenarios-1', 'servers / result'].map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
   });
   await f.run();
   expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(false);
