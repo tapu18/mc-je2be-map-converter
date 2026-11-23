@@ -32,11 +32,13 @@ for (const s of selected) {
     it("java matches the golden data", async () => {
       const { state, log } = await runJava(s, runtime);
       const golden = readGolden(s, undefined, version);
+      if (version && !record && !golden) throw new Error(`${s.id}: Java ${version} の正解データがない`);
       if (record || !golden) {
         if (!golden && ci) throw new Error(`${s.id}: 正解データがない。JE2BE_RECORD=1 で記録してコミットすること`);
         writeGolden(s, { java: version ?? servers.java.version, state }, undefined, version);
         return;
       }
+      expect(golden.java).toBe(version ?? servers.java.version);
       expect(state, `Java の結果が正解データと違う（Java のバージョンが変わったなら記録し直す）\n${log.join("\n")}`).toEqual(golden.state);
     });
 
