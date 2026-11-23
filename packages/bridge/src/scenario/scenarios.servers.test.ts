@@ -40,6 +40,8 @@ for (const s of selected) {
       expect(state, `Java の結果が正解データと違う（Java のバージョンが変わったなら記録し直す）\n${log.join("\n")}`).toEqual(golden.state);
     });
 
+    if (version) return; // 版別の記録は Java のみ
+
     if (s.bedrockPending) {
       it.skip(`bedrock 未実行（${s.bedrockPending}）`, () => {});
       return;

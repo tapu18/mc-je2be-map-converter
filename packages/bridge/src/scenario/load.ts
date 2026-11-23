@@ -18,7 +18,7 @@ export function loadScenarios(dir = scenariosDir): (Scenario & { id: string })[]
   const walk = (d: string): string[] =>
     readdirSync(d).flatMap((n) => {
       const p = join(d, n);
-      return statSync(p).isDirectory() ? walk(p) : n.endsWith(".json") && ! /\.java(?:\.\d+\.\d+(?:\.\d+)?)?\.json$/.test(n) ? [p] : [];
+      return statSync(p).isDirectory() ? walk(p) : n.endsWith(".json") && !/\.java(?:\.\d+\.\d+(?:\.\d+)?)?\.json$/.test(n) ? [p] : [];
     });
   return walk(dir)
     .sort()
