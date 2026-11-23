@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { nbt, readBedrockLevelDat, writeBedrockLevelDat } from "@je2be/core";
-import { configureOutputWorld, initScript, INIT_PROPERTY, SCRIPT_API_VERSION, selectScores, writeInitPack } from "./convert.ts";
+import { configureOutputWorld, SCRIPT_API_VERSION, selectScores, writeInitPack } from "./convert.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const dirs: string[] = [];
@@ -42,10 +42,10 @@ describe("初期化パック", () => {
     expect(exp?.type === "compound" && exp.value.get("other_experiment")).toEqual(nbt.byte(1));
     for (const key of ["cheatsEnabled", "commandsEnabled", "commandblocksenabled"]) expect(level.root.tag.value.get(key)).toEqual(nbt.byte(1));
   });
-  it("スクリプトはスコアを持ち、一度だけ動く", () => {
-    const s = initScript([{ objective: "t", scores: [{ participant: "#a", score: -3 }] }]);
-    expect(s).toContain('[["t",[["#a",-3]]]]');
-    expect(s).toContain(`getDynamicProperty(${JSON.stringify(INIT_PROPERTY)})`);
+  it("スコアをデータとして出力する", () => {
+    const w = tmp();
+    writeInitPack(w, [{ objective: "t", scores: [{ participant: "#a", score: -3 }] }]);
+    expect(readFileSync(join(w, "behavior_packs/je2be_init/scripts/data.js"), "utf8")).toContain('[\"t\",[[\"#a\",-3]]]');
   });
 
   it("world_behavior_packs.json の既存の記載を残して足す。同じ内容なら同じ UUID になる", () => {

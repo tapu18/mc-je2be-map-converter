@@ -8,3 +8,4 @@ servers/
 packages/bridge-pack/pack/scripts/
 poc/*/pack/scripts/
 poc/*/pack/structures/
+packages/runtime-host/pack/scripts/
