@@ -239,6 +239,10 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 | 予約実行 | `append` の2件は予約から 2、4 tick 後に動いた。`replace` を使った関数は古い予約の 2 tick 後には動かず、5 tick 後に1回動いた。`clear` で取り消した 3、6 tick 後の2件は、7 tick 後まで記録されなかった | [schedule.java.json](../scenarios/datapack/schedule.java.json) |
 | load と tick | tick を止めて `reload` を済ませた時点の記録は空。最初の `tick step` で load が先に1回動いた。続く4組は各組で tick 関数 → 反復コマンドブロックの順に動き、各組の両方が同じ tick 番号 1〜4 を記録した | [load-tick.java.json](../scenarios/datapack/load-tick.java.json) |
 
+## 実機 CI の計時（#108）
+
+2026-11-21 の [main の CI 実行 44900032141](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/44900032141) では、Vitest の計時で正解シナリオ 15 本に約 206 秒、bridge グループに約 826 秒かかった。そのうち `versioned-grammar.servers.test.ts` は約 310 秒だった。変換シナリオの連続した BE 照合の完了間隔は約 19〜22 秒だった。ジョブ開始から実機テストのステップ開始までの時間は各グループで 40 秒以内だった。
+
 ## schedule の保存・再起動（#123）
 
 Java 26.3 の [schedule-restart](../scenarios/datapack/schedule-restart.json) では、100 tick 後の関数を予約して 30 tick 進め、保存・停止して同じワールドを再起動した。再起動直後とさらに 50 tick 後は未実行、100 tick 後には実行済みだった（[記録](../scenarios/datapack/schedule-restart.java.json)）。予約時と関数の実行時のゲーム内時刻の差は 100 tick だった。したがって、この実験では停止前に進めた 30 tick を含め、予定は予約時からのゲーム内 tick を維持していた。再起動直後の残り時間は 50 tick より長く 100 tick 以下だった。起動中にも tick が進むため、再起動直後の正確な残り tick 数や長期停止中の実時間の影響はこの実験では測っていない。

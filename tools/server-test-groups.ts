@@ -3,8 +3,8 @@
 //         node tools/server-test-groups.ts --list        → グループ名と割り当てを表示する
 //
 // どのグループにも当てはまらないテストは "misc" に入る。新しいテストが割り当て漏れで実行されないことはない。
-// グループを増やしたら .github/workflows/ci.yml の matrix にも足すこと（--check で確かめられる）。
-import { readdirSync, readFileSync, statSync } from "node:fs";
+// CI の動的な matrix は tools/server-test-plan.ts で作る。
+import { readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,15 +12,13 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** グループ名 → 対象のパス（先頭一致）。所要時間（CI、2026-11-15）がおおむね揃うように分ける */
 export const GROUPS: Record<string, string[]> = {
-  // 正解データのシナリオ（1本あたり十数秒。増えたらさらに分ける）
-  scenarios: ["packages/bridge/src/scenario/"],
-  // 約47秒
+  // 正解データのシナリオ。CI ではこのファイルだけシナリオ ID で分割する。
+  scenarios: ["packages/bridge/src/scenario/scenarios.servers.test.ts"],
+  grammar: ["packages/bridge/src/versioned-grammar.servers.test.ts"],
   bridge: ["packages/"],
-  // 約73秒
   "poc-a": ["poc/tick-order/", "poc/launcher/dimension", "poc/coordinates/"],
-  // 約136秒。PR では関連する変更があるときだけ流す（ci.yml）
   performance: ["poc/repeat-performance/"],
-  // 上のどれにも当てはまらないもの（約46秒：terrain-converter、launcher、dynamic-properties、mcstructure-version など）
+  // 上のどれにも当てはまらないもの
   misc: [],
 };
 
@@ -43,22 +41,14 @@ export function assign(): Record<string, string[]> {
   return out;
 }
 
-const arg = process.argv[2];
-if (arg === "--list") {
-  for (const [g, files] of Object.entries(assign())) console.log(`${g}:\n${files.map((f) => `  ${f}`).join("\n")}`);
-} else if (arg === "--check") {
-  // ci.yml の matrix とグループ名が一致しているか
-  const yml = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8");
-  const missing = Object.keys(GROUPS).filter((g) => !new RegExp(`group: ${g}\\b`).test(yml));
-  const empty = Object.entries(assign()).filter(([, f]) => f.length === 0).map(([g]) => g);
-  if (missing.length) {
-    console.error(`ci.yml の matrix にないグループ: ${missing.join(", ")}`);
-    process.exit(1);
+if (import.meta.main) {
+  const arg = process.argv[2];
+  if (arg === "--list") {
+    for (const [group, files] of Object.entries(assign())) console.log(`${group}:\n${files.map((file) => `  ${file}`).join("\n")}`);
+  } else if (arg && Object.hasOwn(GROUPS, arg)) {
+    console.log(assign()[arg]!.join(" "));
+  } else {
+    console.error(`usage: node tools/server-test-groups.ts <${Object.keys(GROUPS).join("|")}|--list>`);
+    process.exit(2);
   }
-  console.log(`ok（テストのないグループ: ${empty.join(", ") || "なし"}）`);
-} else if (arg && arg in GROUPS) {
-  console.log(assign()[arg]!.join(" "));
-} else {
-  console.error(`usage: node tools/server-test-groups.ts <${Object.keys(GROUPS).join("|")}|--list|--check>`);
-  process.exit(2);
 }

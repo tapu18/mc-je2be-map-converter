@@ -13,7 +13,7 @@ export interface Golden {
 }
 
 /** scenarios/ 以下のシナリオを読む。id は scenarios/ からの相対パス（拡張子なし） */
-export function loadScenarios(dir = scenariosDir): Scenario[] {
+export function loadScenarios(dir = scenariosDir): (Scenario & { id: string })[] {
   if (!existsSync(dir)) return [];
   const walk = (d: string): string[] =>
     readdirSync(d).flatMap((n) => {
