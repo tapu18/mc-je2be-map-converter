@@ -14,14 +14,35 @@ export function copyNbt(tag: NbtTag): NbtTag {
   }
 }
 
-type Slot = { get(): NbtTag; set(value: NbtTag): void; remove(): void };
-function slots(parent: NbtTag, node: NbtPathNode, create: boolean): Slot[] {
+/** Exact equality, unlike the subset matching used for path predicates. */
+function equalNbt(a: NbtTag, b: NbtTag): boolean {
+  if (a.type !== b.type) return false;
+  if (a.type === "compound" && b.type === "compound") {
+    return a.value.size === b.value.size && [...a.value].every(([key, value]) => {
+      const other = b.value.get(key);
+      return other !== undefined && equalNbt(value, other);
+    });
+  }
+  if (a.type === "list" && b.type === "list") {
+    return a.value.length === b.value.length && a.value.every((value, i) => equalNbt(value, b.value[i]!));
+  }
+  if ((a.type === "byteArray" && b.type === "byteArray") || (a.type === "intArray" && b.type === "intArray") || (a.type === "longArray" && b.type === "longArray")) {
+    return a.value.length === b.value.length && a.value.every((value, i) => value === b.value[i]);
+  }
+  return a.value === b.value;
+}
+
+type Slot = { get(): NbtTag; set(value: NbtTag): void; remove(): void; created?: boolean };
+function slots(parent: NbtTag, node: NbtPathNode, create: boolean, next?: NbtPathNode): Slot[] {
   if (node.kind === "key" && parent.type === "compound") {
-    if (!parent.value.has(node.key)) {
+    const created = !parent.value.has(node.key);
+    if (created) {
       if (!create) return [];
-      parent.value.set(node.key, { type: "compound", value: new Map() });
+      parent.value.set(node.key, next && (next.kind === "index" || next.kind === "all")
+        ? { type: "list", elementType: "end", value: [] }
+        : { type: "compound", value: new Map() });
     }
-    return [{ get: () => parent.value.get(node.key)!, set: value => { parent.value.set(node.key, value); }, remove: () => { parent.value.delete(node.key); } }];
+    return [{ created, get: () => parent.value.get(node.key)!, set: value => { parent.value.set(node.key, value); }, remove: () => { parent.value.delete(node.key); } }];
   }
   if (parent.type !== "list") return [];
   let indices: number[] = [];
@@ -41,13 +62,15 @@ function slots(parent: NbtTag, node: NbtPathNode, create: boolean): Slot[] {
 export function setNbtPath(root: NbtTag, path: readonly NbtPathNode[], value: NbtTag): number {
   if (!path.length) return 0;
   let parents = [root];
-  for (const node of path.slice(0, -1)) parents = parents.flatMap(parent => slots(parent, node, true).map(slot => slot.get()));
+  for (let i = 0; i < path.length - 1; i++) parents = parents.flatMap(parent => slots(parent, path[i]!, true, path[i + 1]).map(slot => slot.get()));
   const targets = parents.flatMap(parent => slots(parent, path[path.length - 1]!, true));
   let count = 0;
   for (const target of targets) {
     const before = target.get();
-    target.set(copyNbt(value));
-    if (target.get() !== before) count++;
+    if (target.created || !equalNbt(before, value)) {
+      target.set(copyNbt(value));
+      if (target.get() !== before) count++;
+    }
   }
   return count;
 }
