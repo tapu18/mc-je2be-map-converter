@@ -1,6 +1,25 @@
 import { expect, it } from "vitest";
 import { CommandParser, type CommandTreeNode } from "@je2be/core";
-import { executableShapes, executeModifiers, matchedModifiers, terminalShape } from "./compatibility-inventory.ts";
+import { executableShapes, executeModifiers, matchedModifiers, shapeProbes, terminalShape } from "./compatibility-inventory.ts";
+
+it("generates numeric boundary probes without silently dropping unknown arguments", () => {
+  const path: { name: string; node: CommandTreeNode }[] = [
+    { name: "test", node: { type: "literal" } },
+    { name: "count", node: { type: "argument", parser: "brigadier:integer", properties: { min: 1, max: 5 } } },
+    { name: "enabled", node: { type: "argument", parser: "brigadier:bool" } },
+  ];
+  expect(shapeProbes(path)).toEqual({ commands: ["test 1 true", "test 5 true"], missing: [] });
+  expect(shapeProbes([...path, { name: "x", node: { type: "argument", parser: "unknown" } }]))
+    .toEqual({ commands: [], missing: ["unknown"] });
+});
+
+it("generates inline probes and registry-specific values for supported arguments", () => {
+  const argument = (parser: string, properties?: Record<string, unknown>): { name: string; node: CommandTreeNode } =>
+    ({ name: "value", node: { type: "argument", parser, ...(properties ? { properties } : {}) } });
+  expect(shapeProbes([argument("minecraft:context_int_provider")]).commands).toEqual(['{type:"minecraft:constant",value:1}']);
+  expect(shapeProbes([argument("minecraft:resource", { registry: "minecraft:attribute" })]).commands).toEqual(["minecraft:max_health"]);
+  expect(shapeProbes([argument("minecraft:resource", { registry: "minecraft:unknown" })]).missing).toEqual(["minecraft:resource"]);
+});
 
 it("enumerates executable report nodes and joins nested commands and aliases to those keys", () => {
   const tree: CommandTreeNode = {
