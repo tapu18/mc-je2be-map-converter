@@ -4,7 +4,7 @@
 
 ## 境界
 
-解釈中核は Minecraft 非依存の `packages/core` に置く。既存のパーサと NBT の型を共有できる。別パッケージ案は公開境界と依存管理が増えるため採らない。Script API ホストは別パッケージ、生成パックの組み立ては converter が担う。`bridge-pack` は検証専用で製品は依存しない。ホストパッケージの名前と実装は未確定。
+解釈中核は Minecraft 非依存の `packages/core` に置く。既存のパーサと NBT の型を共有できる。別パッケージ案は公開境界と依存管理が増えるため採らない。Script API ホストは別パッケージ、生成パックの組み立ては converter が担う。`bridge-pack` は検証専用で製品は依存しない。ホストパッケージは `packages/runtime-host`（`@je2be/runtime-host`）。初期化処理を置き、Script API の利用をここに閉じ込める。
 
 ## ホスト契約
 
