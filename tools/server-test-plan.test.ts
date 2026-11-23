@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planServerTests } from "./server-test-plan.ts";
+import { includesQuarantine, planServerTests } from "./server-test-plan.ts";
 
 const scenarioSuite = "packages/bridge/src/scenario/scenarios.servers.test.ts";
 const bridge = "packages/bridge/src/bridge.servers.test.ts";
@@ -10,6 +10,13 @@ const groups = { scenarios: [scenarioSuite], bridge: [bridge], "poc-a": [dimensi
 const empty = { files: {}, scenarios: {} };
 
 describe("server-test matrix", () => {
+  it("includes quarantine on schedule or explicit manual request only", () => {
+    expect(includesQuarantine("schedule", undefined)).toBe(true);
+    expect(includesQuarantine("workflow_dispatch", "true")).toBe(true);
+    expect(includesQuarantine("workflow_dispatch", "false")).toBe(false);
+    expect(includesQuarantine("pull_request", "true")).toBe(false);
+    expect(includesQuarantine("push", undefined)).toBe(false);
+  });
   it("selects the changed scenario and the test files for one PoC family across groups", () => {
     const jobs = planServerTests(groups, ["scores/a", "scores/ab"], [
       "scenarios/scores/a.java.json", "poc/launcher/pack/manifest.json", "docs/workflow.md",
