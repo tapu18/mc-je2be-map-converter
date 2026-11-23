@@ -23,7 +23,7 @@ function write(path: string, body: string): void {
 export interface ScenarioJavaVersion { runtime: NonNullable<JavaStartOptions["runtime"]>; packFormat: number; packMinor: number; functionDirectory: "function" | "functions" }
 
 export async function startScenarioJava(datapack?: ScenarioDatapack, version?: ScenarioJavaVersion): Promise<JavaServer> {
-  if (!datapack) return JavaServer.start({ ...(version ? { runtime: version.runtime } : {}) });
+  if (!datapack) return JavaServer.start({ enableCommandBlock: true, ...(version ? { runtime: version.runtime } : {}) });
   // 有効な空パックを置いて起動する。関数とタグは setup 後に追加する。
   const work = mkdtempSync(join(tmpdir(), "je2be-scenario-"));
   const pack = join(work, PACK);
@@ -31,7 +31,7 @@ export async function startScenarioJava(datapack?: ScenarioDatapack, version?: S
     write(join(pack, "pack.mcmeta"), JSON.stringify({
       pack: version && version.packFormat <= 81 ? { description: "je2be scenario", pack_format: version.packFormat } : version ? { description: "je2be scenario", min_format: [version.packFormat, version.packMinor], max_format: [version.packFormat, version.packMinor] } : { description: "je2be scenario", min_format: 121, max_format: 121 },
     }));
-    return await JavaServer.start({ ...(version ? { runtime: version.runtime } : {}), datapacks: [pack], initialEnabledPacks: ["vanilla", `file/${PACK}`] });
+    return await JavaServer.start({ enableCommandBlock: true, ...(version ? { runtime: version.runtime } : {}), datapacks: [pack], initialEnabledPacks: ["vanilla", `file/${PACK}`] });
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
