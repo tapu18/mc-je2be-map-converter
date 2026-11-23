@@ -275,3 +275,7 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 ### Java 1.20.4 ワールドの更新（#145）
 
 合成した 1.20.4 ワールドを Java 26.3 で開いた実サーバーテストでは、コマンドブロックの `Command` と関数ファイルの文字列が保存され、チェスト内アイテムの `CustomModelData` は `minecraft:custom_model_data` に移った。防具立ての `CustomName` の内容も残った。対象はテスト内の各1例である。根拠は `packages/bridge/src/upgrade-1204.servers.test.ts`（3回成功）、再現方法と文法・コーパスの調査は `docs/research-1204.md`。
+
+### Actions の定期実行（#222）
+
+2026-11-23 UTC の Actions API では schedule の実行履歴が 0 件で、CI と Version canary の workflow はともに active、Actions は enabled だった。隔離登録が空の状態で `include_quarantine=true` を指定した [手動 CI](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154796628) は成功し、隔離ジョブは生成されなかった。
