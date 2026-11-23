@@ -261,3 +261,7 @@ Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観�
 ### ランタイム用パーサ・文法・対応表の読み込み（#141）
 
 Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込んだ PoC は BDS 1.26.63.1 で3回とも初回コマンドをパースできた。起動要求からパースまで 602 / 783 / 613 ms、スクリプト内の JSON.parse は 159 / 193 / 178 ms、パックの圧縮前合計は 12,624,623 bytes。測定範囲・環境と限界は [PoC](../poc/runtime-load/README.md)、記録は [results.json](../poc/runtime-load/results.json)。
+
+### コマンドブロックとマクロ（#155）
+
+Java 26.3 の [実サーバーテスト](../packages/bridge/src/macro-command-block.servers.test.ts)では、コマンドブロックに `$` で始まる行を保存できたが、その行はスコアを変更しなかった。同じテストでは、コマンドブロックからインライン compound と storage の両方式でマクロ関数を呼ぶと、展開した命令がスコアを変更した。これはこのテストの入力に限った観測で、他のコマンドや版すべての挙動を保証するものではない。
