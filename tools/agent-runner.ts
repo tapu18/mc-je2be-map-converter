@@ -10,7 +10,7 @@ import { followProgress } from './agent-runner/progress.ts';
 import { managerConfig, managerDue, managerPrompt, managerReport } from './agent-runner/manager.ts';
 import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
 import { activeClaims, canMerge, checksFailed, dependencies, hasLabel } from './agent-runner/policy.ts';
-import type { Issue, PullRequest } from './agent-runner/policy.ts';
+import type { Issue, PullRequest, WorkflowRun } from './agent-runner/policy.ts';
 
 interface Config {
   repo: string;
@@ -74,6 +74,7 @@ async function main() {
   const issue = (number: number) => json<Issue>(['issue', 'view', String(number), '--json', 'number,title,body,state,labels,comments']);
   const prs = (task: Task) => json<PullRequest[]>(['pr', 'list', '--head', task.branch, '--state', 'all', '--json',
     'number,state,isDraft,baseRefName,headRefName,headRefOid,mergeStateStatus,reviewDecision,labels,closingIssuesReferences,statusCheckRollup']);
+  const ciRuns = (pr: PullRequest) => json<WorkflowRun[]>(['run', 'list', '--workflow', 'ci.yml', '--branch', pr.headRefName, '--limit', '100', '--json', 'headSha,event,status,conclusion']);
   const ready = () => json<Issue[]>(['issue', 'list', '--state', 'open', '--label', 'status:ready', '--limit', '100',
     ...(config.milestone ? ['--milestone', config.milestone] : []), '--json', 'number,title,body,state,labels,comments']);
   const eligible = async (item: Issue) => {
@@ -268,11 +269,11 @@ async function main() {
         const pr = pulls.find(pr => pr.state === 'OPEN');
         if (pr) {
           if (hasLabel(pr, 'needs-approval')) { log(`#${task.issue} PR #${pr.number} 承認待ち`); continue; }
-          if (config.autoMerge && canMerge(item, pr, config.base)) {
+          if (config.autoMerge && canMerge(item, pr, config.base, await ciRuns(pr))) {
             // Recheck immediately; gh's SHA guard rejects head updates during merge.
             const freshIssue = await issue(task.issue);
             const fresh = (await prs(task)).find(p => p.number === pr.number);
-            if (fresh && canMerge(freshIssue, fresh, config.base)) {
+            if (fresh && canMerge(freshIssue, fresh, config.base, await ciRuns(fresh))) {
               await gh(['pr', 'merge', String(pr.number), '--merge', '--match-head-commit', fresh.headRefOid]);
               log(`Merged #${pr.number} for issue #${task.issue}`);
             }

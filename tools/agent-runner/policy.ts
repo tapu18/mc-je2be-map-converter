@@ -27,10 +27,12 @@ export interface PullRequest {
   }[];
 }
 
-export const requiredChecks = [
-  'check (型チェックとNodeのテスト)',
-  ...['scenarios', 'bridge', 'poc-a', 'performance', 'misc'].map(g => `servers / ${g}`),
-];
+export interface WorkflowRun {
+  headSha: string;
+  event: string;
+  status: string;
+  conclusion: string | null;
+}
 
 export function hasLabel(issue: Pick<Issue, 'labels'>, name: string): boolean {
   return issue.labels.some(label => label.name === name);
@@ -67,13 +69,14 @@ export function checksFailed(pr: PullRequest): boolean {
     ['FAILURE', 'ERROR', 'failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(check.conclusion ?? check.state ?? ''));
 }
 
-export function canMerge(issue: Issue, pr: PullRequest, base: string): boolean {
+export function canMerge(issue: Issue, pr: PullRequest, base: string, runs: WorkflowRun[]): boolean {
   if (issue.state !== 'OPEN' || hasLabel(issue, 'needs-approval') || hasLabel(issue, 'status:blocked') ||
       hasLabel(issue, 'status:paused') || hasLabel(pr, 'needs-approval')) return false;
   if (pr.state !== 'OPEN' || pr.isDraft || pr.baseRefName !== base || pr.mergeStateStatus !== 'CLEAN' ||
       pr.reviewDecision === 'CHANGES_REQUESTED' || !pr.closingIssuesReferences.some(ref => ref.number === issue.number)) return false;
-  if (!requiredChecks.every(name => pr.statusCheckRollup.some(check =>
-    (check.name ?? check.context) === name && check.status === 'COMPLETED' && check.conclusion === 'SUCCESS'))) return false;
+  // Runs are newest first. Do not accept a previous success when a rerun is pending or failed.
+  const run = runs.find(run => run.headSha === pr.headRefOid && run.event === 'pull_request');
+  if (!run || run.status !== 'completed' || run.conclusion !== 'success' || !pr.statusCheckRollup.length) return false;
   return pr.statusCheckRollup.every(check => check.status
     ? check.status === 'COMPLETED' && ['SUCCESS', 'SKIPPED', 'NEUTRAL'].includes(check.conclusion ?? '')
     : check.state === 'SUCCESS');
