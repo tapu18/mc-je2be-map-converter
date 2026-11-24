@@ -136,6 +136,8 @@ AI は必要な依存取得・実装・検証・push・PR 作成を行う。完�
 
 worker が途中で終了するときは `status:paused` を付けず、進捗と再開手順を Issue に残す。次の巡回で同じ worktree から再実行し、起動回数を数える。管理対象の Issue に `status:paused` がある場合は端末に表示し、人が外すまで再開しない旨を Issue に一度だけコメントする。
 
+worker が依存や判断を待つ場合、待つ Issue を本文に `Depends on: #番号` で明示し、理由と再開手順をコメントして `status:blocked` にする。判断は判断 Issue に記録し、その `needs-approval` を外してから閉じる。管理対象で claim が有効な worker 待機は、明示された依存が1件以上あり全件 closed、本人・依存先・開いている PR に `needs-approval` がなく、他の status がない場合に限り ready を経て同じ worktree で再開する。依存がない場合や取得できない場合は自動再開しない。実行回数上限など管理プログラム自身の停止は従来どおり人が原因を解消し ready に戻す。`status:paused` は人の明示的な中断であり自動解除しない。
+
 上限到達や PR の未マージクローズは `status:blocked` にして、再開情報を Issue に記録する。原因を直して `status:ready` に戻すと、同じ worktree で実行回数をリセットして再開する。Issue のクローズは完了として扱う。管理対象外の既存作業を勝手に引き継がず、状態ファイルにある Issue だけを再開する。
 
 ## 状態・ログ・排他制御
