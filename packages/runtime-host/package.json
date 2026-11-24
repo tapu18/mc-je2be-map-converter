@@ -1,0 +1,6 @@
+{
+  "name": "@je2be/runtime-host",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@minecraft/server": "2.12.0-beta.1.26.63-stable" }
+}

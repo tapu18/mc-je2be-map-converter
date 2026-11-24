@@ -1,0 +1,16 @@
+{
+  "java": "1.20.6",
+  "state": {
+    "storage": {
+      "m2:probe": {
+        "missing": 0,
+        "trace": [
+          "12.5",
+          "hello world",
+          "42"
+        ],
+        "block_x": 9
+      }
+    }
+  }
+}

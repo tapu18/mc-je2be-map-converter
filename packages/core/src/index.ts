@@ -8,3 +8,8 @@ export * from "./mappings/mappings.ts";
 export * from "./command/index.ts";
 
 export * from "./runtime/index.ts";
+
+export * from "./runtime/scores.ts";
+export * from "./runtime/score-command.ts";
+export * from "./runtime/command.ts";
+export * from "./runtime/storage-command.ts";

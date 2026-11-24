@@ -1,0 +1,22 @@
+{
+  "java": "1.20.6",
+  "state": {
+    "scores": {
+      "timing": {
+        "#elapsed": 100
+      }
+    },
+    "storage": {
+      "m2:probe": {
+        "trace": [
+          "fired"
+        ],
+        "after_50": [],
+        "after_100": [
+          "fired"
+        ],
+        "after_restart": []
+      }
+    }
+  }
+}

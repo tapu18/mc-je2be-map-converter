@@ -83,8 +83,8 @@ jobs:
           restore-keys: java-grammars-
       # EULAへの同意はリポジトリの所有者が承認済み（CLAUDE.md 参照）
       - run: npm run setup:servers
-      - name: 対応表の生成（runtime-load PoC）
-        if: matrix.group == 'misc'
+      - name: 対応表の生成（bridge・runtime-load PoC）
+        if: matrix.group == 'misc' || matrix.group == 'bridge'
         run: npm run setup:mappings
       - run: npm run build:pack
       - name: 実機テスト

@@ -7,12 +7,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { repoRoot } from "../paths.ts";
+import { paths, repoRoot } from "../paths.ts";
 import { assessComparison, formatDiffs, unexpectedDiffs } from "./compare.ts";
 import { loadScenarios, readGolden, writeGolden } from "./load.ts";
 import { runBedrock, runJava } from "./run.ts";
 
 const servers = JSON.parse(readFileSync(join(repoRoot, "tools/servers.json"), "utf8")) as { java: { version: string } };
+const version = process.env.JE2BE_JAVA_VERSION;
+if (version && !/^\d+\.\d+(?:\.\d+)?$/.test(version)) throw new Error("Invalid Java version");
+const grammar = version ? JSON.parse(readFileSync(join(paths.servers, "grammars", version, "grammar.json"), "utf8")) as { version: string; packFormat: number; packMinor: number; source: { functionDirectory: "function" | "functions" } } : undefined;
+if (grammar && grammar.version !== version) throw new Error("Java version mismatch");
+const runtime = grammar ? { runtime: { java: paths.java, serverDirectory: join(paths.servers, "grammars", version!, "server") }, packFormat: grammar.packFormat, packMinor: grammar.packMinor, functionDirectory: grammar.source.functionDirectory } : undefined;
 const record = process.env.JE2BE_RECORD === "1";
 const ci = process.env.CI === "true";
 
@@ -25,15 +30,19 @@ if (selection && (!ids.length || selected.length !== ids.length)) throw new Erro
 for (const s of selected) {
   describe(`scenario ${s.id}`, () => {
     it("java matches the golden data", async () => {
-      const { state, log } = await runJava(s);
-      const golden = readGolden(s);
+      const { state, log } = await runJava(s, runtime);
+      const golden = readGolden(s, undefined, version);
+      if (version && !record && !golden) throw new Error(`${s.id}: Java ${version} の正解データがない`);
       if (record || !golden) {
         if (!golden && ci) throw new Error(`${s.id}: 正解データがない。JE2BE_RECORD=1 で記録してコミットすること`);
-        writeGolden(s, { java: servers.java.version, state });
+        writeGolden(s, { java: version ?? servers.java.version, state }, undefined, version);
         return;
       }
+      expect(golden.java).toBe(version ?? servers.java.version);
       expect(state, `Java の結果が正解データと違う（Java のバージョンが変わったなら記録し直す）\n${log.join("\n")}`).toEqual(golden.state);
     });
+
+    if (version) return; // 版別の記録は Java のみ
 
     if (s.bedrockPending) {
       it.skip(`bedrock 未実行（${s.bedrockPending}）`, () => {});

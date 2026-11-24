@@ -30,6 +30,24 @@ export interface JavaGrammarInstallation extends CommandGrammar {
   packMinor: number;
 }
 
+type GrammarDescriptor = Omit<JavaGrammarInstallation, "java" | "serverDirectory" | "commandsPath">;
+
+function installationFromDescriptor(descriptor: GrammarDescriptor, directory: string): JavaGrammarInstallation {
+  // Ignore path fields in old descriptors as well: their original checkout may no longer exist.
+  const { java: _java, serverDirectory: _serverDirectory, commandsPath: _commandsPath, ...metadata } = descriptor as JavaGrammarInstallation;
+  return {
+    ...metadata,
+    java: join(dirname(directory), "jre", "bin", "java"),
+    serverDirectory: join(directory, descriptor.version, "server"),
+    commandsPath: join(directory, descriptor.version, "generated", "reports", "commands.json"),
+  };
+}
+
+function descriptorFromInstallation(installation: JavaGrammarInstallation): GrammarDescriptor {
+  const { java: _java, serverDirectory: _serverDirectory, commandsPath: _commandsPath, ...descriptor } = installation;
+  return descriptor;
+}
+
 function assertSource(source: JavaGrammarSource): void {
   if (!/^\d+\.\d+(?:\.\d+)?$/.test(source.version)) throw new Error("invalid grammar release version");
   if (!/^[0-9a-f]{40}$/.test(source.sha1)) throw new Error("invalid grammar server SHA-1");
@@ -103,11 +121,14 @@ export async function setupJavaGrammar(source: JavaGrammarSource): Promise<JavaG
   const generated = join(output, "generated");
   const commandsPath = join(generated, "reports", "commands.json");
   if (existsSync(descriptor) && existsSync(commandsPath)) {
-    const previous = JSON.parse(readFileSync(descriptor, "utf8")) as JavaGrammarInstallation;
-    if (previous.source.sha1 === source.sha1 && previous.source.functionDirectory === source.functionDirectory && previous.commandsPath === commandsPath
+    const previous = installationFromDescriptor(JSON.parse(readFileSync(descriptor, "utf8")) as GrammarDescriptor, grammarRoot);
+    if (previous.version === source.version && previous.source.sha1 === source.sha1 && previous.source.functionDirectory === source.functionDirectory
       && existsSync(join(serverDirectory, "server.jar"))
       && createHash("sha1").update(readFileSync(join(serverDirectory, "server.jar"))).digest("hex") === source.sha1
-      && previous.commandsSha256 === sha256(readFileSync(commandsPath))) return previous;
+      && previous.commandsSha256 === sha256(readFileSync(commandsPath))) {
+      writeFileSync(descriptor, JSON.stringify(descriptorFromInstallation(previous), null, 2) + "\n");
+      return previous;
+    }
   }
   mkdirSync(serverDirectory, { recursive: true });
   copyFileSync(archive, join(serverDirectory, "server.jar"));
@@ -126,16 +147,16 @@ export async function setupJavaGrammar(source: JavaGrammarSource): Promise<JavaG
     textFormat: textFormatFor(metadata.dataVersion), packMinor: metadata.packMinor,
     source, java, serverDirectory, commandsPath, commandsSha256: sha256(readFileSync(commandsPath)),
   };
-  writeFileSync(descriptor, JSON.stringify(installation, null, 2) + "\n");
+  writeFileSync(descriptor, JSON.stringify(descriptorFromInstallation(installation), null, 2) + "\n");
   return installation;
 }
 
-export function loadJavaGrammars(): JavaGrammarInstallation[] {
+export function loadJavaGrammars(directory = grammarRoot): JavaGrammarInstallation[] {
   return javaGrammarSources().flatMap((source) => {
-    const file = join(grammarRoot, source.version, "grammar.json");
+    const file = join(directory, source.version, "grammar.json");
     if (!existsSync(file)) return [];
-    const installation = JSON.parse(readFileSync(file, "utf8")) as JavaGrammarInstallation;
-    if (installation.source.sha1 !== source.sha1 || sha256(readFileSync(installation.commandsPath)) !== installation.commandsSha256) throw new Error(`stale/corrupt grammar: ${source.version}`);
+    const installation = installationFromDescriptor(JSON.parse(readFileSync(file, "utf8")) as GrammarDescriptor, directory);
+    if (installation.version !== source.version || installation.source.sha1 !== source.sha1 || sha256(readFileSync(installation.commandsPath)) !== installation.commandsSha256) throw new Error(`stale/corrupt grammar: ${source.version}`);
     return [installation];
   });
 }

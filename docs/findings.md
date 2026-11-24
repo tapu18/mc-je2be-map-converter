@@ -281,3 +281,27 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 2026-11-23 UTC の Actions API では schedule の実行履歴が 0 件で、CI と Version canary の workflow はともに active、Actions は enabled だった。隔離登録が空の状態で `include_quarantine=true` を指定した [手動 CI](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154796628) は成功し、隔離ジョブは生成されなかった。
 
 同日の [手動 Version canary](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154550420) は検出、API、セットアップ、実機、Java 再記録、台帳生成がすべて成功し、`scenarios.diff` は空だった。artifact の候補は Java 26.3、BDS 1.26.66.1、Chunker 1.21.0 で、固定 BDS 1.26.63.1 との差を検出した。版上げの追跡は #227。
+### storage の NBT パス代入（#99）
+
+Java 26.3 では、同じ値を storage に再代入すると変更なしとなる。また `missing.list[0].x` への代入は対象なしで失敗するが、途中の `missing.list` は空リストとして生成される。同じテストで `insert -1` はリスト末尾に追加され、storage の compound merge は入れ子のキーを保持して再帰的に更新し、同値なら変更なしとなること、欠けたパスへの append と merge がそれぞれリストと compound を作り、文字列 `abcdef` の範囲 `1 -1` が `bcde` になることも確認した。根拠は `packages/bridge/src/nbt-mutation.servers.test.ts`（各3回成功）。
+## Java 版別シナリオの記録（#216）
+
+実測。`scenarios/datapack/` と `scenarios/scores/` の21シナリオを、各版の実サーバーで新規ワールドから実行し、`*.java.<版>.json` の正規化済み state を 26.3 の `*.java.json` と比較した。コマンドブロックは明示的に有効化した。
+
+| Java 版 | 26.3 との差があるシナリオ | 差分 |
+| --- | --- | --- |
+| 1.20.6、1.21.4 | `datapack/entity-nbt` | storage へのコピーは `HandItems` / `ArmorItems` のリスト（出力の `hand` / `armor`）で、26.3 は `equipment.mainhand`。同じ CustomName 入力について、前者は `"Probe"` を含む文字列、後者は `{"text":"Probe"}` を含む文字列。表示名が同じかはこの記録では測っていない（#219）。 |
+| 1.20.6、1.21.4 | `datapack/execute-extra` | `#all_mismatch`、`#masked_diff`、`#unloaded_if`、`#wrong_dimension` が 0 で存在し、26.3 の記録には存在しない。発生箇所の切り分けは #220。 |
+| 1.21.11、26.2 | 差なし | 21シナリオの state が 26.3 と一致。 |
+
+上記以外のシナリオには差がなかった。各版の具体的な値は対応する正解 JSON を参照。NBT の数値型は正規化時に一部省かれる（`docs/scenarios.md`）。
+### コマンド形の参照先と実験設定（#166）
+
+Java 26.3 の関数読み込みで、`minecart_improvements` を有効にすると `max_minecart_speed` の監査候補 6 件は受理された。また `test` の参照先を同梱の `minecraft:always_pass`、`time` の timeline を `minecraft:day` に変えた 13 件は受理された。関数を実行せずに測定した。再現手順と個々の候補は `docs/command-shape-audit.md` の #166 の表を参照。
+### BDS の関数読み込みによる構文検査（#165）
+
+BDS 1.26.63.1 の使い捨てワールドで、合成コマンドを 1 行ずつ別のビヘイビアーパック関数に置き、関数を呼び出さずに起動ログを調べた（`tools/shape-bedrock-audit.ts`、`shape-bedrock-audit.servers.test.ts`）。`time set noon` は読み込みエラーなし、`time set bogus`、不正な effect、存在しないコマンド名はそれぞれ関数名と行番号を含む読み込みエラーになった。読み込み後に副作用のある対照の scoreboard objective を新規作成でき、対照の関数が読み込み時に実行されていないことも確認した。直接実行と異なり、この対照では引数の不正を区別できた。関数内で使えるコマンドや参照の制約、実行時の成否・意味の一致、すべての不正引数は未検証であり、エラーなしを一般的な完全受理の証明とはしない。
+
+Java 26.3 の #112 監査結果を入力とすると、1,424 形・1,520 候補のうち Java 受理かつ rewritten / unchanged の 180 形・222 候補を検査し、221 件は読み込みエラーなし、1 件はエラーだった。`time query time` は Java 受理・unchanged だが BDS 関数読み込みでは `time` 引数が構文エラーだった。残る 1,244 形・1,298 候補は Java 不受理または unsupported のため BDS 未検査。形ごとの候補数・未検査数と各候補の結果は `node tools/shape-java-audit.ts /tmp/java.json && node tools/shape-bedrock-audit.ts /tmp/java.json /tmp/bedrock.json` で再生成できる。合成入力のみを使用する。
+
+ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。既知の不一致の修正は別途必要。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。

@@ -9,7 +9,7 @@ const scenariosPerJob = 12;
 type Quarantine = { files: Record<string, number>; scenarios: Record<string, number> };
 type ServerJob = { name: string; group: string; files: string[]; scenarios: string[]; quarantine: boolean };
 
-const scenarioId = (path: string) => /^scenarios\/(.+?)(?:\.java)?\.json$/.exec(path)?.[1];
+const scenarioId = (path: string) => /^scenarios\/(.+?)(?:\.java(?:\.\d+\.\d+(?:\.\d+)?)?)?\.json$/.exec(path)?.[1];
 const pocFamily = (path: string) => /^poc\/([^/]+)\//.exec(path)?.[1];
 const inert = (path: string) => path.startsWith("docs/") || /^[^/]+\.md$/.test(path);
 

@@ -16,6 +16,8 @@ export interface JavaStartOptions {
   initialEnabledPacks?: string[];
   /** 既存ワールドを使う場合のディレクトリ（コピーして使う） */
   world?: string;
+  /** シナリオでコマンドブロックを有効にする。 */
+  enableCommandBlock?: boolean;
   memory?: string;
   /** 省略時は空きポートを使う */
   rconPort?: number;
@@ -80,6 +82,7 @@ export class JavaServer {
         "online-mode=false",
         `server-port=${serverPort}`,
         "spawn-protection=0",
+        ...(opts.enableCommandBlock ? ["enable-command-block=true"] : []),
         "view-distance=4",
         "simulation-distance=4",
         "spawn-monsters=false",

@@ -19,7 +19,7 @@ describe("server-test matrix", () => {
   });
   it("selects the changed scenario and the test files for one PoC family across groups", () => {
     const jobs = planServerTests(groups, ["scores/a", "scores/ab"], [
-      "scenarios/scores/a.java.json", "poc/launcher/pack/manifest.json", "docs/workflow.md",
+      "scenarios/scores/a.java.1.20.6.json", "poc/launcher/pack/manifest.json", "docs/workflow.md",
     ], false, empty);
     expect(jobs.flatMap(({ files }) => files)).toEqual([dimension, launcher, scenarioSuite]);
     expect(jobs.flatMap(({ scenarios }) => scenarios)).toEqual(["scores/a"]);
