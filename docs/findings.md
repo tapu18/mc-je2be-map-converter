@@ -99,6 +99,8 @@ BDS 1.26.66.1 でも `poc/mcstructure-version/version.servers.test.ts` が成功
 
 ## コマンドの文法（Java 26.3）
 
+- 管理コマンド `ban` の `game_profile` は `@s`、`@e`、`@n` をプレイヤー限定違反として拒否し、それぞれに `type=player` を付けると受理する。`@a`、`@p`、`@r` も受理する。偽の execute 条件下で解析し実行しない対照付きの実測（`packages/bridge/src/admin-syntax.servers.test.ts`、#243）。管理コマンドは関数文脈では使用できないため、`checkJavaSyntax` の拒否だけではセレクター違反を特定できない。
+
 | 事実 | 根拠 |
 | --- | --- |
 | データパックの関数は読み込み時に全行がパースされ、1行でも失敗すると関数ごと読み込まれない。ログに `Failed to load function <ID>` と、次の行にエラー文（`Whilst parsing command on line N: ...`）が出る。これを使い、コマンドを1つずつ関数にして Java に文法を判定させられる | `packages/bridge/src/java-syntax.ts`、`packages/bridge/src/command-parser.servers.test.ts`（3回連続成功、#13） |
