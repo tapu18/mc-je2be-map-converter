@@ -77,6 +77,8 @@
 | 自前で生成した `.mcstructure` のコマンドブロック（インパルス・チェーン・リピート、常時実行、条件付き）は `structure load` で動く | `poc/launcher`、`poc/mcstructure-version/version.servers.test.ts` |
 | BDS 1.26.63.1 が新規作成・保存するブロックの `version` は `18168865`（`0x01153c21`）、コマンドブロックの `Version` は3種類とも `55`。製品バージョンから計算した値とは異なる。この値で生成した構造物では、新しい `execute positioned`・`if block`・`if/unless score` が実行され、条件付きチェーンにも成否が伝搬する | `poc/mcstructure-version/` の実サーバーテスト、`results.json`、BDS保存データ `native.mcstructure`（#9） |
 
+BDS 1.26.66.1 でも `poc/mcstructure-version/version.servers.test.ts` が成功し、同じブロック `version` とコマンドブロック `Version`、生成構造物でのコマンド実行を確認した（#227、`poc/mcstructure-version/results.json`）。
+
 ## ID 対応表（Geyser 固定版）
 
 | 事実 | 根拠 |

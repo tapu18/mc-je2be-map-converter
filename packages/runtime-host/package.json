@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@minecraft/server": "2.12.0-beta.1.26.63-stable",
+    "@minecraft/server": "2.12.0-beta.1.26.66-stable",
     "@je2be/core": "*"
   }
 }
