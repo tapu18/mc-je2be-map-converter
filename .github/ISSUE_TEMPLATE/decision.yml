@@ -1,0 +1,41 @@
+name: 判断
+description: 所有者に選んでもらう判断（docs/roles.md の「判断の Issue の書き方」）
+title: "判断: "
+labels: ["needs-approval", "status:blocked"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: 問い
+      description: 所有者が答える問いを1文で。判断の受付の一覧には最初の行が載る
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜ今決める必要があるか。止まっている Issue、根拠（確度を区別する）
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: 選択肢
+      description: 番号付きで。各案の影響（作業量、止まるもの、後で変えにくい点）
+      value: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: 推奨
+      description: 最初の行に案の番号と一言。一覧には最初の行が載る。理由は続けて書く
+    validations:
+      required: true
+  - type: textarea
+    id: research
+    attributes:
+      label: 調査
+      description: 材料が足りないなら、調査の子 Issue を切って `Depends on: #子` と書く

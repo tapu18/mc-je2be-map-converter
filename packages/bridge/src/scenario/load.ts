@@ -13,12 +13,12 @@ export interface Golden {
 }
 
 /** scenarios/ 以下のシナリオを読む。id は scenarios/ からの相対パス（拡張子なし） */
-export function loadScenarios(dir = scenariosDir): Scenario[] {
+export function loadScenarios(dir = scenariosDir): (Scenario & { id: string })[] {
   if (!existsSync(dir)) return [];
   const walk = (d: string): string[] =>
     readdirSync(d).flatMap((n) => {
       const p = join(d, n);
-      return statSync(p).isDirectory() ? walk(p) : n.endsWith(".json") && !n.endsWith(".java.json") ? [p] : [];
+      return statSync(p).isDirectory() ? walk(p) : n.endsWith(".json") && !/\.java(?:\.\d+\.\d+(?:\.\d+)?)?\.json$/.test(n) ? [p] : [];
     });
   return walk(dir)
     .sort()
@@ -39,15 +39,16 @@ export function loadScenarios(dir = scenariosDir): Scenario[] {
     });
 }
 
-export function goldenPath(s: Scenario, dir = scenariosDir): string {
-  return join(dir, `${s.id}.java.json`);
+export function goldenPath(s: Scenario, dir = scenariosDir, version?: string): string {
+  if (version && !/^\d+\.\d+(?:\.\d+)?$/.test(version)) throw new Error("Invalid Java version");
+  return join(dir, `${s.id}.java${version ? `.${version}` : ""}.json`);
 }
 
-export function readGolden(s: Scenario, dir = scenariosDir): Golden | undefined {
-  const p = goldenPath(s, dir);
+export function readGolden(s: Scenario, dir = scenariosDir, version?: string): Golden | undefined {
+  const p = goldenPath(s, dir, version);
   return existsSync(p) ? (JSON.parse(readFileSync(p, "utf8")) as Golden) : undefined;
 }
 
-export function writeGolden(s: Scenario, golden: Golden, dir = scenariosDir): void {
-  writeFileSync(goldenPath(s, dir), JSON.stringify(golden, null, 2) + "\n");
+export function writeGolden(s: Scenario, golden: Golden, dir = scenariosDir, version?: string): void {
+  writeFileSync(goldenPath(s, dir, version), JSON.stringify(golden, null, 2) + "\n");
 }

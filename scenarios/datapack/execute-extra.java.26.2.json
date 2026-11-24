@@ -1,0 +1,114 @@
+{
+  "java": "26.2",
+  "state": {
+    "scores": {
+      "probe": {
+        "#masked_mismatch": 1,
+        "#unloaded": 1,
+        "#all_match": 2,
+        "#not_nether": 1,
+        "#masked_match": 2,
+        "#all_diff": 1,
+        "#overworld": 1,
+        "#nether": 1,
+        "#loaded": 1
+      }
+    },
+    "storage": {
+      "probe:result": {
+        "values": {
+          "align_xz": [
+            -2,
+            -59.3,
+            8
+          ],
+          "positioned_as_rotation": [
+            0,
+            0
+          ],
+          "facing_feet_rotation": [
+            -45.000003814697266,
+            0
+          ],
+          "align_xyz": [
+            -2,
+            -60,
+            8
+          ],
+          "facing_eyes": [
+            8.5,
+            -60,
+            8.5
+          ],
+          "motion_blocking_no_leaves": [
+            20.5,
+            72,
+            20.5
+          ],
+          "align_xyz_rotation": [
+            0,
+            0
+          ],
+          "align_xz_rotation": [
+            0,
+            0
+          ],
+          "motion_blocking": [
+            20.5,
+            73,
+            20.5
+          ],
+          "world_surface_rotation": [
+            0,
+            0
+          ],
+          "ocean_floor_rotation": [
+            0,
+            0
+          ],
+          "positioned_as": [
+            12.5,
+            -60,
+            12.5
+          ],
+          "motion_blocking_rotation": [
+            0,
+            0
+          ],
+          "facing_feet": [
+            8.5,
+            -60,
+            8.5
+          ],
+          "facing_eyes_rotation": [
+            -45.000003814697266,
+            -17.443849563598633
+          ],
+          "world_surface": [
+            20.5,
+            73,
+            20.5
+          ],
+          "ocean_floor": [
+            20.5,
+            73,
+            20.5
+          ],
+          "motion_blocking_no_leaves_rotation": [
+            0,
+            0
+          ],
+          "rotated_as_rotation": [
+            90,
+            30
+          ],
+          "rotated_as": [
+            0,
+            -60,
+            0
+          ]
+        }
+      }
+    }
+  }
+}

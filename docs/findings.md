@@ -239,6 +239,10 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 | 予約実行 | `append` の2件は予約から 2、4 tick 後に動いた。`replace` を使った関数は古い予約の 2 tick 後には動かず、5 tick 後に1回動いた。`clear` で取り消した 3、6 tick 後の2件は、7 tick 後まで記録されなかった | [schedule.java.json](../scenarios/datapack/schedule.java.json) |
 | load と tick | tick を止めて `reload` を済ませた時点の記録は空。最初の `tick step` で load が先に1回動いた。続く4組は各組で tick 関数 → 反復コマンドブロックの順に動き、各組の両方が同じ tick 番号 1〜4 を記録した | [load-tick.java.json](../scenarios/datapack/load-tick.java.json) |
 
+## 実機 CI の計時（#108）
+
+2026-11-21 の [main の CI 実行 44900032141](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/44900032141) では、Vitest の計時で正解シナリオ 15 本に約 206 秒、bridge グループに約 826 秒かかった。そのうち `versioned-grammar.servers.test.ts` は約 310 秒だった。変換シナリオの連続した BE 照合の完了間隔は約 19〜22 秒だった。ジョブ開始から実機テストのステップ開始までの時間は各グループで 40 秒以内だった。
+
 ## schedule の保存・再起動（#123）
 
 Java 26.3 の [schedule-restart](../scenarios/datapack/schedule-restart.json) では、100 tick 後の関数を予約して 30 tick 進め、保存・停止して同じワールドを再起動した。再起動直後とさらに 50 tick 後は未実行、100 tick 後には実行済みだった（[記録](../scenarios/datapack/schedule-restart.java.json)）。予約時と関数の実行時のゲーム内時刻の差は 100 tick だった。したがって、この実験では停止前に進めた 30 tick を含め、予定は予約時からのゲーム内 tick を維持していた。再起動直後の残り時間は 50 tick より長く 100 tick 以下だった。起動中にも tick が進むため、再起動直後の正確な残り tick 数や長期停止中の実時間の影響はこの実験では測っていない。
@@ -280,3 +284,35 @@ node tools/probe-macro-corpus.ts /tmp/issue155-commands.jsonl servers/reports-26
 ```
 
 同環境で Java 26.3 の `commands.json` は 583,592 bytes、`servers/mappings/mappings.json` は 10,357,025 bytes（`wc -c`）。これは元データのサイズであり、実際に同梱が必要な範囲や起動時メモリの測定ではない。
+
+### コマンド形の候補（#112）
+
+Java 26.3 で `node tools/shape-java-audit.ts /tmp/shape-java-audit-112.json` を実行し、1,424 形の 1,520 候補を関数の読み込みで判定した。Java が 1,448 候補を受理し、パーサとの不一致は 72、パーサが到達した終端形の不一致は 0 だった。書き換えの結果は unsupported 1,298、unchanged 86、rewritten 136。Java の関数では使用できないコマンドや存在しない参照を含むため、この不一致数をパーサの欠陥数とは扱えない。BDS の全候補の構文判定は行っていない。
+
+BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のうち書き換え結果が rewritten または unchanged の 222 件を `BedrockServer.exec` で直接実行したところ、いずれも例外を返さなかった。一方、対照の `time set bogus` も例外なし・successCount 0 だった。同じ実験で不正な effect 引数、不正なブロック ID、不正なコマンド名は構文エラーを返した。したがって直接実行で例外がないことも、全引数の構文受理の証拠にはできない。
+
+### Java 1.20.4 ワールドの更新（#145）
+
+合成した 1.20.4 ワールドを Java 26.3 で開いた実サーバーテストでは、コマンドブロックの `Command` と関数ファイルの文字列が保存され、チェスト内アイテムの `CustomModelData` は `minecraft:custom_model_data` に移った。防具立ての `CustomName` の内容も残った。対象はテスト内の各1例である。根拠は `packages/bridge/src/upgrade-1204.servers.test.ts`（3回成功）、再現方法と文法・コーパスの調査は `docs/research-1204.md`。
+
+## Java 版別シナリオの記録（#216）
+
+実測。`scenarios/datapack/` と `scenarios/scores/` の21シナリオを、各版の実サーバーで新規ワールドから実行し、`*.java.<版>.json` の正規化済み state を 26.3 の `*.java.json` と比較した。コマンドブロックは明示的に有効化した。
+
+| Java 版 | 26.3 との差があるシナリオ | 差分 |
+| --- | --- | --- |
+| 1.20.6、1.21.4 | `datapack/entity-nbt` | storage へのコピーは `HandItems` / `ArmorItems` のリスト（出力の `hand` / `armor`）で、26.3 は `equipment.mainhand`。同じ CustomName 入力について、前者は `"Probe"` を含む文字列、後者は `{"text":"Probe"}` を含む文字列。表示名が同じかはこの記録では測っていない（#219）。 |
+| 1.20.6、1.21.4 | `datapack/execute-extra` | `#all_mismatch`、`#masked_diff`、`#unloaded_if`、`#wrong_dimension` が 0 で存在し、26.3 の記録には存在しない。発生箇所の切り分けは #220。 |
+| 1.21.11、26.2 | 差なし | 21シナリオの state が 26.3 と一致。 |
+
+上記以外のシナリオには差がなかった。各版の具体的な値は対応する正解 JSON を参照。NBT の数値型は正規化時に一部省かれる（`docs/scenarios.md`）。
+### コマンド形の参照先と実験設定（#166）
+
+Java 26.3 の関数読み込みで、`minecart_improvements` を有効にすると `max_minecart_speed` の監査候補 6 件は受理された。また `test` の参照先を同梱の `minecraft:always_pass`、`time` の timeline を `minecraft:day` に変えた 13 件は受理された。関数を実行せずに測定した。再現手順と個々の候補は `docs/command-shape-audit.md` の #166 の表を参照。
+### BDS の関数読み込みによる構文検査（#165）
+
+BDS 1.26.63.1 の使い捨てワールドで、合成コマンドを 1 行ずつ別のビヘイビアーパック関数に置き、関数を呼び出さずに起動ログを調べた（`tools/shape-bedrock-audit.ts`、`shape-bedrock-audit.servers.test.ts`）。`time set noon` は読み込みエラーなし、`time set bogus`、不正な effect、存在しないコマンド名はそれぞれ関数名と行番号を含む読み込みエラーになった。読み込み後に副作用のある対照の scoreboard objective を新規作成でき、対照の関数が読み込み時に実行されていないことも確認した。直接実行と異なり、この対照では引数の不正を区別できた。関数内で使えるコマンドや参照の制約、実行時の成否・意味の一致、すべての不正引数は未検証であり、エラーなしを一般的な完全受理の証明とはしない。
+
+Java 26.3 の #112 監査結果を入力とすると、1,424 形・1,520 候補のうち Java 受理かつ rewritten / unchanged の 180 形・222 候補を検査し、221 件は読み込みエラーなし、1 件はエラーだった。`time query time` は Java 受理・unchanged だが BDS 関数読み込みでは `time` 引数が構文エラーだった。残る 1,244 形・1,298 候補は Java 不受理または unsupported のため BDS 未検査。形ごとの候補数・未検査数と各候補の結果は `node tools/shape-java-audit.ts /tmp/java.json && node tools/shape-bedrock-audit.ts /tmp/java.json /tmp/bedrock.json` で再生成できる。合成入力のみを使用する。
+
+ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。既知の不一致の修正は別途必要。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。

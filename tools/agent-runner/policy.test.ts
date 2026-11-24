@@ -40,6 +40,14 @@ describe('runner policy', () => {
       expect(canMerge(issue, pr, 'main', runs)).toBe(false);
     }
   });
+  it('accepts an aggregate result with no selected jobs or a successful subset', () => {
+    expect(canMerge(issue, passing(), 'main', runs)).toBe(true);
+    const pr = passing();
+    pr.statusCheckRollup.push({ name: 'servers / scenarios-1', status: 'COMPLETED', conclusion: 'SUCCESS' });
+    expect(canMerge(issue, pr, 'main', runs)).toBe(true);
+    pr.statusCheckRollup[1]!.conclusion = 'FAILURE';
+    expect(canMerge(issue, pr, 'main', runs)).toBe(false);
+  });
   it('never merges approval waits, drafts, unlinked PRs, conflicting PRs or stacked PRs', () => {
     expect(canMerge({ ...issue, labels: [{ name: 'needs-approval' }] }, passing(), 'main', runs)).toBe(false);
     for (const override of [

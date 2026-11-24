@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { JavaServer } from "../java.ts";
+import { JavaServer, type JavaStartOptions } from "../java.ts";
 import type { ScenarioDatapack } from "./types.ts";
 
 const PACK = "je2be-scenario";
@@ -20,33 +20,35 @@ function write(path: string, body: string): void {
   writeFileSync(path, body);
 }
 
-export async function startScenarioJava(datapack?: ScenarioDatapack): Promise<JavaServer> {
-  if (!datapack) return JavaServer.start();
+export interface ScenarioJavaVersion { runtime: NonNullable<JavaStartOptions["runtime"]>; packFormat: number; packMinor: number; functionDirectory: "function" | "functions" }
+
+export async function startScenarioJava(datapack?: ScenarioDatapack, version?: ScenarioJavaVersion): Promise<JavaServer> {
+  if (!datapack) return JavaServer.start({ enableCommandBlock: true, ...(version ? { runtime: version.runtime } : {}) });
   // 有効な空パックを置いて起動する。関数とタグは setup 後に追加する。
   const work = mkdtempSync(join(tmpdir(), "je2be-scenario-"));
   const pack = join(work, PACK);
   try {
     write(join(pack, "pack.mcmeta"), JSON.stringify({
-      pack: { description: "je2be scenario", min_format: 121, max_format: 121 },
+      pack: version && version.packFormat <= 81 ? { description: "je2be scenario", pack_format: version.packFormat } : version ? { description: "je2be scenario", min_format: [version.packFormat, version.packMinor], max_format: [version.packFormat, version.packMinor] } : { description: "je2be scenario", min_format: 121, max_format: 121 },
     }));
-    return await JavaServer.start({ datapacks: [pack], initialEnabledPacks: ["vanilla", `file/${PACK}`] });
+    return await JavaServer.start({ enableCommandBlock: true, ...(version ? { runtime: version.runtime } : {}), datapacks: [pack], initialEnabledPacks: ["vanilla", `file/${PACK}`] });
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
 }
 
-export async function loadScenarioDatapack(java: JavaServer, datapack: ScenarioDatapack, log: string[]): Promise<void> {
+export async function loadScenarioDatapack(java: JavaServer, datapack: ScenarioDatapack, log: string[], version?: ScenarioJavaVersion): Promise<void> {
   const root = join(java.worldDirectory, "datapacks", PACK);
   for (const [id, lines] of Object.entries(datapack.functions)) {
     if (id === READY || !Array.isArray(lines) || lines.some((line) => typeof line !== "string" || /[\r\n]/.test(line))) {
       throw new Error(`Invalid scenario function: ${id}`);
     }
-    write(resourcePath(root, id, "function", ".mcfunction"), lines.join("\n") + "\n");
+    write(resourcePath(root, id, version?.functionDirectory ?? "function", ".mcfunction"), lines.join("\n") + "\n");
   }
   for (const [id, tag] of Object.entries(datapack.functionTags ?? {})) {
-    write(resourcePath(root, id, "tags/function", ".json"), JSON.stringify(tag));
+    write(resourcePath(root, id, `tags/${version?.functionDirectory ?? "function"}`, ".json"), JSON.stringify(tag));
   }
-  write(resourcePath(root, READY, "function", ".mcfunction"), "return 1\n");
+  write(resourcePath(root, READY, version?.functionDirectory ?? "function", ".mcfunction"), "return 1\n");
 
   const from = java.log.length;
   const reload = await java.exec("reload");
