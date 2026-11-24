@@ -134,6 +134,8 @@ AI は必要な依存取得・実装・検証・push・PR 作成を行う。完�
 
 `needs-approval` は Issue・PR のどちらにあっても保留する。承認コメントの自然言語判定は行わない。人が承認コメントを書き、該当する Issue / PR の `needs-approval` を外して再開させる。`status:blocked` / `status:paused` も再開時に解除する。積み上げた PR は base が違う間は自動マージしない。最初の版では積み上げの base 変更・ブランチ削除は自動化しない。
 
+worker が途中で終了するときは `status:paused` を付けず、進捗と再開手順を Issue に残す。次の巡回で同じ worktree から再実行し、起動回数を数える。管理対象の Issue に `status:paused` がある場合は端末に表示し、人が外すまで再開しない旨を Issue に一度だけコメントする。
+
 上限到達や PR の未マージクローズは `status:blocked` にして、再開情報を Issue に記録する。原因を直して `status:ready` に戻すと、同じ worktree で実行回数をリセットして再開する。Issue のクローズは完了として扱う。管理対象外の既存作業を勝手に引き継がず、状態ファイルにある Issue だけを再開する。
 
 ## 状態・ログ・排他制御
