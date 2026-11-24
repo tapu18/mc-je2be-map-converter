@@ -195,6 +195,49 @@ it('bounds worker retries, preserves state, and resumes a blocked task when made
   expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(3);
 }, 20_000);
 
+it('resumes a worker dependency wait only after all dependencies and approvals are resolved', async () => {
+  const f = await fixture();
+  await f.update(d => { d.workerFails = true; });
+  await f.run();
+  await f.run();
+  await f.update(d => {
+    d.workerFails = true;
+    d.issues[0]!.body = 'Depends on: #8, #9';
+    d.issues[0]!.labels = [{ name: 'status:blocked' }];
+    d.issues.push({ ...d.issues[0]!, number: 8, state: 'CLOSED', labels: [], comments: [] });
+    d.issues.push({ ...d.issues[0]!, number: 9, state: 'OPEN', labels: [], comments: [] });
+  });
+  await f.run();
+  await f.update(d => { d.issues[2]!.state = 'CLOSED'; d.issues[2]!.labels = [{ name: 'needs-approval' }]; });
+  await f.run();
+  await f.update(d => { d.issues[2]!.labels = []; d.issues[0]!.labels.push({ name: 'needs-approval' }); });
+  await f.run();
+  expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
+  await f.update(d => { d.issues[0]!.labels = [{ name: 'status:blocked' }]; });
+  await f.run();
+  const data = await f.load();
+  expect(data.calls.filter(call => call[0] === 'codex')).toHaveLength(2);
+  expect(data.calls.some(call => call.includes('status:ready'))).toBe(true);
+  expect(data.tree).toBe((await f.state()).tasks[0].worktree);
+}, 20_000);
+
+it('keeps a blocked worker stopped without explicit dependencies or with PR approval pending', async () => {
+  const f = await fixture();
+  await f.update(d => { d.workerFails = true; });
+  await f.run();
+  await f.run();
+  await f.update(d => { d.issues[0]!.labels = [{ name: 'status:blocked' }]; });
+  await f.run();
+  await f.update(d => {
+    d.issues[0]!.body = 'Depends on: #8';
+    d.issues.push({ ...d.issues[0]!, number: 8, state: 'CLOSED', labels: [], comments: [] });
+    d.prs = [{ number: 9, state: 'OPEN', isDraft: true, baseRefName: 'main', headRefName: d.branch!, headRefOid: 'abc', mergeStateStatus: 'CLEAN', reviewDecision: '', labels: [{ name: 'needs-approval' }], closingIssuesReferences: [], statusCheckRollup: [] }];
+  });
+  await f.run();
+  expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
+  expect((await f.load()).issues[0]!.labels).toContainEqual({ name: 'status:blocked' });
+}, 20_000);
+
 it('gives up a lost claim without starting a worker on the next tick', async () => {
   const f = await fixture();
   await f.run();
