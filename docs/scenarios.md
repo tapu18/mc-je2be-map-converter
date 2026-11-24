@@ -103,3 +103,5 @@ JE2BE_RECORD=1 npm run scenarios:record                                         
 
 `npm run setup:grammars -- 1.20.6 1.21.4 1.21.11 26.2` で固定サーバーを用意する。
 `JE2BE_JAVA_VERSION=1.20.6 JE2BE_RECORD=1 npm run scenarios:record -- -t 'scenario (datapack|scores)/.*java'` のように版を指定すると、`<名前>.java.1.20.6.json` に記録する。`JE2BE_RECORD` を省くとその版の記録と照合する。既定版の記録と BE の比較は従来の `.java.json` を使う。版別実行では Java のテストだけを選ぶ。
+
+`execute-zero-observations.java*.json` は通常のシナリオ形式ではなく、#220 の保存 NBT とコマンド応答の実測記録である。`JE2BE_JAVA_VERSION=1.20.6 JE2BE_RECORD=1 npx vitest run --config vitest.servers.config.ts packages/bridge/src/execute-zero.servers.test.ts` で版別に記録し、`JE2BE_RECORD` を外して照合する。既定版は `JE2BE_JAVA_VERSION` も省く。旧版には上記 `setup:grammars` が必要。

@@ -317,3 +317,9 @@ BDS 1.26.63.1 で `packages/runtime-host/src/bundle.servers.test.ts` を実行�
 1.20.6 と 1.21.4 は `HandItems` と `ArmorItems` の取得が成功し、主手・副手は順に hand の 0・1、足は armor の 0 に入り、空スロットは空 compound だった。1.21.11、26.2、26.3 はそれらの取得が失敗し、`equipment` と `equipment.mainhand` / `offhand` / `feet` の取得が成功し、対応する装備が入った。名前のコピーは旧版が `"Probe"` を含む文字列、26.3 が `Probe` だった。
 
 この例の装備と単純な名前は対応する値へ正規化できるが、実行中の `data get` や storage コピーは版の違いを観測できるため、実体を 26.3 形式へ正規化するだけでは旧版の観測を保持できない。複雑な名前や装備の全組合せの可逆性はこの実験の対象外。ソース版の表現を扱う後続作業は #247。
+
+### execute のゼロスコアと保存形式（#220）
+
+`packages/bridge/src/execute-zero.servers.test.ts` は `execute-extra` の4条件をそれぞれ初期値 -1 のスコアへ `execute store result` し、応答、保存前後の `scoreboard players get`、保存 NBT とダンプ、再起動後の取得を測る。結果は `scenarios/datapack/execute-zero-observations.java*.json`。Java 1.20.6、1.21.4、1.21.11、26.2、26.3 のすべてで4コマンドの応答は `Test failed`、取得値は保存前・保存後・再起動後とも 0 だった。
+
+1.20.6 と 1.21.4 の保存 NBT は各エントリに `Score: 0` を含み、ダンプも 0 を返した。1.21.11、26.2、26.3 の保存 NBT は各エントリが存在するが `Score` を含まず、現在のダンプはそのエントリを返さなかった。この4例の差は、保存データで `Score` を省略したエントリを 0 として読み取る正規化で吸収でき、execute の版別実行挙動はこの観測に限れば不要。保存読み取りの修正と不正データの扱いは #249 で追跡する。
