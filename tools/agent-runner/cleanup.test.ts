@@ -38,6 +38,10 @@ it('does not delete a remote branch advanced after merging', async () => {
 
 it.each([
   { name: 'generated output', path: 'node_modules/package/file', removed: true },
+  { name: 'Python bytecode cache', path: 'scripts/__pycache__/dump.cpython-312.pyc', removed: true },
+  { name: 'nested Python bytecode cache', path: 'tools/lib/__pycache__/x.cpython-312.pyc', removed: true },
+  { name: 'runtime host pack output', path: 'packages/runtime-host/pack/scripts/main.js', removed: true },
+  { name: 'untracked file beside the runtime host pack output', path: 'packages/runtime-host/pack/manifest.json', removed: false },
   { name: 'untracked source', path: 'new-source.ts', removed: false },
   { name: 'ignored user data', path: 'sample-map/world', removed: false },
 ])('handles $name in a real worktree', async ({ path, removed }) => {
@@ -49,8 +53,13 @@ it.each([
   try {
     await mkdir(root);
     await git(['init', '-q']);
-    await writeFile(join(root, '.gitignore'), 'node_modules/\nsample-map/\n');
-    await git(['add', '.gitignore']);
+    await writeFile(join(root, '.gitignore'), 'node_modules/\nsample-map/\n__pycache__/\npackages/runtime-host/pack/scripts/\n');
+    // Tracked siblings, as in the real repository, keep git from collapsing ignored output to its parent.
+    for (const file of ['scripts/dump.py', 'tools/lib/x.py', 'packages/runtime-host/package.json']) {
+      await mkdir(join(root, file, '..'), { recursive: true });
+      await writeFile(join(root, file), '');
+    }
+    await git(['add', '.']);
     await git(['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'initial']);
     const head = (await git(['rev-parse', 'HEAD'])).trim();
     await git(['worktree', 'add', '-qb', task.branch, worktree]);
