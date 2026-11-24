@@ -107,7 +107,7 @@ const node = one(
   obj({kind: lit("literal"), name: str, start: num, end: num}, {jump: lit("execute", "root")}),
   obj({kind: lit("argument"), name: str, parser: str, start: num, end: num, value}, {jump: lit("execute", "root")}),
 );
-const irCheck = obj({source: str, context: arr(obj({kind: str, nodes: arr(node)}))}, {command: obj({name: str, nodes: arr(node)})});
+const irCheck: Check = v => obj({source: str, context: arr(obj({kind: str, nodes: arr(node)}))}, {command: obj({name: str, nodes: arr(node)}, {run: irCheck})})(v);
 const documentCheck = obj({grammarVersion: x => str(x) && x !== "", textFormat: lit("json", "snbt"), ir: irCheck});
 
 export function serializeCommandIR(document: IrDocument): string {
