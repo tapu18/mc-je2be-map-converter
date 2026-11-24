@@ -1,6 +1,6 @@
 sample-map/
 agent-runner.json
-scripts/__pycache__/
+__pycache__/
 node_modules/
 dist/
 *.tsbuildinfo
