@@ -323,3 +323,7 @@ BDS 1.26.63.1 で `packages/runtime-host/src/bundle.servers.test.ts` を実行�
 `packages/bridge/src/execute-zero.servers.test.ts` は `execute-extra` の4条件をそれぞれ初期値 -1 のスコアへ `execute store result` し、応答、保存前後の `scoreboard players get`、保存 NBT とダンプ、再起動後の取得を測る。結果は `scenarios/datapack/execute-zero-observations.java*.json`。Java 1.20.6、1.21.4、1.21.11、26.2、26.3 のすべてで4コマンドの応答は `Test failed`、取得値は保存前・保存後・再起動後とも 0 だった。
 
 1.20.6 と 1.21.4 の保存 NBT は各エントリに `Score: 0` を含み、ダンプも 0 を返した。1.21.11、26.2、26.3 の保存 NBT は各エントリが存在するが `Score` を含まず、現在のダンプはそのエントリを返さなかった。この4例の差は、保存データで `Score` を省略したエントリを 0 として読み取る正規化で吸収でき、execute の版別実行挙動はこの観測に限れば不要。保存読み取りの修正と不正データの扱いは #249 で追跡する。
+
+### PR の浅い checkout と base SHA（#225）
+
+[CI run 45150800820](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45150800820/job/137611563490) は merge commit `743a585` を深さ 2 で取得した。checkout のログ上のマージ先は `f493ddf`、イベントの base SHA は `b700b79` で異なり、後者を使う diff は `bad object` となった。`tools/server-test-plan.test.ts` の使い捨て Git リポジトリでも、浅い checkout の範囲外の base は diff に失敗し、SHA を明示的に取得すると文書差分と PoC 差分を選択できた。取得できない場合は全実機テストを選択する。
