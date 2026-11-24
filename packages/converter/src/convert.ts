@@ -11,7 +11,7 @@ import { nbt, readBedrockLevelDat, writeBedrockLevelDat, type MappingTables, typ
 import { rewriteWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
 import { JavaWorld } from "./java-world.ts";
 import { collectPlacedEntities, type PlacedEntity, type PlacedEntityReport } from "./placed-entities.ts";
-import { restoreEntitiesScript } from "./entity-init-script.ts";
+import { fileURLToPath } from "node:url";
 
 /** 初期化パックが使う @minecraft/server の版。bridge-pack と同じ版に保つ（convert.test.ts で確かめる） */
 export const SCRIPT_API_VERSION = "2.12.0-beta";
@@ -72,41 +72,14 @@ function stableUuid(seed: string): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
-/** 初期化パックのスクリプト。ワールドの初回読み込みで目的変数を作り、スコアを書き込む */
-export function initScript(objectives: ObjectiveScores[], entities: PlacedEntity[] = []): string {
-  const data = JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]));
-  return `// je2be が生成した初期化スクリプト。Java ワールドのエンティティとスコアを、BE の初回読み込み時に復元する
-import { world, system, ItemStack } from "@minecraft/server";
-
-const OBJECTIVES = ${data};
-const ENTITIES = ${JSON.stringify(entities)};
-${restoreEntitiesScript}
-world.afterEvents.worldLoad.subscribe(() => {
-  initialize().catch((error) => console.warn("[je2be] initialization failed: " + error));
-});
-
-async function initialize() {
-  if (world.getDynamicProperty(${JSON.stringify(INIT_PROPERTY)})) return;
-  const count = OBJECTIVES.reduce((total, [, scores]) => total + scores.length, 0);
-  if (world.getDynamicProperty(PROGRESS) === undefined) {
-    for (const [id, scores] of OBJECTIVES) {
-      const objective = world.scoreboard.getObjective(id) ?? world.scoreboard.addObjective(id, id);
-      for (const [participant, score] of scores) objective.setScore(participant, score);
-    }
-    world.setDynamicProperty(PROGRESS, 0);
-  }
-  const failures = await restoreEntities();
-  world.setDynamicProperty(${JSON.stringify(INIT_PROPERTY)}, true);
-  console.warn(${JSON.stringify(INIT_LOG_MARK)} + " " + count + " named scores, " + ENTITIES.length + " entity placements, " + failures + " entity errors");
-}
-`;
-}
-
 /** 初期化パックを BE ワールドの behavior_packs/ に置き、world_behavior_packs.json に足す */
 export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = []): void {
   const chunk = (n: number) => Math.floor(n / 16);
   const sorted = [...entities].sort((a, b) => a.dimension.localeCompare(b.dimension) || chunk(a.pos.x) - chunk(b.pos.x) || chunk(a.pos.z) - chunk(b.pos.z));
-  const script = initScript(objectives, sorted);
+  const data = `export const objectives = ${JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]))};\nexport const entities = ${JSON.stringify(sorted)};\n`;
+  const scriptsDir = fileURLToPath(new URL("../../runtime-host/pack/scripts/", import.meta.url));
+  const files = ["main.js", "initialize.js", "restore.js"];
+  const script = files.map((file) => readFileSync(join(scriptsDir, file), "utf8")).join("\n") + data;
   const uuid = stableUuid(`pack:${script}`);
   const dir = join(worldDir, "behavior_packs", "je2be_init");
   mkdirSync(join(dir, "scripts"), { recursive: true });
@@ -124,7 +97,8 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], e
       2,
     ),
   );
-  writeFileSync(join(dir, "scripts", "main.js"), script);
+  for (const file of files) cpSync(join(scriptsDir, file), join(dir, "scripts", file));
+  writeFileSync(join(dir, "scripts", "data.js"), data);
   const refsPath = join(worldDir, "world_behavior_packs.json");
   const refs = existsSync(refsPath) ? (JSON.parse(readFileSync(refsPath, "utf8")) as { pack_id: string; version: number[] }[]) : [];
   writeFileSync(refsPath, JSON.stringify([...refs.filter((r) => r.pack_id !== uuid), { pack_id: uuid, version }], null, 2));

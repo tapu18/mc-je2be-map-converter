@@ -1,0 +1,27 @@
+{
+  "java": "1.20.6",
+  "state": {
+    "storage": {
+      "m2:schedule": {
+        "after_four": [
+          "append",
+          "append"
+        ],
+        "before_step": [],
+        "trace": [
+          "append",
+          "append",
+          "replace"
+        ],
+        "after_two": [
+          "append"
+        ],
+        "after_five": [
+          "append",
+          "append",
+          "replace"
+        ]
+      }
+    }
+  }
+}

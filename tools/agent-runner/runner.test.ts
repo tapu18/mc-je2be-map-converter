@@ -19,7 +19,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -38,6 +38,7 @@ const has = (item, name) => item.labels.some(l => l.name === name);
 if (tool === 'git') {
   if (args[1] === '--show-toplevel') out(process.env.RUNNER_ROOT);
   else if (args[1] === '--git-common-dir') out('.git');
+  else if (args[0] === 'rev-parse' && args[1].includes(':tools/agent-runner.ts')) out(args[1].startsWith('HEAD:') ? 'file\ntree' : (d.baseCode ?? 'file\ntree'));
   else if (args[0] === 'worktree' && args[1] === 'list') out(d.tree ? 'worktree ' + d.tree + '\nbranch refs/heads/' + d.branch + '\n' : '');
   else if (args[0] === 'worktree' && args[1] === 'add') { d.branch = args[3]; d.tree = args[4]; mkdirSync(d.tree, {recursive:true}); }
   else if (args[0] !== 'fetch') throw Error('Unexpected git ' + args);
@@ -99,6 +100,19 @@ if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode =
   };
   return { root, config, run, load, update, state, updateState };
 }
+
+it('warns in the terminal, state, and PM prompt when base code changes', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true } }));
+  await f.update(d => { d.baseCode = 'new-file\ntree'; });
+  const warning = '管理プログラムのコードが更新された。再起動が必要';
+  expect((await f.run()).stdout).toContain(warning);
+  expect((await f.state()).codeWarning).toBe(warning);
+  expect((await f.load()).managerPrompts?.[0]).toContain(warning);
+  await f.update(d => { d.baseCode = 'file\ntree'; });
+  expect((await f.run()).stdout).not.toContain(warning);
+  expect((await f.state()).codeWarning).toBeUndefined();
+});
 
 it('dry-run only reads; excludes other claims and unclosed dependencies', async () => {
   const f = await fixture();

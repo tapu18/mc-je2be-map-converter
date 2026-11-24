@@ -21,7 +21,7 @@
 
 - `method` は `native`（ネイティブ）、`rewrite`（書き換え）、`runtime`（ランタイム）、`asset`（素材作成）、`approximation`（近似）、`impossible`（不可能）、`uninvestigated`（未調査）。
 - `implementation` は `unknown`（不明）、`planned`（設計上の候補）、`partial`（確認範囲内で出力あり）、`output`（出力対応）、`loss-only`（イベント等を捨てる処理と警告のみ）。初版では機能全体の `output` 判定は付けていない。
-- `loss` は確認した欠落や条件付きの制約。詳細が未確認の場合は `null`。`issue` は根拠になった実装または今後の検証を追跡する Issue 番号。未割り当ては `null`。
+- `loss` は確認した欠落や条件付きの制約。詳細が未確認の場合は `null`。`issue` は根拠になった実装または今後の検証を追跡する Issue 番号。未割り当ては `null`。族全体の追跡先と段階の未承認案は [#106 の提案](proposals/compatibility-milestones.md) を参照する。
 - `evidence` に確度 `measured`（実測）、`estimated`（推定）、`unconfirmed`（未確認）、出典と確認範囲を持つ。実測は記録された Java・BDS・必要な対応表の版に限定する。
 - `frequency` は `lines`（コマンド行）、`definitions`（JSON定義ファイル）、`maps`（その項目を使う上位ZIPの本数）。未計数の欄は `null`、計数対象内で未検出なら `0`。コーパスを渡さなければ `frequency` 全体が `null`。
 
@@ -30,6 +30,27 @@
 対応表付きの音・粒子は近似扱い。BDS で成功件数 1 が返ったという実測には架空 ID も含まれるため、各 ID の再生・描画は引き続き未確認。
 エンティティの ID はセレクター書き換えに限る。配置・振る舞いは別途確認が要る。
 Geyser 対応表の出典と許諾表示は [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) にある。
+
+## 族ごとの追跡先（#106）
+
+各台帳行の `family` をキーに次の Issue へたどる。行の `issue` は従来どおり個別判定の根拠を保持し、族の追跡先とは別に扱う。族 Issue は完了範囲を子 Issue に分割する。
+
+| family | 追跡 Issue |
+| --- | --- |
+| `advancement_trigger` | [#176](https://github.com/tapu18/mc-je2be-map-converter/issues/176) |
+| `attribute` | [#177](https://github.com/tapu18/mc-je2be-map-converter/issues/177) |
+| `click` | [#178](https://github.com/tapu18/mc-je2be-map-converter/issues/178) |
+| `command` | [#179](https://github.com/tapu18/mc-je2be-map-converter/issues/179) |
+| `component` | [#180](https://github.com/tapu18/mc-je2be-map-converter/issues/180) |
+| `effect` | [#181](https://github.com/tapu18/mc-je2be-map-converter/issues/181) |
+| `entity` | [#182](https://github.com/tapu18/mc-je2be-map-converter/issues/182) |
+| `game_rule` | [#183](https://github.com/tapu18/mc-je2be-map-converter/issues/183) |
+| `hover` | [#184](https://github.com/tapu18/mc-je2be-map-converter/issues/184) |
+| `loot_condition` | [#185](https://github.com/tapu18/mc-je2be-map-converter/issues/185) |
+| `loot_entry` | [#186](https://github.com/tapu18/mc-je2be-map-converter/issues/186) |
+| `loot_function` | [#187](https://github.com/tapu18/mc-je2be-map-converter/issues/187) |
+| `particle` | [#188](https://github.com/tapu18/mc-je2be-map-converter/issues/188) |
+| `sound` | [#189](https://github.com/tapu18/mc-je2be-map-converter/issues/189) |
 
 ## 頻度と進捗
 

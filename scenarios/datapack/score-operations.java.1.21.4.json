@@ -1,0 +1,23 @@
+{
+  "java": "1.21.4",
+  "state": {
+    "scores": {
+      "arithmetic": {
+        "#divide_negative_rhs": -4,
+        "#multiply": -21,
+        "#swap": 2,
+        "#swap_source": 1,
+        "#subtract": 10,
+        "#modulo_negative_rhs": -1,
+        "#assign": 3,
+        "#min": -2,
+        "#overflow": -2147483648,
+        "#max": 9,
+        "#divide": -4,
+        "#add": 4,
+        "#operand": 1,
+        "#modulo": 1
+      }
+    }
+  }
+}
