@@ -352,3 +352,7 @@ BDS 1.26.63.1 で `packages/runtime-host/src/bundle.servers.test.ts` を実行�
 ### PR の浅い checkout と base SHA（#225）
 
 [CI run 45150800820](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45150800820/job/137611563490) は merge commit `743a585` を深さ 2 で取得した。checkout のログ上のマージ先は `f493ddf`、イベントの base SHA は `b700b79` で異なり、後者を使う diff は `bad object` となった。`tools/server-test-plan.test.ts` の使い捨て Git リポジトリでも、浅い checkout の範囲外の base は diff に失敗し、SHA を明示的に取得すると文書差分と PoC 差分を選択できた。取得できない場合は全実機テストを選択する。
+
+### 保存された command storage（#201）
+
+Java 26.3 で複数の名前空間に compound、long 最大値と long 配列を保存したワールドについて、変換器の型付き初期データを復号して `JavaServer.dump()` と比較した結果は一致した。根拠は [実サーバーテスト](../packages/bridge/src/initial-storage.servers.test.ts)。
