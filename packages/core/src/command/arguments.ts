@@ -584,7 +584,16 @@ export const ARGUMENT_PARSERS: Record<string, ArgumentParser> = {
     return { kind: "string", value };
   },
   "minecraft:entity": entity,
-  "minecraft:game_profile": (r, p) => (r.peek() === "@" ? entity(r, p, { textFormat: "snbt" }) : scoreHolder(r, p, { textFormat: "snbt" })),
+  "minecraft:game_profile": (r, p) => {
+    if (r.peek() !== "@") return scoreHolder(r, p, { textFormat: "snbt" });
+    const start = r.cursor;
+    const value = entity(r, p, { textFormat: "snbt" });
+    if (value.kind === "selector" && ["e", "s", "n"].includes(value.selector.variable) &&
+      !value.selector.arguments.some((a) => a.key === "type" && !a.negated && a.value.kind === "resource" && a.value.id === "minecraft:player")) {
+      throw r.error("ここではプレイヤーしか指定できない", start);
+    }
+    return value;
+  },
   "minecraft:score_holder": (r) => (r.peek() === "*" && (r.peek(1) === " " || !r.canRead(2)) ? (r.skip(), { kind: "name", value: "*" }) : scoreHolder(r, undefined, { textFormat: "snbt" })),
   "minecraft:block_pos": (r) => ({ kind: "coordinates", coordinates: readCoordinates(r, 3, { integer: true, local: true }) }),
   "minecraft:column_pos": (r) => ({ kind: "coordinates", coordinates: readCoordinates(r, 2, { integer: true, local: false }) }),
