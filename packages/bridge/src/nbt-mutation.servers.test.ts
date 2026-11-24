@@ -23,3 +23,14 @@ it("inserts at negative indices relative to the end of a storage list", async ()
     await java.stop();
   }
 });
+
+it("merges storage compounds recursively and reports unchanged merges", async () => {
+  const java = await JavaServer.start();
+  try {
+    await java.exec("data merge storage test:paths {a:{x:1,y:2}}");
+    expect(await java.exec("data merge storage test:paths {a:{x:3}}")).toMatch(/Modified storage/);
+    expect(await java.exec("data get storage test:paths a")).toMatch(/x: 3/);
+    expect(await java.exec("data get storage test:paths a")).toMatch(/y: 2/);
+    expect(await java.exec("data merge storage test:paths {a:{x:3}}")).toMatch(/Nothing changed/);
+  } finally { await java.stop(); }
+});

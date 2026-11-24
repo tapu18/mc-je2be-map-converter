@@ -15,7 +15,7 @@ export function copyNbt(tag: NbtTag): NbtTag {
 }
 
 /** Exact equality, unlike the subset matching used for path predicates. */
-function equalNbt(a: NbtTag, b: NbtTag): boolean {
+export function equalNbt(a: NbtTag, b: NbtTag): boolean {
   if (a.type !== b.type) return false;
   if (a.type === "compound" && b.type === "compound") {
     return a.value.size === b.value.size && [...a.value].every(([key, value]) => {
@@ -102,4 +102,19 @@ export function insertNbtPath(root: NbtTag, path: readonly NbtPathNode[], index:
     if (changed) count++;
   }
   return count;
+}
+
+/** Recursively merge a compound, returning whether any value changed. */
+export function mergeNbt(target: Extract<NbtTag, {type: "compound"}>, source: Extract<NbtTag, {type: "compound"}>): boolean {
+  let changed = false;
+  for (const [key, value] of source.value) {
+    const old = target.value.get(key);
+    if (old?.type === "compound" && value.type === "compound") {
+      if (mergeNbt(old, value)) changed = true;
+    } else if (!old || !equalNbt(old, value)) {
+      target.value.set(key, copyNbt(value));
+      changed = true;
+    }
+  }
+  return changed;
 }
