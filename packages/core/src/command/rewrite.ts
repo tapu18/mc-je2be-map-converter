@@ -5,6 +5,7 @@
 //
 // 確度：出力する BE の書き方は BDS 1.26.63.1 が構文として受理することを実測した（rewrite.servers.test.ts）。
 // 意味が Java と一致することは、変換を通すシナリオ（scenarios/convert/）で確かめたものだけが実測で、残りは未確認。
+import { rewriteSound } from "../features/sound/rewrite.ts";
 import type { BlockDefaults } from "../java/world.ts";
 import type { MappingLookup } from "../mappings/mappings.ts";
 import type { ArgumentValue, EntitySelector, Range } from "./arguments.ts";
@@ -330,7 +331,7 @@ function rewriteNode(n: ParsedNode, ctx: RewriteContext, ed: Editor): void {
 const literals = (nodes: ParsedNode[]): string[] => nodes.filter((n) => n.kind === "literal").map((n) => n.name);
 const arg = (nodes: ParsedNode[], name: string): ParsedNode | undefined => nodes.find((n) => n.kind === "argument" && n.name === name);
 
-type CommandHandler = (nodes: ParsedNode[], head: ParsedNode, ctx: RewriteContext, ed: Editor) => void;
+type CommandHandler = (nodes: ParsedNode[], head: ParsedNode, ctx: RewriteContext, ed: Editor, ir: import("./parser.ts").CommandIR) => void;
 
 const ok: CommandHandler = () => {};
 
@@ -376,18 +377,8 @@ const COMMANDS: Record<string, CommandHandler> = {
     const mode = nodes[nodes.indexOf(filter) + 1];
     ed.replace(filter.start, mode?.end ?? filter.end, `${mode?.name ?? "normal"} ${block}`);
   },
-  playsound: (nodes, _head, ctx, ed) => {
-    const sound = arg(nodes, "sound");
-    if (sound?.value?.kind !== "resource") return;
-    const id = ctx.mappings.sound(sound.value.id);
-    if (!id) return ed.unsupported(`BE に対応のないサウンド ${sound.value.id}`);
-    const category = nodes.find((n) => n.kind === "literal");
-    const targets = arg(nodes, "targets");
-    ed.replace(sound.start, category?.end ?? sound.end, targets ? id : `${id} @s ~ ~ ~`);
-    // Java の位置省略時は実行位置。BE で省くと遠い対象にも成功を返すので、実行位置を明示する。
-    if (targets && !arg(nodes, "pos")) ed.replace(targets.end, targets.end, " ~ ~ ~");
-    ed.warn(`BE の playsound では Java のサウンドカテゴリ ${category?.name ?? "master（既定）"} を指定できない`);
-    ed.warn("対応する音や、音量・ピッチ・距離による聞こえ方は版によって変わり得る");
+  playsound: (_nodes, _head, ctx, ed, ir) => {
+    rewriteSound(ir, (id) => ctx.mappings.sound(id), ed);
   },
   particle: (nodes, _head, ctx, ed) => {
     const name = arg(nodes, "name");
@@ -547,7 +538,7 @@ export function rewriteCommand(source: string, ctx: RewriteContext): RewriteResu
     else {
       // 最後のコマンドの名前の節：run の先なら最後の jump=root、execute でなければ先頭
       const head = [...parsed.nodes].reverse().find((n) => n.jump === "root") ?? parsed.nodes[0]!;
-      if (!ed.failed) handler(ir.command.nodes, head, ctx, ed);
+      if (!ed.failed) handler(ir.command.nodes, head, ctx, ed, ir);
     }
   }
   if (ed.failed) return { status: "unsupported", issues: ed.issues };
