@@ -52,9 +52,31 @@ it("stores score results and evaluates score ranges", () => {
   expect(run("execute store result score #value result store success score #success result run scoreboard players set #source result 7").success).toBe(true);
   expect(run("execute if score #value result matches 7..8 run scoreboard players set #matched result 1").success).toBe(true);
   expect(run("execute unless score #value result matches 7 run scoreboard players set #matched result 2").success).toBe(false);
+  expect(run("execute if score #value result > #success result run scoreboard players set #comparison result 1").success).toBe(true);
+  expect(run("execute unless score #missing result = #value result run scoreboard players set #missing_check result 1").success).toBe(true);
   expect(state.scores.get("#value", "result")).toBe(7);
   expect(state.scores.get("#success", "result")).toBe(1);
   expect(state.scores.get("#matched", "result")).toBe(1);
+  expect(state.scores.get("#comparison", "result")).toBe(1);
+  expect(state.scores.get("#missing_check", "result")).toBe(1);
+});
+
+it("executes nested functions and propagates return results", () => {
+  const parser = new CommandParser(JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode, {textFormat: "snbt"});
+  const scenario = JSON.parse(readFileSync(new URL("../../../scenarios/datapack/calls.json", import.meta.url), "utf8"));
+  const state = new RuntimeState();
+  const parse = (line: string) => {
+    const parsed = parser.parse(line);
+    if (!parsed.ok) throw new Error(`${line}: ${parsed.error.message}`);
+    return toCommandIR(line, parsed.nodes);
+  };
+  for (const [name, lines] of Object.entries(scenario.datapack.functions) as [string, string[]][]) state.functions.set(name, lines.map(parse));
+  for (const [name, tag] of Object.entries(scenario.datapack.functionTags) as [string, {values: string[]}][]) state.functionTags.set(name, tag.values);
+  for (const line of scenario.setup as string[]) expect(executeCommand(state, parse(line)).success).toBe(true);
+  for (const action of scenario.actions.slice(0, 4) as {run: string}[]) executeCommand(state, parse(action.run));
+  expect(state.scores.get("#return", "result")).toBe(7);
+  expect(state.scores.get("#return_success", "result")).toBe(1);
+  expect(nbtToPlain(state.storage.get("m2:calls"))).toEqual({trace: ["nested", "plain", "fail", "second", "first"], failure: {result: 0, success: 0}, executors: []});
 });
 
 it("merges compound storage values recursively", () => {

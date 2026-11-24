@@ -10,10 +10,18 @@ import { executeStorageCommand, StorageState } from "./storage-command.ts";
 export class RuntimeState {
   readonly scores = new Scoreboard();
   readonly storage = new StorageState();
+  readonly functions = new Map<string, CommandIR[]>();
+  readonly functionTags = new Map<string, string[]>();
 }
 
 /** Execute supported single-context forms. Unknown steps are rejected before executing the command. */
 export function executeCommand(state: RuntimeState, ir: CommandIR): ExecutionResult {
+  const outcome = execute(state, ir, 0);
+  return outcome.success ? {success: true, result: outcome.result} : {success: false, error: outcome.error};
+}
+
+type Outcome = ExecutionResult & {returned?: boolean};
+function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
   const fail = (error: string): ExecutionResult => ({success: false, error});
   type Store = {kind: "storage"; id: string; path: Extract<NonNullable<typeof ir.context[number]["nodes"][number]["value"]>, {kind: "nbtPath"}>["path"]; scale: number; success: boolean} | {kind: "score"; holder: string; objective: string; success: boolean};
   const stores: Store[] = [];
@@ -24,7 +32,7 @@ export function executeCommand(state: RuntimeState, ir: CommandIR): ExecutionRes
     const condition = (step.kind === "if" || step.kind === "unless") && a?.name === "data" && b?.name === "storage" && storagePath;
     const store = step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "storage" && storagePath && typeNode?.name === "int" && scaleNode?.value?.kind === "number";
     const scoreStore = step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "score" && idNode?.value?.kind === "name" && pathNode?.value?.kind === "word";
-    const scoreCondition = (step.kind === "if" || step.kind === "unless") && a?.name === "score" && b?.value?.kind === "name" && idNode?.value?.kind === "word" && pathNode?.name === "matches" && typeNode?.value?.kind === "range";
+    const scoreCondition = (step.kind === "if" || step.kind === "unless") && a?.name === "score" && b?.value?.kind === "name" && idNode?.value?.kind === "word" && ((pathNode?.name === "matches" && typeNode?.value?.kind === "range") || (["=", "<", "<=", ">", ">="].includes(pathNode?.name ?? "") && typeNode?.value?.kind === "name" && scaleNode?.value?.kind === "word"));
     if (!condition && !store && !scoreStore && !scoreCondition) return fail("unsupported execute step");
   }
   let conditionFailed = false;
@@ -42,10 +50,45 @@ export function executeCommand(state: RuntimeState, ir: CommandIR): ExecutionRes
       const value = state.scores.get(b.value.value, id.value), range = typeNode.value.range;
       const matches = value !== undefined && (range.min === undefined || value >= range.min) && (range.max === undefined || value <= range.max);
       if (matches !== (step.kind === "if")) { conditionFailed = true; break; }
+    } else if ((step.kind === "if" || step.kind === "unless") && a?.name === "score" && b?.value?.kind === "name" && id?.kind === "word" && typeNode?.value?.kind === "name" && scaleNode?.value?.kind === "word" && pathNode) {
+      const lhs = state.scores.get(b.value.value, id.value), rhs = state.scores.get(typeNode.value.value, scaleNode.value.value);
+      const matches = lhs !== undefined && rhs !== undefined && (pathNode.name === "=" ? lhs === rhs : pathNode.name === "<" ? lhs < rhs : pathNode.name === "<=" ? lhs <= rhs : pathNode.name === ">" ? lhs > rhs : lhs >= rhs);
+      if (matches !== (step.kind === "if")) { conditionFailed = true; break; }
     } else return fail("unsupported execute step");
   }
   if (!ir.command && !conditionFailed) return fail("missing command");
-  const outcome = conditionFailed ? fail("condition failed") : ir.command!.name === "scoreboard" ? executeScoreCommand(state.scores, ir.command!) : executeStorageCommand(state.storage, ir.command!);
+  let outcome: Outcome;
+  const command = ir.command;
+  if (conditionFailed) outcome = fail("condition failed");
+  else if (!command) outcome = fail("missing command");
+  else if (command.name === "return") {
+    const value = command.nodes[0]?.value;
+    if (command.run) outcome = {...execute(state, command.run, depth), returned: true};
+    else if (value?.kind === "number") outcome = {success: true, result: value.value, returned: true};
+    else if (command.nodes[0]?.name === "fail") outcome = {success: false, error: "return fail", returned: true};
+    else outcome = fail("unsupported return");
+  } else if (command.name === "function") {
+    const target = command.nodes[0]?.value;
+    if (target?.kind !== "resource" || depth >= 128) outcome = fail("unsupported function");
+    else {
+      const names = target.tag ? state.functionTags.get(target.id) : [target.id];
+      if (!names || names.some(name => !state.functions.has(name))) outcome = fail("unknown function");
+      else {
+        let count = 0;
+        let returned: Outcome | undefined;
+        for (const name of names) {
+          for (const line of state.functions.get(name)!) {
+            const result = execute(state, line, depth + 1);
+            count++;
+            if (!result.success && result.error.startsWith("unsupported")) { returned = result; break; }
+            if (result.returned) { returned = result; break; }
+          }
+          if (returned) break;
+        }
+        outcome = returned ? (returned.success ? {success: true, result: returned.result} : {success: false, error: returned.error}) : {success: true, result: count};
+      }
+    }
+  } else outcome = command.name === "scoreboard" ? executeScoreCommand(state.scores, command) : executeStorageCommand(state.storage, command);
   if (!outcome.success && outcome.error.startsWith("unsupported")) return outcome;
   for (const store of stores.reverse()) {
     const value = outcome.success ? (store.success ? 1 : outcome.result) : 0;
