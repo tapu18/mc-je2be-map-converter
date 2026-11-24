@@ -58,6 +58,7 @@ export function executeStorageCommand(storage: StorageState, command: NonNullabl
   if (operation === "set") return result(setNbtPath(root, targetPath, values[values.length - 1]!));
   if (operation === "merge") {
     if (!values.every(v => v.type === "compound")) return fail("merge values must be compounds");
+    if (!getNbtPath(root, targetPath).length) setNbtPath(root, targetPath, {type: "compound", value: new Map()});
     let count = 0;
     for (const target of getNbtPath(root, targetPath)) {
       if (target.type !== "compound") continue;
@@ -70,6 +71,7 @@ export function executeStorageCommand(storage: StorageState, command: NonNullabl
   if (operation === "insert" || operation === "prepend" || operation === "append") {
     const index = operation === "prepend" ? 0 : operation === "append" ? -1 : number(nodes, "index");
     if (index === undefined) return fail("missing index");
+    if (!getNbtPath(root, targetPath).length) setNbtPath(root, targetPath, {type: "list", elementType: "end", value: []});
     return result(insertNbtPath(root, targetPath, index, values));
   }
   return fail("unsupported storage modification");

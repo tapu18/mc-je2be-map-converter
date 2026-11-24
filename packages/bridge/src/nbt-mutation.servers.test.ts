@@ -34,3 +34,13 @@ it("merges storage compounds recursively and reports unchanged merges", async ()
     expect(await java.exec("data merge storage test:paths {a:{x:3}}")).toMatch(/Nothing changed/);
   } finally { await java.stop(); }
 });
+
+it("creates missing list and compound targets for storage modifications", async () => {
+  const java = await JavaServer.start();
+  try {
+    expect(await java.exec("data modify storage test:paths a.list append value 3")).toMatch(/Modified storage/);
+    expect(await java.exec("data modify storage test:paths a.object merge value {x:1}")).toMatch(/Modified storage/);
+    expect(await java.exec("data get storage test:paths a")).toMatch(/list: \[3\]/);
+    expect(await java.exec("data get storage test:paths a")).toMatch(/object: \{x: 1\}/);
+  } finally { await java.stop(); }
+});
