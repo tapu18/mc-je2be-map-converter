@@ -312,8 +312,8 @@ BDS 1.26.63.1 で `packages/runtime-host/src/bundle.servers.test.ts` を実行�
 
 ### エンティティ名と装備の版別観測（#219）
 
-`scenarios/datapack/entity-nbt-equivalence` を Java 1.20.6、1.21.4、26.3 で実行した。防具立てに主手の石、副手の土、足の鉄のブーツを装備し、旧版には JSON テキスト文字列 `"Probe"`、26.3 には文字列 `Probe` を名前として与えた。各版で `name=Probe` セレクターが一致した。`data get` の成功と entity から storage にコピーした値は各版の `*.java*.json` に記録した。
+`scenarios/datapack/entity-nbt-equivalence` を Java 1.20.6、1.21.4、1.21.11、26.2、26.3 で実行した。防具立てに主手の石、副手の土、足の鉄のブーツを装備し、旧版には JSON テキスト文字列 `"Probe"`、26.3 には文字列 `Probe` を名前として与えた。各版で `name=Probe` セレクターが一致した。`data get` の成功と entity から storage にコピーした値は各版の `*.java*.json` に記録した。
 
-1.20.6 と 1.21.4 は `HandItems` と `ArmorItems` の取得が成功し、主手・副手は順に hand の 0・1、足は armor の 0 に入り、空スロットは空 compound だった。26.3 はそれらの取得が失敗し、`equipment` と `equipment.mainhand` / `offhand` / `feet` の取得が成功し、対応する装備が入った。名前のコピーは旧版が `"Probe"` を含む文字列、26.3 が `Probe` だった。
+1.20.6 と 1.21.4 は `HandItems` と `ArmorItems` の取得が成功し、主手・副手は順に hand の 0・1、足は armor の 0 に入り、空スロットは空 compound だった。1.21.11、26.2、26.3 はそれらの取得が失敗し、`equipment` と `equipment.mainhand` / `offhand` / `feet` の取得が成功し、対応する装備が入った。名前のコピーは旧版が `"Probe"` を含む文字列、26.3 が `Probe` だった。
 
 この例の装備と単純な名前は対応する値へ正規化できるが、実行中の `data get` や storage コピーは版の違いを観測できるため、実体を 26.3 形式へ正規化するだけでは旧版の観測を保持できない。複雑な名前や装備の全組合せの可逆性はこの実験の対象外。ソース版の表現を扱う後続作業は #247。
