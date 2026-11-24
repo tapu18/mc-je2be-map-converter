@@ -15,7 +15,7 @@ export class RuntimeState {
 /** Execute supported single-context forms. Unknown steps are rejected before executing the command. */
 export function executeCommand(state: RuntimeState, ir: CommandIR): ExecutionResult {
   const fail = (error: string): ExecutionResult => ({success: false, error});
-  type Store = {id: string; path: Extract<NonNullable<typeof ir.context[number]["nodes"][number]["value"]>, {kind: "nbtPath"}>["path"]; scale: number; success: boolean};
+  type Store = {kind: "storage"; id: string; path: Extract<NonNullable<typeof ir.context[number]["nodes"][number]["value"]>, {kind: "nbtPath"}>["path"]; scale: number; success: boolean} | {kind: "score"; holder: string; objective: string; success: boolean};
   const stores: Store[] = [];
   // Validate the entire chain before evaluating any condition or performing writes.
   for (const step of ir.context) {
@@ -23,7 +23,9 @@ export function executeCommand(state: RuntimeState, ir: CommandIR): ExecutionRes
     const storagePath = idNode?.value?.kind === "resource" && pathNode?.value?.kind === "nbtPath";
     const condition = (step.kind === "if" || step.kind === "unless") && a?.name === "data" && b?.name === "storage" && storagePath;
     const store = step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "storage" && storagePath && typeNode?.name === "int" && scaleNode?.value?.kind === "number";
-    if (!condition && !store) return fail("unsupported execute step");
+    const scoreStore = step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "score" && idNode?.value?.kind === "name" && pathNode?.value?.kind === "word";
+    const scoreCondition = (step.kind === "if" || step.kind === "unless") && a?.name === "score" && b?.value?.kind === "name" && idNode?.value?.kind === "word" && pathNode?.name === "matches" && typeNode?.value?.kind === "range";
+    if (!condition && !store && !scoreStore && !scoreCondition) return fail("unsupported execute step");
   }
   let conditionFailed = false;
   for (const step of ir.context) {
@@ -33,15 +35,25 @@ export function executeCommand(state: RuntimeState, ir: CommandIR): ExecutionRes
       const found = getNbtPath(state.storage.get(id.id), p.path).length > 0;
       if (found !== (step.kind === "if")) { conditionFailed = true; break; }
     } else if (step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "storage" && id?.kind === "resource" && p?.kind === "nbtPath" && typeNode?.name === "int" && scaleNode?.value?.kind === "number") {
-      stores.push({id: id.id, path: p.path, scale: scaleNode.value.value, success: a.name === "success"});
+      stores.push({kind: "storage", id: id.id, path: p.path, scale: scaleNode.value.value, success: a.name === "success"});
+    } else if (step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "score" && id?.kind === "name" && p?.kind === "word") {
+      stores.push({kind: "score", holder: id.value, objective: p.value, success: a.name === "success"});
+    } else if ((step.kind === "if" || step.kind === "unless") && a?.name === "score" && b?.value?.kind === "name" && id?.kind === "word" && pathNode?.name === "matches" && typeNode?.value?.kind === "range") {
+      const value = state.scores.get(b.value.value, id.value), range = typeNode.value.range;
+      const matches = value !== undefined && (range.min === undefined || value >= range.min) && (range.max === undefined || value <= range.max);
+      if (matches !== (step.kind === "if")) { conditionFailed = true; break; }
     } else return fail("unsupported execute step");
   }
   if (!ir.command && !conditionFailed) return fail("missing command");
   const outcome = conditionFailed ? fail("condition failed") : ir.command!.name === "scoreboard" ? executeScoreCommand(state.scores, ir.command!) : executeStorageCommand(state.storage, ir.command!);
   if (!outcome.success && outcome.error.startsWith("unsupported")) return outcome;
   for (const store of stores.reverse()) {
-    const n = Math.trunc((outcome.success ? (store.success ? 1 : outcome.result) : 0) * store.scale);
-    setNbtPath(state.storage.writable(store.id), store.path, {type: "int", value: Math.max(-2147483648, Math.min(2147483647, n))});
+    const value = outcome.success ? (store.success ? 1 : outcome.result) : 0;
+    if (store.kind === "score") state.scores.set(store.holder, store.objective, value);
+    else {
+      const n = Math.trunc(value * store.scale);
+      setNbtPath(state.storage.writable(store.id), store.path, {type: "int", value: Math.max(-2147483648, Math.min(2147483647, n))});
+    }
   }
   return outcome;
 }

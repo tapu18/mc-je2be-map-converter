@@ -40,6 +40,23 @@ it("stores results and success for chained storage operations and failed conditi
   expect(nbtToPlain(state.storage.get("test:chain"))).toEqual({value: 5, result: 1, success: 1, failed: 0});
 });
 
+it("stores score results and evaluates score ranges", () => {
+  const parser = new CommandParser(JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode, {textFormat: "snbt"});
+  const state = new RuntimeState();
+  const run = (line: string) => {
+    const parsed = parser.parse(line);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return executeCommand(state, toCommandIR(line, parsed.nodes));
+  };
+  expect(run("scoreboard objectives add result dummy").success).toBe(true);
+  expect(run("execute store result score #value result store success score #success result run scoreboard players set #source result 7").success).toBe(true);
+  expect(run("execute if score #value result matches 7..8 run scoreboard players set #matched result 1").success).toBe(true);
+  expect(run("execute unless score #value result matches 7 run scoreboard players set #matched result 2").success).toBe(false);
+  expect(state.scores.get("#value", "result")).toBe(7);
+  expect(state.scores.get("#success", "result")).toBe(1);
+  expect(state.scores.get("#matched", "result")).toBe(1);
+});
+
 it("merges compound storage values recursively", () => {
   const parser = new CommandParser(JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode, {textFormat: "snbt"});
   const state = new RuntimeState();
