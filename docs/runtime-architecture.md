@@ -26,7 +26,9 @@ Java 26.3 の生成文法を使った Node テスト `ir-codec.servers.test.ts` 
 
 [PoC](../poc/runtime-load/README.md) の BDS 1.26.63.1 で文法・対応表・パーサを含むパックは圧縮前 12,624,623 bytes、起動要求から初回パースまで 602 / 783 / 613 ms（ワールド準備を含む）、JSON.parse は 159 / 193 / 178 ms。再構成データ案は 12,210,907 bytes、手書き1命令・石1件の限定例は 50,929 bytes。後者は全機能版ではなく、実用版の大きさと性能は未確認。
 
-出力時に必要なモジュールだけを束ねる。bridge-pack と同じ tsc 出力だけの案は core の `.ts` 相対 import とデータの扱いを別途解決する必要がある。`erasableSyntaxOnly` と `.ts` 相対 import を維持し、成果物の import 解決と Node API 不在を BDS で検証する。製品用の束ね方と起動性能は未確認。
+`npm run build:pack` は runtime-host を型検査してから esbuild で `@je2be/core/runtime` と共に単一 ES モジュールに束ねる。中核の実行入口だけを参照し、文法・対応表は含めない。`@minecraft/server` と変換器が作る `data.js` は外部のままにし、変換器はバンドルとデータをパックに配置する。従来の `.js` 相対 import は tsc 出力を直接配布するためだったが、束ねる方式に合わせ `.ts` に統一した。`erasableSyntaxOnly` を維持する。ビルドは外部 import の許可リストと成果物の Node API 名を検査する。
+
+実測（`packages/runtime-host/src/bundle.servers.test.ts`、BDS 1.26.63.1）：現在のバンドル `main.js` は 6,168 bytes（非圧縮、生成データ・manifest を除く）。空ワールドのテンプレート準備後、BDS 起動要求からテスト用ホストを介した中核の `scoreboard players set` の結果ログまで 1,085 / 1,022 / 1,082 ms。3回とも結果と書き込んだ値は 42。ワールド読み込みを含む時間であり、中核だけの初期化時間や完成した製品の性能ではない。
 
 ## 解釈と検証
 

@@ -80,7 +80,7 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], e
   const sorted = [...entities].sort((a, b) => a.dimension.localeCompare(b.dimension) || chunk(a.pos.x) - chunk(b.pos.x) || chunk(a.pos.z) - chunk(b.pos.z));
   const data = `export const objectives = ${JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]))};\nexport const entities = ${JSON.stringify(sorted)};\n`;
   const scriptsDir = fileURLToPath(new URL("../../runtime-host/pack/scripts/", import.meta.url));
-  const files = ["main.js", "initialize.js", "restore.js"];
+  const files = ["main.js"];
   const script = files.map((file) => readFileSync(join(scriptsDir, file), "utf8")).join("\n") + data;
   const uuid = stableUuid(`pack:${script}:${datapackData}`);
   const dir = join(worldDir, "behavior_packs", "je2be_init");

@@ -1,5 +1,5 @@
 import { world, system, ItemStack, type EquipmentSlot, type VanillaEntityIdentifier } from "@minecraft/server";
-import type { PlacedEntity } from "./types.js";
+import type { PlacedEntity } from "./types.ts";
 
 const PROGRESS = "je2be:entity_progress";
 const AREA = "je2be_entity_init";

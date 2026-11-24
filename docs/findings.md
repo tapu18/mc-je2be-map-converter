@@ -305,3 +305,7 @@ BDS 1.26.63.1 の使い捨てワールドで、合成コマンドを 1 行ずつ
 Java 26.3 の #112 監査結果を入力とすると、1,424 形・1,520 候補のうち Java 受理かつ rewritten / unchanged の 180 形・222 候補を検査し、221 件は読み込みエラーなし、1 件はエラーだった。`time query time` は Java 受理・unchanged だが BDS 関数読み込みでは `time` 引数が構文エラーだった。残る 1,244 形・1,298 候補は Java 不受理または unsupported のため BDS 未検査。形ごとの候補数・未検査数と各候補の結果は `node tools/shape-java-audit.ts /tmp/java.json && node tools/shape-bedrock-audit.ts /tmp/java.json /tmp/bedrock.json` で再生成できる。合成入力のみを使用する。
 
 ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。既知の不一致の修正は別途必要。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。
+
+### 中核を束ねた BDS パックの起動（#217）
+
+BDS 1.26.63.1 で `packages/runtime-host/src/bundle.servers.test.ts` を実行し、製品用バンドルから中核の scoreboard 命令を仮ホストで3回実行した。各回の結果とスコアは 42。`main.js` は非圧縮 6,168 bytes、テンプレート準備後の起動要求から結果ログまで 1,085 / 1,022 / 1,082 ms。生成データ・manifest はサイズに含まず、起動時間にはワールド読み込みを含む。

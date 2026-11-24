@@ -12,7 +12,7 @@
     "agents": "node tools/agent-runner.ts",
     "check": "npm run typecheck && npm run test",
     "typecheck": "tsc -b && tsc -p tools && npm run build:pack",
-    "build:pack": "tsc -p packages/runtime-host && tsc -p packages/bridge-pack && tsc -p poc/launcher && tsc -p poc/tick-order && tsc -p poc/dynamic-properties && tsc -p poc/repeat-performance && tsc -p poc/repeat-density && tsc -p poc/runtime-queue",
+    "build:pack": "tsc -p packages/runtime-host && node tools/build-runtime-host.ts && tsc -p packages/bridge-pack && tsc -p poc/launcher && tsc -p poc/tick-order && tsc -p poc/dynamic-properties && tsc -p poc/repeat-performance && tsc -p poc/repeat-density && tsc -p poc/runtime-queue",
     "test": "vitest run",
     "test:servers": "npm run build:pack && vitest run --config vitest.servers.config.ts",
     "setup:servers": "node tools/setup-servers.ts",
@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "26.6.6",
+    "esbuild": "^0.28.2",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
   }

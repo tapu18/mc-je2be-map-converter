@@ -1,6 +1,6 @@
 import { world } from "@minecraft/server";
-import { restoreEntities } from "./restore.js";
-import type { ObjectiveData, PlacedEntity } from "./types.js";
+import { restoreEntities } from "./restore.ts";
+import type { ObjectiveData, PlacedEntity } from "./types.ts";
 
 export const INIT_PROPERTY = "je2be:initialized";
 export const INIT_LOG_MARK = "[je2be] initialized";
