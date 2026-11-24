@@ -164,7 +164,7 @@ export interface CommandIR {
    * 最後に実行するコマンド（`run` の先、または execute でないコマンド）。
    * `execute if ...` のように run なしで終わるときは undefined
    */
-  command?: { name: string; nodes: ParsedNode[] };
+  command?: { name: string; nodes: ParsedNode[]; run?: CommandIR };
 }
 
 /** パースした節の並びを、実行コンテキストと最後のコマンドに分ける */
@@ -178,6 +178,10 @@ export function toCommandIR(source: string, nodes: ParsedNode[]): CommandIR {
     let j = i + 1;
     while (j < nodes.length && !(nodes[j] as ParsedNode).jump) j++;
     const group = nodes.slice(i, j);
+    if (head.name === "return" && group[1]?.name === "run" && j < nodes.length && nodes[j]?.jump === "root") {
+      command = {name: "return", nodes: group.slice(1), run: toCommandIR(source, nodes.slice(j))};
+      break;
+    }
     if (head.kind === "literal" && head.name === "execute" && head.jump !== "execute") {
       // `execute` だけの塊のあとに、サブコマンドの塊が続く
       if (group.length > 1) {
