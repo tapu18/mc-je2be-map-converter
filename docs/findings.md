@@ -268,6 +268,29 @@ Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観�
 
 Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込んだ PoC は BDS 1.26.63.1 で3回とも初回コマンドをパースできた。起動要求からパースまで 602 / 783 / 613 ms、スクリプト内の JSON.parse は 159 / 193 / 178 ms、パックの圧縮前合計は 12,624,623 bytes。測定範囲・環境と限界は [PoC](../poc/runtime-load/README.md)、記録は [results.json](../poc/runtime-load/results.json)。
 
+### コマンドブロックとマクロ（#155）
+
+Java 26.3 の [実サーバーテスト](../packages/bridge/src/macro-command-block.servers.test.ts)では、コマンドブロックに `$` で始まる行を保存できたが、その行はスコアを変更しなかった。同じテストでは、コマンドブロックからインライン compound と storage の両方式でマクロ関数を呼ぶと、展開した命令がスコアを変更した。これはこのテストの入力に限った観測で、他のコマンドや版すべての挙動を保証するものではない。
+
+### マクロの具体値による型紙試探（#155、暫定）
+
+非公開コーパスの抽出結果を `tools/probe-macro-corpus.ts` で集計した。2026-11-23 時点のコーパスはマクロ 3,630 行・穴 4,089 個で、行頭の命令名に穴があるのは 1 行だった。Java 26.3 の文法で各行の全穴に同一の候補値を代入したところ、3,615 行で少なくとも一例がパースされ、15 行はどの候補でもパースできなかった。型の内訳は同スクリプトで再現できる。これは固定率ではない。異なる値や複数穴の組合せを網羅しておらず、元のワールドの版とも限らない。
+
+同スクリプトで11候補を基準値とし、同名の穴は同じ値に保って1つの名前だけ別候補に変える試探では、17行に異なる節の列を発見した。固定形と判定する条件を `say` の唯一の末尾 `message` 引数に固定の非空白接頭辞がある行に限定すると該当は0行、残り3,613行は未判定だった。0行は固定可能な行が存在しない証明ではない。判定は本パーサの節の列に限り、Java の受理や変換結果を保証しない。
+
+最初に成功した候補での穴の対応先は、entity 2,106、NBT path 797、NBT tag 271、team 129、vec3 99、component 94、function 81、slot source 78、score holder 54、string 47、integer 44、resource location 44、item stack 23、block state 3 個などだった。これは代入例による型であり、別の値で型が変わらないことを示さない。全穴に `0 0 0` を入れた場合は 327 行がパースされたが、空白によって引数の数が変わる穴の数を示すものではない。
+
+同じスクリプトで11種類の値を各行の全穴に同一に代入し、成功したパースの節（種類・名前・型・ジャンプ）の列を比較すると、2行で異なる列が得られた。残る3,628行は未判定であり、固定率は求められていない。穴ごとに異なる値の組合せや、節の内部で変わる構造は比較していない。これは Java サーバーではなく試作パーサーによる結果である。
+
+再現手順（配布マップや抽出データを公開しない）:
+
+```sh
+python3 -I scripts/dump_commands.py /home/tapukoko/code/mc-je2be-map-converter/sample-map > /tmp/issue155-commands.jsonl
+node tools/probe-macro-corpus.ts /tmp/issue155-commands.jsonl servers/reports-26.3/reports/commands.json
+```
+
+同環境で Java 26.3 の `commands.json` は 583,592 bytes、`servers/mappings/mappings.json` は 10,357,025 bytes（`wc -c`）。これは元データのサイズであり、実際に同梱が必要な範囲や起動時メモリの測定ではない。
+
 ### コマンド形の候補（#112）
 
 Java 26.3 で `node tools/shape-java-audit.ts /tmp/shape-java-audit-112.json` を実行し、1,424 形の 1,520 候補を関数の読み込みで判定した。Java が 1,448 候補を受理し、パーサとの不一致は 72、パーサが到達した終端形の不一致は 0 だった。書き換えの結果は unsupported 1,298、unchanged 86、rewritten 136。Java の関数では使用できないコマンドや存在しない参照を含むため、この不一致数をパーサの欠陥数とは扱えない。BDS の全候補の構文判定は行っていない。

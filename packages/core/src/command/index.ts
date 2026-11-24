@@ -8,5 +8,7 @@ export * from "./grammar.ts";
 export * from "./pack-format.ts";
 export * from "./rawtext.ts";
 export * from "./rewrite.ts";
+export * from "./macro-template.ts";
+
 
 export * from "./ir-codec.ts";
