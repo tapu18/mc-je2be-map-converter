@@ -60,11 +60,11 @@ export function planServerTests(
   return jobs;
 }
 
-function changedPaths(base: string | undefined): string[] | undefined {
+export function changedPaths(base: string | undefined, cwd = repoRoot): string[] | undefined {
   if (!base || !/^[a-f0-9]{40}$/.test(base)) return undefined;
   try {
     // R は削除と追加に分け、移動元の影響も選択に含める。
-    return execFileSync("git", ["diff", "--no-renames", "--name-only", "-z", base, "HEAD"], { cwd: repoRoot, encoding: "utf8" })
+    return execFileSync("git", ["diff", "--no-renames", "--name-only", "-z", base, "HEAD"], { cwd, encoding: "utf8" })
       .split("\0").filter(Boolean);
   } catch {
     console.warn("PR の差分を取得できなかったため、実機テストをすべて選択します。");
