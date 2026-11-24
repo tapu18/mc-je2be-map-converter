@@ -1,7 +1,7 @@
 import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import AdmZip from "adm-zip";
-import { CommandParser, readPackFormatRange, selectCommandGrammar, serializeCommandIR, toCommandIR } from "@je2be/core";
+import { CommandParser, comparePackVersions, readPackFormatRange, selectCommandGrammar, serializeCommandIR, toCommandIR } from "@je2be/core";
 import { loadGrammarTree, loadJavaGrammars } from "./java-grammars.ts";
 import { readJavaValidationContext } from "./validation-context.ts";
 
@@ -35,8 +35,24 @@ export function collectDatapacks(world: string) {
     let metadata: unknown;
     try { metadata = JSON.parse(entries.get("pack.mcmeta")?.toString("utf8") ?? ""); } catch { metadata = undefined; }
     if (metadata && typeof metadata === "object" && "overlays" in metadata) {
-      omitted.add("overlays");
-      diagnostics.push({ pack: name, path: "pack.mcmeta", reason: "pack overlays not bundled" });
+      const overlays = metadata.overlays as { entries?: unknown } | undefined;
+      const worldGrammar = selectCommandGrammar(grammars, context.dataVersion === undefined ? {} : { dataVersion: context.dataVersion });
+      const definitions = overlays && Array.isArray(overlays.entries) ? overlays.entries : undefined;
+      if (!worldGrammar.ok || !definitions) {
+        omitted.add("overlays");
+        diagnostics.push({ pack: name, path: "pack.mcmeta", reason: "overlay selection unavailable" });
+      } else for (const definition of definitions) {
+        if (!definition || typeof definition !== "object") { omitted.add("overlays"); diagnostics.push({ pack: name, path: "pack.mcmeta", reason: "invalid overlay" }); continue; }
+        const overlay = definition as Record<string, unknown>;
+        const directory = overlay.directory;
+        const overlayRange = readPackFormatRange({ pack: { ...overlay, ...(overlay.formats === undefined ? {} : { supported_formats: overlay.formats }) } });
+        if (typeof directory !== "string" || !/^[a-z0-9_.-]+$/.test(directory) || directory === "." || directory === ".." || !overlayRange) {
+          omitted.add("overlays"); diagnostics.push({ pack: name, path: "pack.mcmeta", reason: "invalid overlay" }); continue;
+        }
+        const version: [number, number] = [worldGrammar.grammar.packFormat, worldGrammar.grammar.packMinor ?? 0];
+        if (comparePackVersions(version, overlayRange.min) < 0 || comparePackVersions(version, overlayRange.max) > 0) continue;
+        for (const [key, value] of [...entries]) if (key.startsWith(`${directory}/data/`)) entries.set(key.slice(directory.length + 1), value);
+      }
     }
     const range = readPackFormatRange(metadata);
     const selection = selectCommandGrammar(grammars, range ? { packFormatRange: range } : {});

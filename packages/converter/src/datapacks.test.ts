@@ -17,7 +17,7 @@ it("collects enabled folder and zip functions and tags in saved order and report
   try {
     const strings = (values: string[]): NbtTag => ({ type: "list", elementType: "string", value: values.map(value => ({ type: "string", value })) });
     const compound = (entries: [string, NbtTag][]): NbtTag & { type: "compound" } => ({ type: "compound", value: new Map(entries) });
-    writeFileSync(join(world, "level.dat"), gzipSync(writeNbt({ name: "", tag: compound([["Data", compound([["DataPacks", compound([["Enabled", strings(["vanilla", "file/one", "file/two.zip"])], ["Disabled", strings(["file/off"])]] )]])]]) }, "java")));
+    writeFileSync(join(world, "level.dat"), gzipSync(writeNbt({ name: "", tag: compound([["Data", compound([["DataVersion", { type: "int", value: 1 }], ["DataPacks", compound([["Enabled", strings(["vanilla", "file/one", "file/two.zip"])], ["Disabled", strings(["file/off"])]] )]])]]) }, "java")));
     const folder = join(world, "datapacks", "one");
     mkdirSync(join(folder, "data", "demo", "function"), { recursive: true });
     mkdirSync(join(folder, "data", "minecraft", "tags", "function"), { recursive: true });
@@ -27,8 +27,9 @@ it("collects enabled folder and zip functions and tags in saved order and report
     writeFileSync(join(folder, "data", "minecraft", "tags", "function", "load.json"), JSON.stringify({ values: ["demo:a"] }));
     writeFileSync(join(folder, "data", "demo", "advancement", "a.json"), "{}");
     const zip = new AdmZip();
-    zip.addFile("pack.mcmeta", Buffer.from(JSON.stringify({ pack: { pack_format: 42 } })));
-    zip.addFile("data/demo/function/b.mcfunction", Buffer.from("say\n"));
+    zip.addFile("pack.mcmeta", Buffer.from(JSON.stringify({ pack: { pack_format: 42 }, overlays: { entries: [{ directory: "extra", formats: 42 }] } })));
+    zip.addFile("data/demo/function/b.mcfunction", Buffer.from("invalid\n"));
+    zip.addFile("extra/data/demo/function/b.mcfunction", Buffer.from("say\n"));
     zip.addFile("data/minecraft/tags/function/tick.json", Buffer.from('{"replace":true,"values":["demo:b"]}'));
     zip.writeZip(join(world, "datapacks", "two.zip"));
     const result = collectDatapacks(world);
