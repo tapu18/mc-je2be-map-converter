@@ -358,3 +358,7 @@ BDS 1.26.63.1 で `packages/runtime-host/src/bundle.servers.test.ts` を実行�
 ### 保存された command storage（#201）
 
 Java 26.3 で複数の名前空間に compound、long 最大値と long 配列を保存したワールドについて、変換器の型付き初期データを復号して `JavaServer.dump()` と比較した結果は一致した。根拠は [実サーバーテスト](../packages/bridge/src/initial-storage.servers.test.ts)。
+
+### スコアを使うセレクタと条件（#261）
+
+Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、同一の `score-selector-conditions.java.json` を得た。4体の marker のうち値 1・3・5 の3体にスコアを設定すると、`..3` は2体、`5..`・`2..4`・完全一致 3 は各1体、2目的の条件も1体に一致した。未設定の1体は全域指定にも一致しなかった。3体への `remove 2` は -1・1・3、最小値からの `remove 1` は 2147483647 になった。チーム条件と `unless` の結果も同じ記録にある。プレイヤーは接続していないため、`@a` と `gamemode` の観測は空集合に限る。
