@@ -19,7 +19,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -76,6 +76,7 @@ if (tool === 'git') {
     if (d.managerFails) process.exitCode = 1;
   } else {
     if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
+    (d.workerPrompts ??= []).push(prompt);
     if (d.workerLog) { for (const line of d.workerLog) out(line); writeFileSync(file, JSON.stringify(d)); process.exit(1); }
     out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
     if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
@@ -138,6 +139,8 @@ it('claims, resumes in its own worktree, waits for all CI, and merges with a SHA
   const result = await f.run(); // same persisted task, new process
   expect(result.stdout).toContain('#7 テストとPR作成を進めています');
   expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
+  expect((await f.load()).workerPrompts![0]).toContain('status:paused を付けず');
+  expect((await f.load()).workerPrompts![0]).toContain('進捗と再開手順');
   await f.run(); // absent CI must not merge or launch a second worker
   expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(false);
   await f.update(d => { d.prs[0]!.statusCheckRollup = ['check', 'servers / scenarios-1', 'servers / result'].map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })); });
@@ -147,6 +150,19 @@ it('claims, resumes in its own worktree, waits for all CI, and merges with a SHA
   expect(calls.find(call => call[2] === 'merge')).toContain('abc');
   await f.run();
   expect((await f.state()).tasks[0].phase).toBe('done');
+}, 20_000);
+
+it('reports a paused owned issue once across polls and restarts without launching the worker', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.run();
+  await f.update(d => { d.issues[0]!.labels.push({ name: 'status:paused' }, { name: 'needs-approval' }); });
+  expect((await f.run()).stdout).toContain('人がラベルを外すまで再開しません');
+  await f.run();
+  const data = await f.load();
+  expect(data.issues[0]!.comments.filter(c => c.body.includes('agent-runner-paused-notice'))).toHaveLength(1);
+  expect(data.issues[0]!.comments.find(c => c.body.includes('agent-runner-paused-notice'))!.body).toContain('人が status:paused を外すまで');
+  expect(data.calls.filter(call => call[0] === 'codex')).toHaveLength(1);
 }, 20_000);
 
 it('waits for the current CI workflow even when renamed checks have passed', async () => {

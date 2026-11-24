@@ -245,6 +245,7 @@ async function main() {
         'npm run check と関連する実サーバーテストを通し、完了条件を満たしたらPRをreadyにしてください。CI失敗時は原因を調べて修正してください。',
         'マージとブランチ/worktree削除は管理プログラムが判断するので実行しないでください。Issueのclaimは変更しないでください。',
         '別のIssueには着手しないでください。新たな作業はIssueに記録してください。区切りごとに進捗と再開手順をIssueへ残してください。',
+        '作業途中で終了するときは status:paused を付けず、進捗と再開手順を Issue に書いてください。次の巡回で同じ worktree から再実行し、起動回数を数えます。',
         '管理プログラムの設定・状態・ロックは変更しないでください。',
         `今回のIssueスナップショット（最新状態はghで確認）:\n${JSON.stringify(item)}`,
       ].join('\n');
@@ -294,6 +295,13 @@ async function main() {
           log(`#${task.issue}: claim no longer owned; leaving the task untouched.`);
           task.phase = 'done';
           await save();
+          continue;
+        }
+        if (hasLabel(item, 'status:paused')) {
+          const marker = '<!-- agent-runner-paused-notice -->';
+          log(`#${task.issue} status:paused: 人がラベルを外すまで再開しません`);
+          if (!item.comments.some(c => c.body.includes(marker)))
+            await comment(task.issue, `${marker}\n管理プログラムは、人が status:paused を外すまでこの Issue を再開しません。`);
           continue;
         }
         if (task.phase === 'blocked') {
