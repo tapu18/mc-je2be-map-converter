@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { planServerTests } from "./server-test-plan.ts";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { changedPaths, includesQuarantine, planServerTests } from "./server-test-plan.ts";
 
 const scenarioSuite = "packages/bridge/src/scenario/scenarios.servers.test.ts";
 const bridge = "packages/bridge/src/bridge.servers.test.ts";
@@ -10,6 +14,48 @@ const groups = { scenarios: [scenarioSuite], bridge: [bridge], "poc-a": [dimensi
 const empty = { files: {}, scenarios: {} };
 
 describe("server-test matrix", () => {
+  it("selects from an explicitly fetched event base even when it is outside the shallow checkout", () => {
+    const dir = mkdtempSync(join(tmpdir(), "server-plan-"));
+    const source = join(dir, "source");
+    const clone = join(dir, "clone");
+    const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+    try {
+      mkdirSync(source);
+      git(source, "init");
+      git(source, "config", "user.email", "test@example.com");
+      git(source, "config", "user.name", "Test");
+      writeFileSync(join(source, "README.md"), "base");
+      git(source, "add", ".");
+      git(source, "commit", "-m", "base");
+      const base = git(source, "rev-parse", "HEAD");
+      git(source, "branch", "event-base", base);
+      mkdirSync(join(source, "docs"));
+      writeFileSync(join(source, "docs", "change.md"), "docs");
+      git(source, "add", ".");
+      git(source, "commit", "-m", "docs");
+      git(dir, "clone", "--depth=1", `file://${source}`, clone);
+      expect(changedPaths(base, clone)).toBeUndefined();
+      expect(planServerTests(groups, ["scores/a"], changedPaths(base, clone), false, empty).length).toBeGreaterThan(0);
+      git(clone, "fetch", "--no-tags", "--depth=1", "origin", base);
+      expect(planServerTests(groups, ["scores/a"], changedPaths(base, clone), false, empty)).toEqual([]);
+      mkdirSync(join(source, "poc", "launcher"), { recursive: true });
+      writeFileSync(join(source, "poc", "launcher", "change.txt"), "test");
+      git(source, "add", ".");
+      git(source, "commit", "-m", "poc");
+      git(clone, "fetch", "--depth=1", "origin", "HEAD");
+      git(clone, "checkout", "--detach", "FETCH_HEAD");
+      expect(planServerTests(groups, ["scores/a"], changedPaths(base, clone), false, empty).flatMap(({ files }) => files)).toEqual([dimension, launcher]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("includes quarantine on schedule or explicit manual request only", () => {
+    expect(includesQuarantine("schedule", undefined)).toBe(true);
+    expect(includesQuarantine("workflow_dispatch", "true")).toBe(true);
+    expect(includesQuarantine("workflow_dispatch", "false")).toBe(false);
+    expect(includesQuarantine("pull_request", "true")).toBe(false);
+    expect(includesQuarantine("push", undefined)).toBe(false);
+  });
   it("selects the changed scenario and the test files for one PoC family across groups", () => {
     const jobs = planServerTests(groups, ["scores/a", "scores/ab"], [
       "scenarios/scores/a.java.1.20.6.json", "poc/launcher/pack/manifest.json", "docs/workflow.md",

@@ -4,6 +4,9 @@
     "scores": {
       "probe": {
         "#masked_mismatch": 1,
+        "#unloaded_if": 0,
+        "#wrong_dimension": 0,
+        "#masked_diff": 0,
         "#unloaded": 1,
         "#all_match": 2,
         "#not_nether": 1,
@@ -11,7 +14,8 @@
         "#all_diff": 1,
         "#overworld": 1,
         "#nether": 1,
-        "#loaded": 1
+        "#loaded": 1,
+        "#all_mismatch": 0
       }
     },
     "storage": {

@@ -26,10 +26,14 @@ Java 26.3 の生成文法を使った Node テスト `ir-codec.servers.test.ts` 
 
 [PoC](../poc/runtime-load/README.md) の BDS 1.26.63.1 で文法・対応表・パーサを含むパックは圧縮前 12,624,623 bytes、起動要求から初回パースまで 602 / 783 / 613 ms（ワールド準備を含む）、JSON.parse は 159 / 193 / 178 ms。再構成データ案は 12,210,907 bytes、手書き1命令・石1件の限定例は 50,929 bytes。後者は全機能版ではなく、実用版の大きさと性能は未確認。
 
-出力時に必要なモジュールだけを束ねる。bridge-pack と同じ tsc 出力だけの案は core の `.ts` 相対 import とデータの扱いを別途解決する必要がある。`erasableSyntaxOnly` と `.ts` 相対 import を維持し、成果物の import 解決と Node API 不在を BDS で検証する。製品用の束ね方と起動性能は未確認。
+`npm run build:pack` は runtime-host を型検査してから esbuild で `@je2be/core/runtime` と共に単一 ES モジュールに束ねる。中核の実行入口だけを参照し、文法・対応表は含めない。`@minecraft/server` と変換器が作る `data.js` は外部のままにし、変換器はバンドルとデータをパックに配置する。従来の `.js` 相対 import は tsc 出力を直接配布するためだったが、束ねる方式に合わせ `.ts` に統一した。`erasableSyntaxOnly` を維持する。ビルドは外部 import の許可リストと成果物の Node API 名を検査する。
+
+実測（`packages/runtime-host/src/bundle.servers.test.ts`、BDS 1.26.63.1）：現在のバンドル `main.js` は 6,168 bytes（非圧縮、生成データ・manifest を除く）。空ワールドのテンプレート準備後、BDS 起動要求からテスト用ホストを介した中核の `scoreboard players set` の結果ログまで 1,085 / 1,022 / 1,082 ms。3回とも結果と書き込んだ値は 42。ワールド読み込みを含む時間であり、中核だけの初期化時間や完成した製品の性能ではない。
 
 ## 解釈と検証
 
 明示的なフレームと実行キューで関数呼び出し、return、分岐を表す。起動ごとの命令数・深さ・分岐数に予算を持たせ、超過やエラーを成功扱いせず診断する。再帰的な直接呼び出しは深さと中断の制御が難しいため採らない。Java の正確な上限、順序、エラー伝播は未確認。方式 A はハンドラ内で同期実行し、保留書き込みを後で反映する。
 
-Node のフェイクホストでは Java の正解データ（#96）と意味論を比較する。BDS では API 制約、起動、永続化、ネイティブとの境界を検証する。片方だけではそれぞれ API の制約または網羅と再現を確かめにくい。骨組みは単一の文字列保持者への `scoreboard players set` のみで、セレクタ、関数、保存、実機ホスト、版付き IR は後続作業である。
+Node のフェイクホストでは Java の正解データ（#96）と意味論を比較する。BDS では API 制約、起動、永続化、ネイティブとの境界を検証する。片方だけではそれぞれ API の制約または網羅と再現を確かめにくい。現在の中核は単一の文字列保持者の scoreboard と storage の一部、単独の storage 条件・`store result ... int` を CommandIR から実行する。セレクタ、複数 execute ステップ、storage の非文字列 substring、関数呼び出し、保存と実機ホストは未対応である。未知の操作は失敗を返す。
+
+変換器は初期化パックの `scripts/datapacks.js` に `datapacks` を出力する。`schemaVersion: 1` と保存された有効順の `packs` を持ち、各パックの `functions` は関数 ID から行順の IR codec JSON 文字列の配列への対応、`tags` は関数タグ ID から元の JSON への対応である。ワールドの版で選んだオーバーレイを順に適用する。パック順とタグの `replace`・任意参照は保持し、解決は将来のランタイムに委ねる。`minecraft:load` と `minecraft:tick` も通常のタグとして保存する。版を選べないパック、パースできない関数、マクロはレポートに診断し、関数単位で同梱しない。データを置く段階であり、関数の自動実行はまだ接続していない。

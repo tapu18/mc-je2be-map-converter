@@ -226,9 +226,9 @@ export function readScoreboard(root: NbtCompound): ObjectiveScores[] {
       const obj = child(s, "Objective");
       const name = child(s, "Name");
       const score = child(s, "Score");
-      if (obj?.type !== "string" || name?.type !== "string" || score?.type !== "int") continue;
+      if (obj?.type !== "string" || name?.type !== "string" || (score !== undefined && score.type !== "int")) continue;
       const entry = out.get(obj.value) ?? { objective: obj.value, scores: [] };
-      entry.scores.push({ participant: name.value, score: score.value });
+      entry.scores.push({ participant: name.value, score: score?.value ?? 0 });
       out.set(obj.value, entry);
     }
   }

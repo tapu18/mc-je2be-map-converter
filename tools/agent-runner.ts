@@ -5,11 +5,11 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import { command, CommandError } from './agent-runner/process.ts';
-import { agentArguments, AgentLaunchError, failedBeforeWork, validateWorkerArgs } from './agent-runner/agent.ts';
+import { agentArguments, AgentLaunchError, failedBeforeWork, validateWorkerArgs, workerPrompt } from './agent-runner/agent.ts';
 import { followProgress } from './agent-runner/progress.ts';
 import { managerConfig, managerDue, managerPrompt, managerReport } from './agent-runner/manager.ts';
 import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
-import { activeClaims, canMerge, checksFailed, dependencies, hasLabel } from './agent-runner/policy.ts';
+import { activeClaims, baseAllowsMerge, canMerge, checksFailed, dependencies, hasLabel, latestBaseRun } from './agent-runner/policy.ts';
 import type { Issue, PullRequest, WorkflowRun } from './agent-runner/policy.ts';
 
 interface Config {
@@ -79,6 +79,50 @@ async function main() {
   const prs = (task: Task) => json<PullRequest[]>(['pr', 'list', '--head', task.branch, '--state', 'all', '--json',
     'number,state,isDraft,baseRefName,headRefName,headRefOid,mergeStateStatus,reviewDecision,labels,closingIssuesReferences,statusCheckRollup']);
   const ciRuns = (pr: PullRequest) => json<WorkflowRun[]>(['run', 'list', '--workflow', 'ci.yml', '--branch', pr.headRefName, '--limit', '100', '--json', 'headSha,event,status,conclusion']);
+  const baseRuns = () => json<WorkflowRun[]>(['run', 'list', '--workflow', 'ci.yml', '--branch', config.base, '--event', 'push', '--limit', '100', '--json', 'headSha,event,status,conclusion']);
+  const git = (args: string[]) => command('git', args, { cwd: root, signal: abort.signal });
+  const api = async <T>(path: string): Promise<T> => JSON.parse(await command('gh', ['api', path], { cwd: root, signal: abort.signal })) as T;
+  const reportBaseFailure = async (run: WorkflowRun) => {
+    const marker = `<!-- agent-runner-base-ci:${run.headSha} -->`;
+    const associated = await api<{ number: number }[]>(`repos/${config.repo}/commits/${run.headSha}/pulls`);
+    for (const pull of associated) {
+      const details = await json<{ closingIssuesReferences: { number: number }[] }>(['pr', 'view', String(pull.number), '--json', 'closingIssuesReferences']);
+      for (const ref of details.closingIssuesReferences) {
+        const target = await issue(ref.number);
+        if (!target.comments.some(c => c.body.includes(marker)))
+          await gh(['issue', 'comment', String(ref.number), '--body', `${marker}\n${config.base} の push CI が ${run.conclusion} です（commit ${run.headSha}、PR #${pull.number}）。自動マージを停止します。Actions の CI を調査してください。`]);
+        return;
+      }
+    }
+    const existing = await json<{ number: number }[]>(['issue', 'list', '--state', 'all', '--search', `agent-runner base CI ${run.headSha} in:title`, '--json', 'number']);
+    if (!existing.length) await gh(['issue', 'create', '--title', `agent-runner base CI ${run.headSha}`, '--body', `${marker}\n${config.base} の push CI が ${run.conclusion} です。自動マージを停止しています。Actions の CI を調査してください。`]);
+  };
+  const baseSafety = async (pr: PullRequest): Promise<boolean> => {
+    const runs = await baseRuns();
+    const latest = latestBaseRun(runs);
+    if (latest && latest.conclusion !== 'success') {
+      log(`${config.base} push CI ${latest.headSha}: ${latest.conclusion}。自動マージ停止`);
+      await reportBaseFailure(latest);
+      return false;
+    }
+    if (!latest) { log(`${config.base} の完了した push CI がないため自動マージ停止`); return false; }
+    await git(['fetch', '--no-tags', 'origin', config.base, pr.headRefName]);
+    const baseSha = (await git(['rev-parse', `origin/${config.base}`])).trim();
+    const headSha = (await git(['rev-parse', `origin/${pr.headRefName}`])).trim();
+    if (headSha !== pr.headRefOid) return false;
+    const ancestor = (await git(['merge-base', baseSha, headSha])).trim();
+    const paths = async (from: string, to: string) => (await git(['diff', '--no-renames', '--name-only', '-z', from, to])).split('\0').filter(Boolean);
+    const baseChanges = await paths(ancestor, baseSha);
+    const prChanges = await paths(ancestor, headSha);
+    if (!baseAllowsMerge(runs, baseChanges, prChanges)) {
+      log(`PR #${pr.number}: base と同じファイルを変更。ブランチを更新して CI を待ちます`);
+      await gh(['pr', 'update-branch', String(pr.number)]);
+      return false;
+    }
+    // Refuse a merge if the base moved while calculating the intersection.
+    const remote = (await git(['ls-remote', 'origin', `refs/heads/${config.base}`])).split(/\s/)[0];
+    return remote === baseSha;
+  };
   const ready = () => json<Issue[]>(['issue', 'list', '--state', 'open', '--label', 'status:ready', '--limit', '100',
     ...(config.milestone ? ['--milestone', config.milestone] : []), '--json', 'number,title,body,state,labels,comments']);
   const eligible = async (item: Issue) => {
@@ -180,7 +224,7 @@ async function main() {
       await command('git', ['fetch', 'origin', config.base], { cwd: root, signal: abort.signal });
       await command('git', ['worktree', 'add', '-b', task.branch, task.worktree, `origin/${config.base}`], { cwd: root, signal: abort.signal });
     };
-    const run = async (task: Task, item: Issue) => {
+    const run = async (task: Task, item: Issue, pr?: PullRequest) => {
       if (task.attempts >= config.maxAttempts) { await stopTask(task, `実行回数の上限 ${config.maxAttempts} 回に到達`); return; }
       if (state.runs >= config.maxRunsPerDay) { log('Daily run limit reached; waiting.'); return; }
       await prepare(task);
@@ -189,21 +233,7 @@ async function main() {
       task.phase = 'working';
       await save();
       const logfile = join(stateDir, `${task.issue}-${Date.now()}.log`);
-      const prompt = [
-        `あなたは ${task.claim}。${config.repo} の Issue #${task.issue} だけを作業してください。`,
-        `既存の worktree ${task.worktree} とブランチ ${task.branch} を使ってください。着手済みです。`,
-        '最初に CLAUDE.md と docs/workflow.md と Issue の本文・コメント、既存PRとCIを読んでください。',
-        '再実行の場合があります。git status と履歴を確認し、未コミット変更や既存PRを引き継いでください。',
-        '依存の未完了や人の判断が必要なら、Issue に根拠を書き status:blocked または needs-approval にして終了してください。',
-        'npm ci、必要な setup:servers / setup:mappings、build:pack を行い、実装・適切な検証・コミット・push・PR作成まで進めてください。',
-        `配布マップの原本は ${join(root, 'sample-map')}（git管理外）にあります。必要なら読み取り用に参照し、原本を変更・GitHubへ公開しないでください。`,
-        'PR本文に Closes #' + task.issue + ' を記載。既存PRがあれば修正してください。完了条件を検証できるまでdraftにしてください。',
-        'npm run check と関連する実サーバーテストを通し、完了条件を満たしたらPRをreadyにしてください。CI失敗時は原因を調べて修正してください。',
-        'マージとブランチ/worktree削除は管理プログラムが判断するので実行しないでください。Issueのclaimは変更しないでください。',
-        '別のIssueには着手しないでください。新たな作業はIssueに記録してください。区切りごとに進捗と再開手順をIssueへ残してください。',
-        '管理プログラムの設定・状態・ロックは変更しないでください。',
-        `今回のIssueスナップショット（最新状態はghで確認）:\n${JSON.stringify(item)}`,
-      ].join('\n');
+      const prompt = workerPrompt({ task, item, repo: config.repo, root, base: config.base, pr });
       log(`Running ${config.agent} for #${task.issue}, attempt ${task.attempts}; log=${logfile}`);
       const progress = await followProgress(logfile, message => log(`#${task.issue} ${message}`));
       try {
@@ -252,6 +282,13 @@ async function main() {
           await save();
           continue;
         }
+        if (hasLabel(item, 'status:paused')) {
+          const marker = '<!-- agent-runner-paused-notice -->';
+          log(`#${task.issue} status:paused: 人がラベルを外すまで再開しません`);
+          if (!item.comments.some(c => c.body.includes(marker)))
+            await comment(task.issue, `${marker}\n管理プログラムは、人が status:paused を外すまでこの Issue を再開しません。`);
+          continue;
+        }
         if (task.phase === 'blocked') {
           if (!hasLabel(item, 'status:ready') || hasLabel(item, 'needs-approval')) { log(`#${task.issue} 保留中（再開指示待ち）`); continue; }
           task.attempts = 0;
@@ -286,7 +323,7 @@ async function main() {
             // Recheck immediately; gh's SHA guard rejects head updates during merge.
             const freshIssue = await issue(task.issue);
             const fresh = (await prs(task)).find(p => p.number === pr.number);
-            if (fresh && canMerge(freshIssue, fresh, config.base, await ciRuns(fresh))) {
+            if (fresh && canMerge(freshIssue, fresh, config.base, await ciRuns(fresh)) && await baseSafety(fresh)) {
               await gh(['pr', 'merge', String(pr.number), '--merge', '--match-head-commit', fresh.headRefOid]);
               log(`Merged #${pr.number} for issue #${task.issue}`);
             }
@@ -302,7 +339,7 @@ async function main() {
           await stopTask(task, 'PRがマージされずに閉じられました');
           continue;
         }
-        await run(task, item);
+        await run(task, item, pr);
         return; // At most one worker per tick.
       }
       // PM has its own budget; it may run even when worker runs are exhausted.

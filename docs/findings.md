@@ -77,6 +77,8 @@
 | 自前で生成した `.mcstructure` のコマンドブロック（インパルス・チェーン・リピート、常時実行、条件付き）は `structure load` で動く | `poc/launcher`、`poc/mcstructure-version/version.servers.test.ts` |
 | BDS 1.26.63.1 が新規作成・保存するブロックの `version` は `18168865`（`0x01153c21`）、コマンドブロックの `Version` は3種類とも `55`。製品バージョンから計算した値とは異なる。この値で生成した構造物では、新しい `execute positioned`・`if block`・`if/unless score` が実行され、条件付きチェーンにも成否が伝搬する | `poc/mcstructure-version/` の実サーバーテスト、`results.json`、BDS保存データ `native.mcstructure`（#9） |
 
+BDS 1.26.66.1 でも `poc/mcstructure-version/version.servers.test.ts` が成功し、同じブロック `version` とコマンドブロック `Version`、生成構造物でのコマンド実行を確認した（#227、`poc/mcstructure-version/results.json`）。
+
 ## ID 対応表（Geyser 固定版）
 
 | 事実 | 根拠 |
@@ -299,6 +301,14 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 
 合成した 1.20.4 ワールドを Java 26.3 で開いた実サーバーテストでは、コマンドブロックの `Command` と関数ファイルの文字列が保存され、チェスト内アイテムの `CustomModelData` は `minecraft:custom_model_data` に移った。防具立ての `CustomName` の内容も残った。対象はテスト内の各1例である。根拠は `packages/bridge/src/upgrade-1204.servers.test.ts`（3回成功）、再現方法と文法・コーパスの調査は `docs/research-1204.md`。
 
+### Actions の定期実行（#222）
+
+2026-11-23 UTC の Actions API では schedule の実行履歴が 0 件で、CI と Version canary の workflow はともに active、Actions は enabled だった。隔離登録が空の状態で `include_quarantine=true` を指定した [手動 CI](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154796628) は成功し、隔離ジョブは生成されなかった。
+
+同日の [手動 Version canary](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154550420) は検出、API、セットアップ、実機、Java 再記録、台帳生成がすべて成功し、`scenarios.diff` は空だった。artifact の候補は Java 26.3、BDS 1.26.66.1、Chunker 1.21.0 で、固定 BDS 1.26.63.1 との差を検出した。版上げの追跡は #227。
+### storage の NBT パス代入（#99）
+
+Java 26.3 では、同じ値を storage に再代入すると変更なしとなる。また `missing.list[0].x` への代入は対象なしで失敗するが、途中の `missing.list` は空リストとして生成される。同じテストで `insert -1` はリスト末尾に追加され、storage の compound merge は入れ子のキーを保持して再帰的に更新し、同値なら変更なしとなること、欠けたパスへの append と merge がそれぞれリストと compound を作り、文字列 `abcdef` の範囲 `1 -1` が `bcde` になることも確認した。根拠は `packages/bridge/src/nbt-mutation.servers.test.ts`（各3回成功）。
 ## Java 版別シナリオの記録（#216）
 
 実測。`scenarios/datapack/` と `scenarios/scores/` の21シナリオを、各版の実サーバーで新規ワールドから実行し、`*.java.<版>.json` の正規化済み state を 26.3 の `*.java.json` と比較した。コマンドブロックは明示的に有効化した。
@@ -320,3 +330,25 @@ BDS 1.26.63.1 の使い捨てワールドで、合成コマンドを 1 行ずつ
 Java 26.3 の #112 監査結果を入力とすると、1,424 形・1,520 候補のうち Java 受理かつ rewritten / unchanged の 180 形・222 候補を検査し、221 件は読み込みエラーなし、1 件はエラーだった。`time query time` は Java 受理・unchanged だが BDS 関数読み込みでは `time` 引数が構文エラーだった。残る 1,244 形・1,298 候補は Java 不受理または unsupported のため BDS 未検査。形ごとの候補数・未検査数と各候補の結果は `node tools/shape-java-audit.ts /tmp/java.json && node tools/shape-bedrock-audit.ts /tmp/java.json /tmp/bedrock.json` で再生成できる。合成入力のみを使用する。
 
 ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。既知の不一致の修正は別途必要。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。
+
+### 中核を束ねた BDS パックの起動（#217）
+
+BDS 1.26.63.1 で `packages/runtime-host/src/bundle.servers.test.ts` を実行し、製品用バンドルから中核の scoreboard 命令を仮ホストで3回実行した。各回の結果とスコアは 42。`main.js` は非圧縮 6,168 bytes、テンプレート準備後の起動要求から結果ログまで 1,085 / 1,022 / 1,082 ms。生成データ・manifest はサイズに含まず、起動時間にはワールド読み込みを含む。
+
+### エンティティ名と装備の版別観測（#219）
+
+`scenarios/datapack/entity-nbt-equivalence` を Java 1.20.6、1.21.4、1.21.11、26.2、26.3 で実行した。防具立てに主手の石、副手の土、足の鉄のブーツを装備し、旧版には JSON テキスト文字列 `"Probe"`、26.3 には文字列 `Probe` を名前として与えた。各版で `name=Probe` セレクターが一致した。`data get` の成功と entity から storage にコピーした値は各版の `*.java*.json` に記録した。
+
+1.20.6 と 1.21.4 は `HandItems` と `ArmorItems` の取得が成功し、主手・副手は順に hand の 0・1、足は armor の 0 に入り、空スロットは空 compound だった。1.21.11、26.2、26.3 はそれらの取得が失敗し、`equipment` と `equipment.mainhand` / `offhand` / `feet` の取得が成功し、対応する装備が入った。名前のコピーは旧版が `"Probe"` を含む文字列、26.3 が `Probe` だった。
+
+この例の装備と単純な名前は対応する値へ正規化できるが、実行中の `data get` や storage コピーは版の違いを観測できるため、実体を 26.3 形式へ正規化するだけでは旧版の観測を保持できない。複雑な名前や装備の全組合せの可逆性はこの実験の対象外。ソース版の表現を扱う後続作業は #247。
+
+### execute のゼロスコアと保存形式（#220）
+
+`packages/bridge/src/execute-zero.servers.test.ts` は `execute-extra` の4条件をそれぞれ初期値 -1 のスコアへ `execute store result` し、応答、保存前後の `scoreboard players get`、保存 NBT とダンプ、再起動後の取得を測る。結果は `scenarios/datapack/execute-zero-observations.java*.json`。Java 1.20.6、1.21.4、1.21.11、26.2、26.3 のすべてで4コマンドの応答は `Test failed`、取得値は保存前・保存後・再起動後とも 0 だった。
+
+1.20.6 と 1.21.4 の保存 NBT は各エントリに `Score: 0` を含み、ダンプも 0 を返した。1.21.11、26.2、26.3 の保存 NBT は各エントリが存在するが `Score` を含まず、修正前のダンプはそのエントリを返さなかった。この4例の差は、保存データで `Score` を省略したエントリを 0 として読み取る正規化で吸収でき、execute の版別実行挙動はこの観測に限れば不要。#249 の修正後、26.3 の同テストはダンプでも 0 を返した。また `packages/bridge/src/convert-cli.servers.test.ts` は 26.3 の保存ワールドにあるゼロと 42 を CLI で変換し、BDS の出力ワールドでそれぞれ 0 と 42 を確認した（各テストを3回実行）。
+
+### PR の浅い checkout と base SHA（#225）
+
+[CI run 45150800820](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45150800820/job/137611563490) は merge commit `743a585` を深さ 2 で取得した。checkout のログ上のマージ先は `f493ddf`、イベントの base SHA は `b700b79` で異なり、後者を使う diff は `bad object` となった。`tools/server-test-plan.test.ts` の使い捨て Git リポジトリでも、浅い checkout の範囲外の base は diff に失敗し、SHA を明示的に取得すると文書差分と PoC 差分を選択できた。取得できない場合は全実機テストを選択する。

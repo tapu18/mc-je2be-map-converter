@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { nbt, readBedrockLevelDat, writeBedrockLevelDat, type MappingTables, type ObjectiveScores, type NbtTag } from "@je2be/core";
 import { rewriteWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
+import { collectDatapacks } from "./datapacks.ts";
 import { JavaWorld } from "./java-world.ts";
 import { collectPlacedEntities, type PlacedEntity, type PlacedEntityReport } from "./placed-entities.ts";
 import { fileURLToPath } from "node:url";
@@ -43,6 +44,7 @@ export interface ConvertReport {
   /** 初期化パックに入れた目的変数と参加者の数 */
   scores: { objectives: number; participants: number; skipped: SkippedScore[] };
   entities: PlacedEntityReport;
+  datapacks: ReturnType<typeof collectDatapacks>["report"];
   /** コマンドブロックの書き換え（rewrite を渡したときだけ） */
   commands?: CommandRewriteReport;
 }
@@ -73,14 +75,14 @@ function stableUuid(seed: string): string {
 }
 
 /** 初期化パックを BE ワールドの behavior_packs/ に置き、world_behavior_packs.json に足す */
-export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = []): void {
+export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = [], datapackData = ""): void {
   const chunk = (n: number) => Math.floor(n / 16);
   const sorted = [...entities].sort((a, b) => a.dimension.localeCompare(b.dimension) || chunk(a.pos.x) - chunk(b.pos.x) || chunk(a.pos.z) - chunk(b.pos.z));
   const data = `export const objectives = ${JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]))};\nexport const entities = ${JSON.stringify(sorted)};\n`;
   const scriptsDir = fileURLToPath(new URL("../../runtime-host/pack/scripts/", import.meta.url));
-  const files = ["main.js", "initialize.js", "restore.js"];
+  const files = ["main.js"];
   const script = files.map((file) => readFileSync(join(scriptsDir, file), "utf8")).join("\n") + data;
-  const uuid = stableUuid(`pack:${script}`);
+  const uuid = stableUuid(`pack:${script}:${datapackData}`);
   const dir = join(worldDir, "behavior_packs", "je2be_init");
   mkdirSync(join(dir, "scripts"), { recursive: true });
   const version = [0, 1, 0];
@@ -90,7 +92,7 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], e
       {
         format_version: 2,
         header: { name: "je2be init", description: "Java ワールドのエンティティとスコアを復元する（je2be が生成）", uuid, version, min_engine_version: [1, 26, 60] },
-        modules: [{ type: "script", language: "javascript", uuid: stableUuid(`module:${script}`), version, entry: "scripts/main.js" }],
+        modules: [{ type: "script", language: "javascript", uuid: stableUuid(`module:${script}:${datapackData}`), version, entry: "scripts/main.js" }],
         dependencies: [{ module_name: "@minecraft/server", version: SCRIPT_API_VERSION }],
       },
       null,
@@ -121,6 +123,7 @@ export function configureOutputWorld(worldDir: string): void {
 
 /** Java ワールド（ディレクトリ）を BE ワールド（ディレクトリ）に変換する */
 export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptions): ConvertReport {
+  const datapacks = collectDatapacks(javaDir);
   const source = new JavaWorld(javaDir);
   const version = source.dataVersion();
   // エンティティが terrain region から専用 region に移ったのは Java 1.17。
@@ -144,12 +147,15 @@ export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptio
       timeout: 600_000,
     });
     if (!existsSync(join(outDir, "level.dat"))) throw new Error(`Chunker の出力に level.dat がない: ${outDir}`);
-    writeInitPack(outDir, objectives, placed.entities);
+    const datapackData = JSON.stringify({ schemaVersion: 1, packs: datapacks.packs });
+    writeInitPack(outDir, objectives, placed.entities, datapackData);
+    writeFileSync(join(outDir, "behavior_packs", "je2be_init", "scripts", "datapacks.js"), `export const datapacks = ${datapackData};\n`);
     configureOutputWorld(outDir);
     return {
       scores: { objectives: objectives.length, participants: objectives.reduce((n, o) => n + o.scores.length, 0)
         + placed.entities.reduce((n, e) => n + e.scores.length, 0), skipped },
       entities: placed.report,
+      datapacks: datapacks.report,
       ...(commands ? { commands } : {}),
     };
   } finally {
