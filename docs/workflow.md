@@ -106,6 +106,19 @@ PR の実機テストはマージ結果と base SHA の差分から `tools/serve
 - CI では失敗したテストケースを Vitest が 1 回再試行する。再試行後も失敗すればジョブは失敗する。再試行で通った場合はログに警告を出す。再試行したケースのファイル、テスト名、回数、最終結果をジョブの `server-logs-*` 成果物に `test-retries.jsonl` として保存する。起動準備、ファイル読み込み、フックなどケース外の失敗はジョブのログで調べる。
 - 同じケースの失敗と成功が確認できたら、実行 URL とログの根拠、再現手順を Issue に記録して調べる。調査中に隔離する場合は `tools/server-test-quarantine.json` の `files` にファイルパス、または `scenarios` にシナリオ ID をキーとして登録し、値を追跡 Issue 番号にする。隔離分は夜間の `quarantine-*` ジョブに入り、失敗は通常ジョブの判定から分かれる。通常の実行で安定することを確かめたら登録を外す。
 
+### 定期実行の確認と手動代替
+
+日次の CI と週次の Version canary の実行履歴を確認し、予定の実行が見当たらなければ次を main で実行する。隔離の登録がない場合、隔離ジョブは生成されない。手動実行は人が確認して起動する運用であり、自動再試行ではない。
+
+```sh
+gh workflow run ci.yml --ref main -f include_quarantine=true
+gh workflow run version-canary.yml --ref main
+gh run list --workflow ci.yml --limit 10
+gh run list --workflow version-canary.yml --limit 10
+```
+
+実行の完了と結果を Actions で確認する。CI の `servers / result` は隔離ジョブの失敗を含まないため、`quarantine-*` のログも個別に確認する。canary は下記の artifact を確認し、必要な版上げは別 Issue で追跡する。
+
 ## 衝突を避けるために
 
 - `docs/findings.md` や `docs/design.md` の同じ節を、複数のPRが同時に編集しないようにする。追記は節の末尾に行う。衝突したら、main を取り込んで解消してから push する。

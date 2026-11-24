@@ -72,11 +72,16 @@ function changedPaths(base: string | undefined): string[] | undefined {
   }
 }
 
+export function includesQuarantine(event: string | undefined, input: string | undefined): boolean {
+  return event === "schedule" || (event === "workflow_dispatch" && input === "true");
+}
+
 if (import.meta.main) {
   const event = process.env.GITHUB_EVENT_NAME;
   const changed = event === "pull_request" ? changedPaths(process.env.PR_BASE_SHA) : undefined;
   const quarantine = JSON.parse(readFileSync(new URL("./server-test-quarantine.json", import.meta.url), "utf8")) as Quarantine;
-  const jobs = planServerTests(assign(), loadScenarios().map(({ id }) => id), changed, event === "schedule", quarantine);
+  const includeQuarantine = includesQuarantine(event, process.env.INCLUDE_QUARANTINE);
+  const jobs = planServerTests(assign(), loadScenarios().map(({ id }) => id), changed, includeQuarantine, quarantine);
   const matrix = JSON.stringify({ include: jobs });
   console.log(matrix);
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${matrix}\nhas_jobs=${jobs.length > 0}\n`);
