@@ -281,3 +281,9 @@ describe("引数", () => {
     expect(parseOk("scoreboard players set #fake obj 1")[3]?.value).toEqual({ kind: "name", value: "#fake" });
   });
 });
+
+it("#205: 合成 long 文法では安全整数を超える値が丸められる現状を再現する", () => {
+  const parser = new CommandParser({ type: "root", children: { probe: lit({ children: { value: arg("brigadier:long", { executable: true }) } }) } }, { textFormat: "snbt" });
+  const result = parser.parse("probe 9007199254740993");
+  expect(result.ok && result.nodes[1]?.value).toEqual({ kind: "number", value: 9007199254740992 });
+});

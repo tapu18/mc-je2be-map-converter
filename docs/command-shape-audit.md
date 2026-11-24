@@ -179,3 +179,71 @@ Java 26.3 の関数読み込みで 1,424 形、1,520 候補を測定した。生
 | whitelist remove targets&lt;minecraft:game_profile&gt; | `whitelist remove @s` | 未確定 |
 
 境界の追加検討: 明示されない整数・浮動小数の型限界の前後、上下限の外、引数を同時に変える組み合わせ、文字列・リソース・座標などの非数値境界を個別に比較する必要がある。将来版の long は JSON を number に変換する前に整数文字列を保持し、浮動小数の指数表記は Java が受理する字句形式を実測してから候補化する必要がある。今回これらの網羅やパーサ欠陥の有無は確定していない。未確定の管理系候補と境界の追試は #205 で扱う。
+
+## 管理コマンドの再検証（#205）
+
+Java 26.3 の新規ワールドに RCON で `execute if entity @e[tag=je2be_absent] run <候補>` を送った。対象タグのエンティティはいない。`stop` の後も `list` が応答し、不正な `stop garbage` は構文エラーになる対照で、実行せず末尾を解析することを確認した。再現: `node tools/admin-syntax-audit.ts`（結果は `/tmp/audit205.json`）。空応答はこの条件下で構文診断なしを意味し、実行時の成功は意味しない。候補は合成データ。
+
+「仕様どおり」は候補がこの文脈で解析されたことに限定する。プレイヤー限定 `@s` は Java が拒否し既存パーサが受理する欠陥。`publish` / `unpublish` は専用サーバーのコマンドツリーに存在せず、元の構文を判定できない。
+
+| 元候補 | 判定 |
+| --- | --- |
+| `ban @s` | 欠陥（プレイヤー限定セレクター） |
+| `ban @s probe` | 欠陥（プレイヤー限定セレクター） |
+| `ban-ip probe` | 仕様どおり（構文診断なし） |
+| `ban-ip probe probe` | 仕様どおり（構文診断なし） |
+| `banlist` | 仕様どおり（構文診断なし） |
+| `banlist ips` | 仕様どおり（構文診断なし） |
+| `banlist players` | 仕様どおり（構文診断なし） |
+| `datapack create probe {"text":"probe"}` | 仕様どおり（構文診断なし） |
+| `debug function minecraft:probe` | 仕様どおり（構文診断なし） |
+| `debug start` | 仕様どおり（構文診断なし） |
+| `debug stop` | 仕様どおり（構文診断なし） |
+| `deop @s` | 欠陥（プレイヤー限定セレクター） |
+| `jfr start` | 仕様どおり（構文診断なし） |
+| `jfr stop` | 仕様どおり（構文診断なし） |
+| `kick @s` | 仕様どおり（構文診断なし） |
+| `kick @s probe` | 仕様どおり（構文診断なし） |
+| `op @s` | 欠陥（プレイヤー限定セレクター） |
+| `pardon @s` | 欠陥（プレイヤー限定セレクター） |
+| `pardon-ip probe` | 仕様どおり（構文診断なし） |
+| `perf start` | 仕様どおり（構文診断なし） |
+| `perf stop` | 仕様どおり（構文診断なし） |
+| `publish` | 確かめられない（専用サーバーで未提供） |
+| `publish true` | 確かめられない（専用サーバーで未提供） |
+| `publish true 0` | 確かめられない（専用サーバーで未提供） |
+| `publish true 65535` | 確かめられない（専用サーバーで未提供） |
+| `save-all` | 仕様どおり（構文診断なし） |
+| `save-all flush` | 仕様どおり（構文診断なし） |
+| `save-off` | 仕様どおり（構文診断なし） |
+| `save-on` | 仕様どおり（構文診断なし） |
+| `setidletimeout 0` | 仕様どおり（構文診断なし） |
+| `stop` | 仕様どおり（構文診断なし） |
+| `tick freeze` | 仕様どおり（構文診断なし） |
+| `tick query` | 仕様どおり（構文診断なし） |
+| `tick rate 1` | 仕様どおり（構文診断なし） |
+| `tick rate 10000` | 仕様どおり（構文診断なし） |
+| `tick sprint stop` | 仕様どおり（構文診断なし） |
+| `tick sprint 1` | 仕様どおり（構文診断なし） |
+| `tick step` | 仕様どおり（構文診断なし） |
+| `tick step stop` | 仕様どおり（構文診断なし） |
+| `tick step 1` | 仕様どおり（構文診断なし） |
+| `tick unfreeze` | 仕様どおり（構文診断なし） |
+| `transfer probe` | 仕様どおり（構文診断なし） |
+| `transfer probe 1` | 仕様どおり（構文診断なし） |
+| `transfer probe 65535` | 仕様どおり（構文診断なし） |
+| `transfer probe 1 @s` | 仕様どおり（構文診断なし） |
+| `transfer probe 65535 @s` | 仕様どおり（構文診断なし） |
+| `unpublish` | 確かめられない（専用サーバーで未提供） |
+| `whitelist add @s` | 欠陥（プレイヤー限定セレクター） |
+| `whitelist list` | 仕様どおり（構文診断なし） |
+| `whitelist off` | 仕様どおり（構文診断なし） |
+| `whitelist on` | 仕様どおり（構文診断なし） |
+| `whitelist reload` | 仕様どおり（構文診断なし） |
+| `whitelist remove @s` | 欠陥（プレイヤー限定セレクター） |
+
+境界の追試では `scoreboard players set x y` の 2147483647 は構文診断なし、2147483648 と -2147483649 は無効整数。`tick rate` は 1 と 10000 を受理し、0 と 10001 を範囲外として拒否、`1e2` は末尾データとして拒否した。`transfer probe` のポート 0 と 65536 は範囲外、1 と 65535 に `@s` を組み合わせた候補は構文診断なし。非数値では上記の `@s`、不正末尾、および `datapack create` の JSON 候補を確認した。これらは網羅ではない。
+
+固定版の commands.json に `brigadier:long` はなく、将来版の境界・精度は実サーバーで確認できない。指数表記も上記 float の具体例のみで、将来版全体を保証しない。
+
+将来版の long 精度は合成した `brigadier:long` 文法で追試した。`probe 9007199254740993` を現在のパーサは受理するが、値を `9007199254740992` に丸める（`packages/core/src/command/parser.test.ts`）。これは値の精度欠陥で、修正は #244 に分離する。固定版の Java で同じコマンドを比較した結果ではない。
