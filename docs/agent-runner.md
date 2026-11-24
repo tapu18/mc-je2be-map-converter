@@ -110,7 +110,7 @@ Codex は通常 `codex exec --sandbox workspace-write --json`、Claude は `clau
 
 1. 以前着手した Issue の最新状態と PR を照合する。
 2. マージ条件が揃えば通常のマージコミットでマージする。最新 head SHA を指定し、確認後の push を検出する。
-3. PR の CI が失敗・マージ競合・変更要求なら、同じ worktree で AI を再起動する。draft の PR も実装未完了として再実行する。CI 未登録・実行中・マージ待ちの PR は保留して次の仕事を探す。
+3. PR の CI が失敗・マージ競合・変更要求なら、同じ worktree で AI を再起動する。draft の PR も実装未完了として再実行する。CI 未登録・実行中・マージ待ちの PR は保留して次の仕事を探す。worker には完了条件を満たすか時間切れまで作業を続けるよう指示し、区切りの記録は終了理由にしない。再実行時は前回が未完了だったことを伝え、PR が `DIRTY` なら base を取り込んで競合解消と CI の確認を指示する。失敗したチェックがあれば名前も伝える。
 4. 着手可能な `status:ready` を番号順に選ぶ。他の status、`needs-approval`、有効な claim、未完了の明示的依存があれば選ばない。
 5. 一意の `claim:` コメントを記録し、次の巡回で先着を確認する。その後 `status:in-progress` にし、専用ブランチと worktree を用意して AI を起動する。
 

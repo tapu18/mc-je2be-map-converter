@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import { command, CommandError } from './agent-runner/process.ts';
-import { agentArguments, AgentLaunchError, failedBeforeWork, validateWorkerArgs } from './agent-runner/agent.ts';
+import { agentArguments, AgentLaunchError, failedBeforeWork, validateWorkerArgs, workerPrompt } from './agent-runner/agent.ts';
 import { followProgress } from './agent-runner/progress.ts';
 import { managerConfig, managerDue, managerPrompt, managerReport } from './agent-runner/manager.ts';
 import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
@@ -224,7 +224,7 @@ async function main() {
       await command('git', ['fetch', 'origin', config.base], { cwd: root, signal: abort.signal });
       await command('git', ['worktree', 'add', '-b', task.branch, task.worktree, `origin/${config.base}`], { cwd: root, signal: abort.signal });
     };
-    const run = async (task: Task, item: Issue) => {
+    const run = async (task: Task, item: Issue, pr?: PullRequest) => {
       if (task.attempts >= config.maxAttempts) { await stopTask(task, `実行回数の上限 ${config.maxAttempts} 回に到達`); return; }
       if (state.runs >= config.maxRunsPerDay) { log('Daily run limit reached; waiting.'); return; }
       await prepare(task);
@@ -233,22 +233,7 @@ async function main() {
       task.phase = 'working';
       await save();
       const logfile = join(stateDir, `${task.issue}-${Date.now()}.log`);
-      const prompt = [
-        `あなたは ${task.claim}。${config.repo} の Issue #${task.issue} だけを作業してください。`,
-        `既存の worktree ${task.worktree} とブランチ ${task.branch} を使ってください。着手済みです。`,
-        '最初に CLAUDE.md と docs/workflow.md と Issue の本文・コメント、既存PRとCIを読んでください。',
-        '再実行の場合があります。git status と履歴を確認し、未コミット変更や既存PRを引き継いでください。',
-        '依存の未完了や人の判断が必要なら、Issue に根拠を書き status:blocked または needs-approval にして終了してください。',
-        'npm ci、必要な setup:servers / setup:mappings、build:pack を行い、実装・適切な検証・コミット・push・PR作成まで進めてください。',
-        `配布マップの原本は ${join(root, 'sample-map')}（git管理外）にあります。必要なら読み取り用に参照し、原本を変更・GitHubへ公開しないでください。`,
-        'PR本文に Closes #' + task.issue + ' を記載。既存PRがあれば修正してください。完了条件を検証できるまでdraftにしてください。',
-        'npm run check と関連する実サーバーテストを通し、完了条件を満たしたらPRをreadyにしてください。CI失敗時は原因を調べて修正してください。',
-        'マージとブランチ/worktree削除は管理プログラムが判断するので実行しないでください。Issueのclaimは変更しないでください。',
-        '別のIssueには着手しないでください。新たな作業はIssueに記録してください。区切りごとに進捗と再開手順をIssueへ残してください。',
-        '作業途中で終了するときは status:paused を付けず、進捗と再開手順を Issue に書いてください。次の巡回で同じ worktree から再実行し、起動回数を数えます。',
-        '管理プログラムの設定・状態・ロックは変更しないでください。',
-        `今回のIssueスナップショット（最新状態はghで確認）:\n${JSON.stringify(item)}`,
-      ].join('\n');
+      const prompt = workerPrompt({ task, item, repo: config.repo, root, base: config.base, pr });
       log(`Running ${config.agent} for #${task.issue}, attempt ${task.attempts}; log=${logfile}`);
       const progress = await followProgress(logfile, message => log(`#${task.issue} ${message}`));
       try {
@@ -354,7 +339,7 @@ async function main() {
           await stopTask(task, 'PRがマージされずに閉じられました');
           continue;
         }
-        await run(task, item);
+        await run(task, item, pr);
         return; // At most one worker per tick.
       }
       // PM has its own budget; it may run even when worker runs are exhausted.
