@@ -17,14 +17,27 @@ it("executes storage-paths actions through CommandIR and matches Java's recorded
   expect(nbtToPlain(state.storage.get("m2:probe"))).toEqual(expected.state.storage["m2:probe"]);
 });
 
-it("rejects unsupported execute chains before modifying storage", () => {
+it("validates execute chains before modifying storage", () => {
   const parser = new CommandParser(JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode, {textFormat: "snbt"});
   const state = new RuntimeState();
-  const source = "execute if data storage m2:probe absent if data storage m2:probe other run data modify storage m2:probe x set value 1";
+  const source = "execute if data storage m2:probe absent as @s run data modify storage m2:probe x set value 1";
   const parsed = parser.parse(source);
   if (!parsed.ok) throw new Error(parsed.error.message);
-  expect(executeCommand(state, toCommandIR(source, parsed.nodes))).toEqual({success: false, error: "unsupported execute chain"});
+  expect(executeCommand(state, toCommandIR(source, parsed.nodes))).toEqual({success: false, error: "unsupported execute step"});
   expect(state.storage.values.size).toBe(0);
+});
+
+it("stores results and success for chained storage operations and failed conditions", () => {
+  const parser = new CommandParser(JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode, {textFormat: "snbt"});
+  const state = new RuntimeState();
+  const run = (line: string) => {
+    const parsed = parser.parse(line);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return executeCommand(state, toCommandIR(line, parsed.nodes));
+  };
+  expect(run("execute store result storage test:chain result int 1 store success storage test:chain success int 1 run data modify storage test:chain value set value 5")).toMatchObject({success: true});
+  expect(run("execute store success storage test:chain failed int 1 if data storage test:chain absent run data remove storage test:chain value")).toMatchObject({success: false});
+  expect(nbtToPlain(state.storage.get("test:chain"))).toEqual({value: 5, result: 1, success: 1, failed: 0});
 });
 
 it("merges compound storage values recursively", () => {
