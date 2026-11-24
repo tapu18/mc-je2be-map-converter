@@ -64,9 +64,14 @@ export function activeClaims(comments: Issue['comments']): string[] {
   return [...claims];
 }
 
+export function failedChecks(pr: PullRequest): string[] {
+  return pr.statusCheckRollup.filter(check =>
+    ['FAILURE', 'ERROR', 'failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(check.conclusion ?? check.state ?? ''))
+    .map(check => check.name ?? check.context ?? '名前不明のチェック');
+}
+
 export function checksFailed(pr: PullRequest): boolean {
-  return pr.statusCheckRollup.some(check =>
-    ['FAILURE', 'ERROR', 'failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(check.conclusion ?? check.state ?? ''));
+  return failedChecks(pr).length > 0;
 }
 
 export function canMerge(issue: Issue, pr: PullRequest, base: string, runs: WorkflowRun[]): boolean {
