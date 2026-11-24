@@ -1,6 +1,6 @@
 import type { NbtPathNode } from "../command/arguments.ts";
 import type { NbtTag } from "../nbt/nbt.ts";
-import { matchesNbt } from "./nbt-path.ts";
+import { getNbtPath, matchesNbt } from "./nbt-path.ts";
 
 /** Copy a tag before inserting it into another location. */
 export function copyNbt(tag: NbtTag): NbtTag {
@@ -83,4 +83,23 @@ export function removeNbtPath(root: NbtTag, path: readonly NbtPathNode[]): numbe
   const targets = parents.flatMap(parent => slots(parent, path[path.length - 1]!, false));
   for (const target of targets.reverse()) target.remove();
   return targets.length;
+}
+
+/** Insert copied values into each existing list selected by a path. */
+export function insertNbtPath(root: NbtTag, path: readonly NbtPathNode[], index: number, values: readonly NbtTag[]): number {
+  let count = 0;
+  for (const target of getNbtPath(root, path)) {
+    if (target.type !== "list") continue;
+    let position = index < 0 ? target.value.length + index + 1 : index;
+    if (position < 0 || position > target.value.length) continue;
+    let changed = false;
+    for (const value of values) {
+      if (target.elementType !== "end" && target.elementType !== value.type) continue;
+      target.elementType = value.type;
+      target.value.splice(position++, 0, copyNbt(value));
+      changed = true;
+    }
+    if (changed) count++;
+  }
+  return count;
 }
