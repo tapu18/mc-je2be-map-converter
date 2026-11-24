@@ -6,7 +6,7 @@ export { fetchGeyserSources, generateGeyserMappings } from "./geyser.ts";
 export * from "./command-validation.ts";
 export * from "./java-grammars.ts";
 export * from "./validation-context.ts";
-export { convertWorld, selectScores, writeInitPack, DEFAULT_CHUNKER_FORMAT, INIT_LOG_MARK, INIT_PROPERTY, SCRIPT_API_VERSION, type ConvertOptions, type ConvertReport, type SkippedScore } from "./convert.ts";
+export { convertWorld, collectInitialStorage, selectScores, writeInitPack, DEFAULT_CHUNKER_FORMAT, INIT_LOG_MARK, INIT_PROPERTY, SCRIPT_API_VERSION, type ConvertOptions, type ConvertReport, type SkippedScore } from "./convert.ts";
 export * from "./command-rewrite.ts";
 export * from "./evaluation.ts";
 export * from "./static-coverage.ts";

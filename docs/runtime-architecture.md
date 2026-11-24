@@ -37,3 +37,5 @@ Java 26.3 の生成文法を使った Node テスト `ir-codec.servers.test.ts` 
 Node のフェイクホストでは Java の正解データ（#96）と意味論を比較する。BDS では API 制約、起動、永続化、ネイティブとの境界を検証する。片方だけではそれぞれ API の制約または網羅と再現を確かめにくい。現在の中核は単一の文字列保持者の scoreboard と storage の一部、単独の storage 条件・`store result ... int` を CommandIR から実行する。セレクタ、複数 execute ステップ、storage の非文字列 substring、関数呼び出し、保存と実機ホストは未対応である。未知の操作は失敗を返す。
 
 変換器は初期化パックの `scripts/datapacks.js` に `datapacks` を出力する。`schemaVersion: 1` と保存された有効順の `packs` を持ち、各パックの `functions` は関数 ID から行順の IR codec JSON 文字列の配列への対応、`tags` は関数タグ ID から元の JSON への対応である。ワールドの版で選んだオーバーレイを順に適用する。パック順とタグの `replace`・任意参照は保持し、解決は将来のランタイムに委ねる。`minecraft:load` と `minecraft:tick` も通常のタグとして保存する。版を選べないパック、パースできない関数、マクロはレポートに診断し、関数単位で同梱しない。データを置く段階であり、関数の自動実行はまだ接続していない。
+
+変換器の storage 初期データは初期化パックの `scripts/storage.js` に `storage` 配列として収める。各要素は `id`（名前空間付きキー）と順序付き `chunks` を持ち、連結すると `schemaVersion: 1` の JSON になる。値は IR と同じ型付き符号化であり、`deserializeStorage` で compound に復号する。各片は UTF-8 で 32,767 バイト以下。読み取り・符号化の失敗は変換レポートの `storage.errors` に記録する。ランタイムへの取り込みと確定は未実装（#102）。

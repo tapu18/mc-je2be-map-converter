@@ -78,7 +78,7 @@ export function convertOutput(input: string, output: string, flags: Record<strin
       for (const name of readdirSync(world)) renameSync(join(world, name), join(target, name));
     }
     return { output: target, report: reportPath, status: fullReport.status, clientVerification: fullReport.clientVerification, clearConfirmed: false,
-      scores: report.scores, entities: report.entities, datapacks: report.datapacks, commands: report.commands?.counts, limitations: fullReport.limitations };
+      scores: report.scores, storage: report.storage, entities: report.entities, datapacks: report.datapacks, commands: report.commands?.counts, limitations: fullReport.limitations };
   } catch (error) {
     if (ownsTarget) rmSync(target, { recursive: true, force: true });
     if (ownsReport) rmSync(reportPath, { force: true });

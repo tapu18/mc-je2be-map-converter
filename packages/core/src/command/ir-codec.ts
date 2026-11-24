@@ -125,3 +125,18 @@ export function deserializeCommandIR(json: string): IrDecodeResult {
     return {ok: true, document: document as IrDocument};
   } catch (e) { return {ok: false, diagnostic: e instanceof Error ? e.message : "invalid IR"}; }
 }
+
+/** Versioned storage payload using the same tagged values as command IR. */
+export function serializeStorage(value: import("../nbt/nbt.ts").NbtCompound): string {
+  if (!nbt(value)) throw new Error("invalid storage");
+  return JSON.stringify({schemaVersion: 1, value: encode(value)});
+}
+export function deserializeStorage(json: string): import("../nbt/nbt.ts").NbtCompound {
+  const envelope: unknown = JSON.parse(json);
+  if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) throw new Error("invalid storage envelope");
+  const o = envelope as Record<string, unknown>;
+  if (o.schemaVersion !== 1 || Object.keys(o).length !== 2 || !Object.hasOwn(o, "value")) throw new Error("unsupported storage envelope");
+  const value = decode(o.value);
+  if (!nbt(value) || (value as {type: string}).type !== "compound") throw new Error("invalid storage");
+  return value as import("../nbt/nbt.ts").NbtCompound;
+}
