@@ -39,12 +39,16 @@ if (tool === 'git') {
   if (args[1] === '--show-toplevel') out(process.env.RUNNER_ROOT);
   else if (args[1] === '--git-common-dir') out('.git');
   else if (args[0] === 'rev-parse' && args[1].includes(':tools/agent-runner.ts')) out(args[1].startsWith('HEAD:') ? 'file\ntree' : (d.baseCode ?? 'file\ntree'));
+  else if (args[0] === 'rev-parse' && args[1].startsWith('origin/')) out(args[1] === 'origin/main' ? 'base' : 'abc');
+  else if (args[0] === 'merge-base') out('base');
+  else if (args[0] === 'diff') {}
+  else if (args[0] === 'ls-remote') out('base refs/heads/main');
   else if (args[0] === 'worktree' && args[1] === 'list') out(d.tree ? 'worktree ' + d.tree + '\nbranch refs/heads/' + d.branch + '\n' : '');
   else if (args[0] === 'worktree' && args[1] === 'add') { d.branch = args[3]; d.tree = args[4]; mkdirSync(d.tree, {recursive:true}); }
   else if (args[0] !== 'fetch') throw Error('Unexpected git ' + args);
 } else if (tool === 'gh') {
   if (args[0] === 'repo') out({nameWithOwner: 'owner/repo'});
-  else if (args[0] === 'run' && args[1] === 'list') out(d.runs ?? [{headSha:'abc',event:'pull_request',status:'completed',conclusion:'success'}]);
+  else if (args[0] === 'run' && args[1] === 'list') out(args.includes('--event') ? [{headSha:'base',event:'push',status:'completed',conclusion:'success'}] : (d.runs ?? [{headSha:'abc',event:'pull_request',status:'completed',conclusion:'success'}]));
   else if (args[0] === 'pr' && args[1] === 'list') out(d.prs);
   else if (args[0] === 'pr' && args[1] === 'merge') { d.prs[0].state = 'MERGED'; d.issues[0].state = 'CLOSED'; }
   else if (args[0] === 'issue') {

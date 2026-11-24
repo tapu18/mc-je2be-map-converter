@@ -81,3 +81,14 @@ export function canMerge(issue: Issue, pr: PullRequest, base: string, runs: Work
     ? check.status === 'COMPLETED' && ['SUCCESS', 'SKIPPED', 'NEUTRAL'].includes(check.conclusion ?? '')
     : check.state === 'SUCCESS');
 }
+
+// A missing result is not evidence of a healthy base. Cancelled runs do not supersede
+// the most recent completed, non-cancelled push run.
+export function latestBaseRun(runs: WorkflowRun[]): WorkflowRun | undefined {
+  return runs.find(run => run.event === 'push' && run.status === 'completed' && run.conclusion !== 'cancelled');
+}
+
+export function baseAllowsMerge(runs: WorkflowRun[], baseChanges: string[], prChanges: string[]): boolean {
+  const run = latestBaseRun(runs);
+  return run?.conclusion === 'success' && !baseChanges.some(path => prChanges.includes(path));
+}
