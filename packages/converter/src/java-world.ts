@@ -98,7 +98,7 @@ export class JavaWorld {
   }
 
   /** command storage（`名前空間:パス` → 値）。26.x は data/<ns>/command_storage.dat、それより前は data/command_storage_<ns>.dat */
-  storage(): Map<string, NbtTag> {
+  storage(onError?: (file: string, error: unknown) => void): Map<string, NbtTag> {
     const out = new Map<string, NbtTag>();
     const dataDir = join(this.dir, "data");
     if (!existsSync(dataDir)) return out;
@@ -107,7 +107,11 @@ export class JavaWorld {
       const legacy = /^command_storage_(.+)\.dat$/.exec(entry.name);
       const [ns, file] = modern && existsSync(modern) ? [entry.name, modern] : legacy ? [legacy[1]!, join(dataDir, entry.name)] : [undefined, undefined];
       if (!ns || !file) continue;
-      for (const [k, v] of readCommandStorage(ns, readGzipNbt(file))) out.set(k, v);
+      try {
+        const root = readGzipNbt(file);
+        if (child(child(root, "data"), "contents")?.type !== "compound") throw new Error("missing storage contents");
+        for (const [k, v] of readCommandStorage(ns, root)) out.set(k, v);
+      } catch (error) { if (!onError) throw error; onError(file, error); }
     }
     return out;
   }

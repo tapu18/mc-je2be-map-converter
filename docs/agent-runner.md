@@ -110,7 +110,7 @@ Codex は通常 `codex exec --sandbox workspace-write --json`、Claude は `clau
 
 1. 以前着手した Issue の最新状態と PR を照合する。
 2. マージ条件が揃えば通常のマージコミットでマージする。最新 head SHA を指定し、確認後の push を検出する。
-3. PR の CI が失敗・マージ競合・変更要求なら、同じ worktree で AI を再起動する。draft の PR も実装未完了として再実行する。CI 未登録・実行中・マージ待ちの PR は保留して次の仕事を探す。
+3. PR の CI が失敗・マージ競合・変更要求なら、同じ worktree で AI を再起動する。draft の PR も実装未完了として再実行する。CI 未登録・実行中・マージ待ちの PR は保留して次の仕事を探す。worker には完了条件を満たすか時間切れまで作業を続けるよう指示し、区切りの記録は終了理由にしない。再実行時は前回が未完了だったことを伝え、PR が `DIRTY` なら base を取り込んで競合解消と CI の確認を指示する。失敗したチェックがあれば名前も伝える。
 4. 着手可能な `status:ready` を番号順に選ぶ。他の status、`needs-approval`、有効な claim、未完了の明示的依存があれば選ばない。
 5. 一意の `claim:` コメントを記録し、次の巡回で先着を確認する。その後 `status:in-progress` にし、専用ブランチと worktree を用意して AI を起動する。
 
@@ -130,7 +130,13 @@ AI は必要な依存取得・実装・検証・push・PR 作成を行う。完�
 
 自動マージは、Issue が開いていて保留でなく、PR が ready、指定 base 宛て、Issue の closing reference があり、GitHub のマージ状態が `CLEAN` で、変更要求がない場合に限る。head SHA に対応する pull_request イベントの CI ワークフロー（`.github/workflows/ci.yml`）の最新実行が成功し、PR のチェックが1件以上登録され、すべて完了（成功・スキップ・中立）していることを要求する。ワークフロー実行やチェックが未登録ならマージしない。ジョブ名の変更は判定に影響しない。ワークフローのパスを変更する場合は管理プログラムの取得先も変更する。
 
+自動マージ直前には base の CI ワークフローの push 実行から、取消を除く最新の完了結果を確認する。結果がないか成功以外ならマージしない。失敗時は端末に表示し、当該コミットに関連付く PR の closing Issue に通知する。該当 Issue がなければ調査 Issue を作り、同じコミットの通知は重複させない。base と PR の共通祖先からの変更に同じパスがある場合は PR ブランチに base を取り込み、新しい head の CI 成功を待つ。取得エラーもマージを阻止する。base が判定直後に外部で更新される競合は GitHub 側で原子的に防げない。
+
 `needs-approval` は Issue・PR のどちらにあっても保留する。承認コメントの自然言語判定は行わない。人が承認コメントを書き、該当する Issue / PR の `needs-approval` を外して再開させる。`status:blocked` / `status:paused` も再開時に解除する。積み上げた PR は base が違う間は自動マージしない。最初の版では積み上げの base 変更・ブランチ削除は自動化しない。
+
+worker が途中で終了するときは `status:paused` を付けず、進捗と再開手順を Issue に残す。次の巡回で同じ worktree から再実行し、起動回数を数える。管理対象の Issue に `status:paused` がある場合は端末に表示し、人が外すまで再開しない旨を Issue に一度だけコメントする。
+
+worker が依存や判断を待つ場合、待つ Issue を本文に `Depends on: #番号` で明示し、理由と再開手順をコメントして `status:blocked` にする。判断は判断 Issue に記録し、その `needs-approval` を外してから閉じる。管理対象で claim が有効な worker 待機は、明示された依存が1件以上あり全件 closed、本人・依存先・開いている PR に `needs-approval` がなく、他の status がない場合に限り ready を経て同じ worktree で再開する。依存がない場合や取得できない場合は自動再開しない。実行回数上限など管理プログラム自身の停止は従来どおり人が原因を解消し ready に戻す。`status:paused` は人の明示的な中断であり自動解除しない。
 
 上限到達や PR の未マージクローズは `status:blocked` にして、再開情報を Issue に記録する。原因を直して `status:ready` に戻すと、同じ worktree で実行回数をリセットして再開する。Issue のクローズは完了として扱う。管理対象外の既存作業を勝手に引き継がず、状態ファイルにある Issue だけを再開する。
 

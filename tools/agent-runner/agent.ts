@@ -1,5 +1,8 @@
 import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { join } from 'node:path';
+import { failedChecks } from './policy.ts';
+import type { Issue, PullRequest } from './policy.ts';
 
 export function agentArguments(agent: 'codex' | 'claude', extra: string[]): string[] {
   if (agent === 'claude') return ['-p', '--output-format', 'stream-json', '--verbose', ...extra];
@@ -40,4 +43,36 @@ export async function failedBeforeWork(logfile: string): Promise<boolean> {
     } catch { /* CLI diagnostics can be plain text. */ }
   }
   return failed && !worked;
+}
+
+
+export function workerPrompt({ task, item, repo, root, base, pr }: {
+  task: { claim: string; issue: number; worktree: string; branch: string; attempts: number };
+  item: Issue; repo: string; root: string; base: string; pr?: PullRequest | undefined;
+}): string {
+  const reasons: string[] = [];
+  if (task.attempts > 1) reasons.push('前回の実行は完了条件を満たさず終了しました。残りの作業を続けてください。');
+  if (pr?.mergeStateStatus === 'DIRTY') reasons.push(`PR #${pr.number} は競合しています。${base} を取り込んで競合を解き、CI を通してください。`);
+  if (pr) {
+    const failed = failedChecks(pr);
+    if (failed.length) reasons.push(`PR #${pr.number} の失敗したチェック: ${failed.join('、')}。原因を調べて修正してください。`);
+  }
+  return [
+        `あなたは ${task.claim}。${repo} の Issue #${task.issue} だけを作業してください。`,
+        `既存の worktree ${task.worktree} とブランチ ${task.branch} を使ってください。着手済みです。`,
+        '最初に CLAUDE.md と docs/workflow.md と Issue の本文・コメント、既存PRとCIを読んでください。',
+        '再実行の場合があります。git status と履歴を確認し、未コミット変更や既存PRを引き継いでください。',
+        ...reasons,
+        '完了条件を満たすか、時間切れまで続けてください。区切りの記録は続けるための手段であり、終了する理由ではありません。',
+        '依存の未完了や人の判断が必要なら、待つ Issue を本文に Depends on: #番号 で記載し、根拠と再開手順をコメントして status:blocked にしてください。判断の Issue には needs-approval を付けて終了してください。',
+        'npm ci、必要な setup:servers / setup:mappings、build:pack を行い、実装・適切な検証・コミット・push・PR作成まで進めてください。',
+        `配布マップの原本は ${join(root, 'sample-map')}（git管理外）にあります。必要なら読み取り用に参照し、原本を変更・GitHubへ公開しないでください。`,
+        'PR本文に Closes #' + task.issue + ' を記載。既存PRがあれば修正してください。完了条件を検証できるまでdraftにしてください。',
+        'npm run check と関連する実サーバーテストを通し、完了条件を満たしたらPRをreadyにしてください。CI失敗時は原因を調べて修正してください。',
+        'マージとブランチ/worktree削除は管理プログラムが判断するので実行しないでください。Issueのclaimは変更しないでください。',
+        '別のIssueには着手しないでください。新たな作業はIssueに記録してください。区切りごとに進捗と再開手順をIssueへ残してください。',
+        '作業途中で終了するときは status:paused を付けず、進捗と再開手順を Issue に書いてください。次の巡回で同じ worktree から再実行し、起動回数を数えます。',
+        '管理プログラムの設定・状態・ロックは変更しないでください。',
+        `今回のIssueスナップショット（最新状態はghで確認）:\n${JSON.stringify(item)}`,
+  ].join('\n');
 }

@@ -19,7 +19,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -38,12 +38,17 @@ const has = (item, name) => item.labels.some(l => l.name === name);
 if (tool === 'git') {
   if (args[1] === '--show-toplevel') out(process.env.RUNNER_ROOT);
   else if (args[1] === '--git-common-dir') out('.git');
+  else if (args[0] === 'rev-parse' && args[1].includes(':tools/agent-runner.ts')) out(args[1].startsWith('HEAD:') ? 'file\ntree' : (d.baseCode ?? 'file\ntree'));
+  else if (args[0] === 'rev-parse' && args[1].startsWith('origin/')) out(args[1] === 'origin/main' ? 'base' : 'abc');
+  else if (args[0] === 'merge-base') out('base');
+  else if (args[0] === 'diff') {}
+  else if (args[0] === 'ls-remote') out('base refs/heads/main');
   else if (args[0] === 'worktree' && args[1] === 'list') out(d.tree ? 'worktree ' + d.tree + '\nbranch refs/heads/' + d.branch + '\n' : '');
   else if (args[0] === 'worktree' && args[1] === 'add') { d.branch = args[3]; d.tree = args[4]; mkdirSync(d.tree, {recursive:true}); }
   else if (args[0] !== 'fetch') throw Error('Unexpected git ' + args);
 } else if (tool === 'gh') {
   if (args[0] === 'repo') out({nameWithOwner: 'owner/repo'});
-  else if (args[0] === 'run' && args[1] === 'list') out(d.runs ?? [{headSha:'abc',event:'pull_request',status:'completed',conclusion:'success'}]);
+  else if (args[0] === 'run' && args[1] === 'list') out(args.includes('--event') ? [{headSha:'base',event:'push',status:'completed',conclusion:'success'}] : (d.runs ?? [{headSha:'abc',event:'pull_request',status:'completed',conclusion:'success'}]));
   else if (args[0] === 'pr' && args[1] === 'list') out(d.prs);
   else if (args[0] === 'pr' && args[1] === 'merge') { d.prs[0].state = 'MERGED'; d.issues[0].state = 'CLOSED'; }
   else if (args[0] === 'issue') {
@@ -71,6 +76,7 @@ if (tool === 'git') {
     if (d.managerFails) process.exitCode = 1;
   } else {
     if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
+    (d.workerPrompts ??= []).push(prompt);
     if (d.workerLog) { for (const line of d.workerLog) out(line); writeFileSync(file, JSON.stringify(d)); process.exit(1); }
     out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
     if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
@@ -100,6 +106,19 @@ if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode =
   return { root, config, run, load, update, state, updateState };
 }
 
+it('warns in the terminal, state, and PM prompt when base code changes', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true } }));
+  await f.update(d => { d.baseCode = 'new-file\ntree'; });
+  const warning = '管理プログラムのコードが更新された。再起動が必要';
+  expect((await f.run()).stdout).toContain(warning);
+  expect((await f.state()).codeWarning).toBe(warning);
+  expect((await f.load()).managerPrompts?.[0]).toContain(warning);
+  await f.update(d => { d.baseCode = 'file\ntree'; });
+  expect((await f.run()).stdout).not.toContain(warning);
+  expect((await f.state()).codeWarning).toBeUndefined();
+});
+
 it('dry-run only reads; excludes other claims and unclosed dependencies', async () => {
   const f = await fixture();
   await f.update(d => {
@@ -120,6 +139,8 @@ it('claims, resumes in its own worktree, waits for all CI, and merges with a SHA
   const result = await f.run(); // same persisted task, new process
   expect(result.stdout).toContain('#7 テストとPR作成を進めています');
   expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
+  expect((await f.load()).workerPrompts![0]).toContain('status:paused を付けず');
+  expect((await f.load()).workerPrompts![0]).toContain('進捗と再開手順');
   await f.run(); // absent CI must not merge or launch a second worker
   expect((await f.load()).calls.some(call => call[2] === 'merge')).toBe(false);
   await f.update(d => { d.prs[0]!.statusCheckRollup = ['check', 'servers / scenarios-1', 'servers / result'].map(name => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })); });
@@ -129,6 +150,19 @@ it('claims, resumes in its own worktree, waits for all CI, and merges with a SHA
   expect(calls.find(call => call[2] === 'merge')).toContain('abc');
   await f.run();
   expect((await f.state()).tasks[0].phase).toBe('done');
+}, 20_000);
+
+it('reports a paused owned issue once across polls and restarts without launching the worker', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.run();
+  await f.update(d => { d.issues[0]!.labels.push({ name: 'status:paused' }, { name: 'needs-approval' }); });
+  expect((await f.run()).stdout).toContain('人がラベルを外すまで再開しません');
+  await f.run();
+  const data = await f.load();
+  expect(data.issues[0]!.comments.filter(c => c.body.includes('agent-runner-paused-notice'))).toHaveLength(1);
+  expect(data.issues[0]!.comments.find(c => c.body.includes('agent-runner-paused-notice'))!.body).toContain('人が status:paused を外すまで');
+  expect(data.calls.filter(call => call[0] === 'codex')).toHaveLength(1);
 }, 20_000);
 
 it('waits for the current CI workflow even when renamed checks have passed', async () => {
@@ -159,6 +193,49 @@ it('bounds worker retries, preserves state, and resumes a blocked task when made
   await f.run();
   expect((await f.state()).tasks[0].attempts).toBe(1);
   expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(3);
+}, 20_000);
+
+it('resumes a worker dependency wait only after all dependencies and approvals are resolved', async () => {
+  const f = await fixture();
+  await f.update(d => { d.workerFails = true; });
+  await f.run();
+  await f.run();
+  await f.update(d => {
+    d.workerFails = true;
+    d.issues[0]!.body = 'Depends on: #8, #9';
+    d.issues[0]!.labels = [{ name: 'status:blocked' }];
+    d.issues.push({ ...d.issues[0]!, number: 8, state: 'CLOSED', labels: [], comments: [] });
+    d.issues.push({ ...d.issues[0]!, number: 9, state: 'OPEN', labels: [], comments: [] });
+  });
+  await f.run();
+  await f.update(d => { d.issues[2]!.state = 'CLOSED'; d.issues[2]!.labels = [{ name: 'needs-approval' }]; });
+  await f.run();
+  await f.update(d => { d.issues[2]!.labels = []; d.issues[0]!.labels.push({ name: 'needs-approval' }); });
+  await f.run();
+  expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
+  await f.update(d => { d.issues[0]!.labels = [{ name: 'status:blocked' }]; });
+  await f.run();
+  const data = await f.load();
+  expect(data.calls.filter(call => call[0] === 'codex')).toHaveLength(2);
+  expect(data.calls.some(call => call.includes('status:ready'))).toBe(true);
+  expect(data.tree).toBe((await f.state()).tasks[0].worktree);
+}, 20_000);
+
+it('keeps a blocked worker stopped without explicit dependencies or with PR approval pending', async () => {
+  const f = await fixture();
+  await f.update(d => { d.workerFails = true; });
+  await f.run();
+  await f.run();
+  await f.update(d => { d.issues[0]!.labels = [{ name: 'status:blocked' }]; });
+  await f.run();
+  await f.update(d => {
+    d.issues[0]!.body = 'Depends on: #8';
+    d.issues.push({ ...d.issues[0]!, number: 8, state: 'CLOSED', labels: [], comments: [] });
+    d.prs = [{ number: 9, state: 'OPEN', isDraft: true, baseRefName: 'main', headRefName: d.branch!, headRefOid: 'abc', mergeStateStatus: 'CLEAN', reviewDecision: '', labels: [{ name: 'needs-approval' }], closingIssuesReferences: [], statusCheckRollup: [] }];
+  });
+  await f.run();
+  expect((await f.load()).calls.filter(call => call[0] === 'codex')).toHaveLength(1);
+  expect((await f.load()).issues[0]!.labels).toContainEqual({ name: 'status:blocked' });
 }, 20_000);
 
 it('gives up a lost claim without starting a worker on the next tick', async () => {

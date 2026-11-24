@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Minecraft非依存の中核（パーサ、中間表現、ランタイム中核）。Nodeとゲーム内の両方で動くよう、依存を持たない",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./runtime": "./src/runtime/index.ts"
   }
 }

@@ -64,9 +64,14 @@ export function activeClaims(comments: Issue['comments']): string[] {
   return [...claims];
 }
 
+export function failedChecks(pr: PullRequest): string[] {
+  return pr.statusCheckRollup.filter(check =>
+    ['FAILURE', 'ERROR', 'failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(check.conclusion ?? check.state ?? ''))
+    .map(check => check.name ?? check.context ?? '名前不明のチェック');
+}
+
 export function checksFailed(pr: PullRequest): boolean {
-  return pr.statusCheckRollup.some(check =>
-    ['FAILURE', 'ERROR', 'failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(check.conclusion ?? check.state ?? ''));
+  return failedChecks(pr).length > 0;
 }
 
 export function canMerge(issue: Issue, pr: PullRequest, base: string, runs: WorkflowRun[]): boolean {
@@ -80,4 +85,15 @@ export function canMerge(issue: Issue, pr: PullRequest, base: string, runs: Work
   return pr.statusCheckRollup.every(check => check.status
     ? check.status === 'COMPLETED' && ['SUCCESS', 'SKIPPED', 'NEUTRAL'].includes(check.conclusion ?? '')
     : check.state === 'SUCCESS');
+}
+
+// A missing result is not evidence of a healthy base. Cancelled runs do not supersede
+// the most recent completed, non-cancelled push run.
+export function latestBaseRun(runs: WorkflowRun[]): WorkflowRun | undefined {
+  return runs.find(run => run.event === 'push' && run.status === 'completed' && run.conclusion !== 'cancelled');
+}
+
+export function baseAllowsMerge(runs: WorkflowRun[], baseChanges: string[], prChanges: string[]): boolean {
+  const run = latestBaseRun(runs);
+  return run?.conclusion === 'success' && !baseChanges.some(path => prChanges.includes(path));
 }

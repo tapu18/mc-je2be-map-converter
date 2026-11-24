@@ -1,0 +1,10 @@
+{
+  "java": "26.2",
+  "state": {
+    "blocks": {
+      "8,-60,9": "minecraft:gold_block",
+      "8,-59,9": "minecraft:diamond_block",
+      "8,-58,9": "minecraft:air"
+    }
+  }
+}

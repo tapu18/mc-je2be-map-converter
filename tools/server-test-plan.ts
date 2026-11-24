@@ -9,7 +9,7 @@ const scenariosPerJob = 12;
 type Quarantine = { files: Record<string, number>; scenarios: Record<string, number> };
 type ServerJob = { name: string; group: string; files: string[]; scenarios: string[]; quarantine: boolean };
 
-const scenarioId = (path: string) => /^scenarios\/(.+?)(?:\.java)?\.json$/.exec(path)?.[1];
+const scenarioId = (path: string) => /^scenarios\/(.+?)(?:\.java(?:\.\d+\.\d+(?:\.\d+)?)?)?\.json$/.exec(path)?.[1];
 const pocFamily = (path: string) => /^poc\/([^/]+)\//.exec(path)?.[1];
 const inert = (path: string) => path.startsWith("docs/") || /^[^/]+\.md$/.test(path);
 
@@ -60,11 +60,11 @@ export function planServerTests(
   return jobs;
 }
 
-function changedPaths(base: string | undefined): string[] | undefined {
+export function changedPaths(base: string | undefined, cwd = repoRoot): string[] | undefined {
   if (!base || !/^[a-f0-9]{40}$/.test(base)) return undefined;
   try {
     // R は削除と追加に分け、移動元の影響も選択に含める。
-    return execFileSync("git", ["diff", "--no-renames", "--name-only", "-z", base, "HEAD"], { cwd: repoRoot, encoding: "utf8" })
+    return execFileSync("git", ["diff", "--no-renames", "--name-only", "-z", base, "HEAD"], { cwd, encoding: "utf8" })
       .split("\0").filter(Boolean);
   } catch {
     console.warn("PR の差分を取得できなかったため、実機テストをすべて選択します。");
@@ -72,11 +72,16 @@ function changedPaths(base: string | undefined): string[] | undefined {
   }
 }
 
+export function includesQuarantine(event: string | undefined, input: string | undefined): boolean {
+  return event === "schedule" || (event === "workflow_dispatch" && input === "true");
+}
+
 if (import.meta.main) {
   const event = process.env.GITHUB_EVENT_NAME;
   const changed = event === "pull_request" ? changedPaths(process.env.PR_BASE_SHA) : undefined;
   const quarantine = JSON.parse(readFileSync(new URL("./server-test-quarantine.json", import.meta.url), "utf8")) as Quarantine;
-  const jobs = planServerTests(assign(), loadScenarios().map(({ id }) => id), changed, event === "schedule", quarantine);
+  const includeQuarantine = includesQuarantine(event, process.env.INCLUDE_QUARANTINE);
+  const jobs = planServerTests(assign(), loadScenarios().map(({ id }) => id), changed, includeQuarantine, quarantine);
   const matrix = JSON.stringify({ include: jobs });
   console.log(matrix);
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${matrix}\nhas_jobs=${jobs.length > 0}\n`);

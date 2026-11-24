@@ -77,6 +77,8 @@
 | 自前で生成した `.mcstructure` のコマンドブロック（インパルス・チェーン・リピート、常時実行、条件付き）は `structure load` で動く | `poc/launcher`、`poc/mcstructure-version/version.servers.test.ts` |
 | BDS 1.26.63.1 が新規作成・保存するブロックの `version` は `18168865`（`0x01153c21`）、コマンドブロックの `Version` は3種類とも `55`。製品バージョンから計算した値とは異なる。この値で生成した構造物では、新しい `execute positioned`・`if block`・`if/unless score` が実行され、条件付きチェーンにも成否が伝搬する | `poc/mcstructure-version/` の実サーバーテスト、`results.json`、BDS保存データ `native.mcstructure`（#9） |
 
+BDS 1.26.66.1 でも `poc/mcstructure-version/version.servers.test.ts` が成功し、同じブロック `version` とコマンドブロック `Version`、生成構造物でのコマンド実行を確認した（#227、`poc/mcstructure-version/results.json`）。
+
 ## ID 対応表（Geyser 固定版）
 
 | 事実 | 根拠 |
@@ -96,6 +98,8 @@
 | BDS の1チャンク200個は `maxCommandChainLength`（1・100000）、`functionCommandLimit`（1・10000）、`randomTickSpeed`（0・100）を変えても毎tick100更新だった。プレイヤーなしの常時読み込みエリアでは `tick-distance`（4→12）と `persistent-ticking-area-max-chunks`（100→16）の変更後も毎tick100更新。 `commandBlocksEnabled` を false にすると0更新、true で100更新に戻った | [設定別の結果](../poc/repeat-density/README.md#実測結果)、[根拠データ](../poc/repeat-density/results.json)（#31） |
 
 ## コマンドの文法（Java 26.3）
+
+- 管理コマンド `ban` の `game_profile` は `@s`、`@e`、`@n` をプレイヤー限定違反として拒否し、それぞれに `type=player` を付けると受理する。`@a`、`@p`、`@r` も受理する。偽の execute 条件下で解析し実行しない対照付きの実測（`packages/bridge/src/admin-syntax.servers.test.ts`、#243）。管理コマンドは関数文脈では使用できないため、`checkJavaSyntax` の拒否だけではセレクター違反を特定できない。
 
 | 事実 | 根拠 |
 | --- | --- |
@@ -266,6 +270,29 @@ Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観�
 
 Java 26.3 の commands.json と Geyser 対応表、既存パーサを組み込んだ PoC は BDS 1.26.63.1 で3回とも初回コマンドをパースできた。起動要求からパースまで 602 / 783 / 613 ms、スクリプト内の JSON.parse は 159 / 193 / 178 ms、パックの圧縮前合計は 12,624,623 bytes。測定範囲・環境と限界は [PoC](../poc/runtime-load/README.md)、記録は [results.json](../poc/runtime-load/results.json)。
 
+### コマンドブロックとマクロ（#155）
+
+Java 26.3 の [実サーバーテスト](../packages/bridge/src/macro-command-block.servers.test.ts)では、コマンドブロックに `$` で始まる行を保存できたが、その行はスコアを変更しなかった。同じテストでは、コマンドブロックからインライン compound と storage の両方式でマクロ関数を呼ぶと、展開した命令がスコアを変更した。これはこのテストの入力に限った観測で、他のコマンドや版すべての挙動を保証するものではない。
+
+### マクロの具体値による型紙試探（#155、暫定）
+
+非公開コーパスの抽出結果を `tools/probe-macro-corpus.ts` で集計した。2026-11-23 時点のコーパスはマクロ 3,630 行・穴 4,089 個で、行頭の命令名に穴があるのは 1 行だった。Java 26.3 の文法で各行の全穴に同一の候補値を代入したところ、3,615 行で少なくとも一例がパースされ、15 行はどの候補でもパースできなかった。型の内訳は同スクリプトで再現できる。これは固定率ではない。異なる値や複数穴の組合せを網羅しておらず、元のワールドの版とも限らない。
+
+同スクリプトで11候補を基準値とし、同名の穴は同じ値に保って1つの名前だけ別候補に変える試探では、17行に異なる節の列を発見した。固定形と判定する条件を `say` の唯一の末尾 `message` 引数に固定の非空白接頭辞がある行に限定すると該当は0行、残り3,613行は未判定だった。0行は固定可能な行が存在しない証明ではない。判定は本パーサの節の列に限り、Java の受理や変換結果を保証しない。
+
+最初に成功した候補での穴の対応先は、entity 2,106、NBT path 797、NBT tag 271、team 129、vec3 99、component 94、function 81、slot source 78、score holder 54、string 47、integer 44、resource location 44、item stack 23、block state 3 個などだった。これは代入例による型であり、別の値で型が変わらないことを示さない。全穴に `0 0 0` を入れた場合は 327 行がパースされたが、空白によって引数の数が変わる穴の数を示すものではない。
+
+同じスクリプトで11種類の値を各行の全穴に同一に代入し、成功したパースの節（種類・名前・型・ジャンプ）の列を比較すると、2行で異なる列が得られた。残る3,628行は未判定であり、固定率は求められていない。穴ごとに異なる値の組合せや、節の内部で変わる構造は比較していない。これは Java サーバーではなく試作パーサーによる結果である。
+
+再現手順（配布マップや抽出データを公開しない）:
+
+```sh
+python3 -I scripts/dump_commands.py /home/tapukoko/code/mc-je2be-map-converter/sample-map > /tmp/issue155-commands.jsonl
+node tools/probe-macro-corpus.ts /tmp/issue155-commands.jsonl servers/reports-26.3/reports/commands.json
+```
+
+同環境で Java 26.3 の `commands.json` は 583,592 bytes、`servers/mappings/mappings.json` は 10,357,025 bytes（`wc -c`）。これは元データのサイズであり、実際に同梱が必要な範囲や起動時メモリの測定ではない。
+
 ### コマンド形の候補（#112）
 
 Java 26.3 で `node tools/shape-java-audit.ts /tmp/shape-java-audit-112.json` を実行し、1,424 形の 1,520 候補を関数の読み込みで判定した。Java が 1,448 候補を受理し、パーサとの不一致は 72、パーサが到達した終端形の不一致は 0 だった。書き換えの結果は unsupported 1,298、unchanged 86、rewritten 136。Java の関数では使用できないコマンドや存在しない参照を含むため、この不一致数をパーサの欠陥数とは扱えない。BDS の全候補の構文判定は行っていない。
@@ -275,3 +302,59 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 ### Java 1.20.4 ワールドの更新（#145）
 
 合成した 1.20.4 ワールドを Java 26.3 で開いた実サーバーテストでは、コマンドブロックの `Command` と関数ファイルの文字列が保存され、チェスト内アイテムの `CustomModelData` は `minecraft:custom_model_data` に移った。防具立ての `CustomName` の内容も残った。対象はテスト内の各1例である。根拠は `packages/bridge/src/upgrade-1204.servers.test.ts`（3回成功）、再現方法と文法・コーパスの調査は `docs/research-1204.md`。
+
+### Actions の定期実行（#222）
+
+2026-11-23 UTC の Actions API では schedule の実行履歴が 0 件で、CI と Version canary の workflow はともに active、Actions は enabled だった。隔離登録が空の状態で `include_quarantine=true` を指定した [手動 CI](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154796628) は成功し、隔離ジョブは生成されなかった。
+
+同日の [手動 Version canary](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45154550420) は検出、API、セットアップ、実機、Java 再記録、台帳生成がすべて成功し、`scenarios.diff` は空だった。artifact の候補は Java 26.3、BDS 1.26.66.1、Chunker 1.21.0 で、固定 BDS 1.26.63.1 との差を検出した。版上げの追跡は #227。
+### storage の NBT パス代入（#99）
+
+Java 26.3 では、同じ値を storage に再代入すると変更なしとなる。また `missing.list[0].x` への代入は対象なしで失敗するが、途中の `missing.list` は空リストとして生成される。同じテストで `insert -1` はリスト末尾に追加され、storage の compound merge は入れ子のキーを保持して再帰的に更新し、同値なら変更なしとなること、欠けたパスへの append と merge がそれぞれリストと compound を作り、文字列 `abcdef` の範囲 `1 -1` が `bcde` になることも確認した。根拠は `packages/bridge/src/nbt-mutation.servers.test.ts`（各3回成功）。
+## Java 版別シナリオの記録（#216）
+
+実測。`scenarios/datapack/` と `scenarios/scores/` の21シナリオを、各版の実サーバーで新規ワールドから実行し、`*.java.<版>.json` の正規化済み state を 26.3 の `*.java.json` と比較した。コマンドブロックは明示的に有効化した。
+
+| Java 版 | 26.3 との差があるシナリオ | 差分 |
+| --- | --- | --- |
+| 1.20.6、1.21.4 | `datapack/entity-nbt` | storage へのコピーは `HandItems` / `ArmorItems` のリスト（出力の `hand` / `armor`）で、26.3 は `equipment.mainhand`。同じ CustomName 入力について、前者は `"Probe"` を含む文字列、後者は `{"text":"Probe"}` を含む文字列。表示名が同じかはこの記録では測っていない（#219）。 |
+| 1.20.6、1.21.4 | `datapack/execute-extra` | `#all_mismatch`、`#masked_diff`、`#unloaded_if`、`#wrong_dimension` が 0 で存在し、26.3 の記録には存在しない。発生箇所の切り分けは #220。 |
+| 1.21.11、26.2 | 差なし | 21シナリオの state が 26.3 と一致。 |
+
+上記以外のシナリオには差がなかった。各版の具体的な値は対応する正解 JSON を参照。NBT の数値型は正規化時に一部省かれる（`docs/scenarios.md`）。
+### コマンド形の参照先と実験設定（#166）
+
+Java 26.3 の関数読み込みで、`minecart_improvements` を有効にすると `max_minecart_speed` の監査候補 6 件は受理された。また `test` の参照先を同梱の `minecraft:always_pass`、`time` の timeline を `minecraft:day` に変えた 13 件は受理された。関数を実行せずに測定した。再現手順と個々の候補は `docs/command-shape-audit.md` の #166 の表を参照。
+### BDS の関数読み込みによる構文検査（#165）
+
+BDS 1.26.63.1 の使い捨てワールドで、合成コマンドを 1 行ずつ別のビヘイビアーパック関数に置き、関数を呼び出さずに起動ログを調べた（`tools/shape-bedrock-audit.ts`、`shape-bedrock-audit.servers.test.ts`）。`time set noon` は読み込みエラーなし、`time set bogus`、不正な effect、存在しないコマンド名はそれぞれ関数名と行番号を含む読み込みエラーになった。読み込み後に副作用のある対照の scoreboard objective を新規作成でき、対照の関数が読み込み時に実行されていないことも確認した。直接実行と異なり、この対照では引数の不正を区別できた。関数内で使えるコマンドや参照の制約、実行時の成否・意味の一致、すべての不正引数は未検証であり、エラーなしを一般的な完全受理の証明とはしない。
+
+Java 26.3 の #112 監査結果を入力とすると、1,424 形・1,520 候補のうち Java 受理かつ rewritten / unchanged の 180 形・222 候補を検査し、221 件は読み込みエラーなし、1 件はエラーだった。`time query time` は Java 受理・unchanged だが BDS 関数読み込みでは `time` 引数が構文エラーだった。残る 1,244 形・1,298 候補は Java 不受理または unsupported のため BDS 未検査。形ごとの候補数・未検査数と各候補の結果は `node tools/shape-java-audit.ts /tmp/java.json && node tools/shape-bedrock-audit.ts /tmp/java.json /tmp/bedrock.json` で再生成できる。合成入力のみを使用する。
+
+ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。既知の不一致の修正は別途必要。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。
+
+### 中核を束ねた BDS パックの起動（#217）
+
+BDS 1.26.63.1 で `packages/runtime-host/src/bundle.servers.test.ts` を実行し、製品用バンドルから中核の scoreboard 命令を仮ホストで3回実行した。各回の結果とスコアは 42。`main.js` は非圧縮 6,168 bytes、テンプレート準備後の起動要求から結果ログまで 1,085 / 1,022 / 1,082 ms。生成データ・manifest はサイズに含まず、起動時間にはワールド読み込みを含む。
+
+### エンティティ名と装備の版別観測（#219）
+
+`scenarios/datapack/entity-nbt-equivalence` を Java 1.20.6、1.21.4、1.21.11、26.2、26.3 で実行した。防具立てに主手の石、副手の土、足の鉄のブーツを装備し、旧版には JSON テキスト文字列 `"Probe"`、26.3 には文字列 `Probe` を名前として与えた。各版で `name=Probe` セレクターが一致した。`data get` の成功と entity から storage にコピーした値は各版の `*.java*.json` に記録した。
+
+1.20.6 と 1.21.4 は `HandItems` と `ArmorItems` の取得が成功し、主手・副手は順に hand の 0・1、足は armor の 0 に入り、空スロットは空 compound だった。1.21.11、26.2、26.3 はそれらの取得が失敗し、`equipment` と `equipment.mainhand` / `offhand` / `feet` の取得が成功し、対応する装備が入った。名前のコピーは旧版が `"Probe"` を含む文字列、26.3 が `Probe` だった。
+
+この例の装備と単純な名前は対応する値へ正規化できるが、実行中の `data get` や storage コピーは版の違いを観測できるため、実体を 26.3 形式へ正規化するだけでは旧版の観測を保持できない。複雑な名前や装備の全組合せの可逆性はこの実験の対象外。ソース版の表現を扱う後続作業は #247。
+
+### execute のゼロスコアと保存形式（#220）
+
+`packages/bridge/src/execute-zero.servers.test.ts` は `execute-extra` の4条件をそれぞれ初期値 -1 のスコアへ `execute store result` し、応答、保存前後の `scoreboard players get`、保存 NBT とダンプ、再起動後の取得を測る。結果は `scenarios/datapack/execute-zero-observations.java*.json`。Java 1.20.6、1.21.4、1.21.11、26.2、26.3 のすべてで4コマンドの応答は `Test failed`、取得値は保存前・保存後・再起動後とも 0 だった。
+
+1.20.6 と 1.21.4 の保存 NBT は各エントリに `Score: 0` を含み、ダンプも 0 を返した。1.21.11、26.2、26.3 の保存 NBT は各エントリが存在するが `Score` を含まず、修正前のダンプはそのエントリを返さなかった。この4例の差は、保存データで `Score` を省略したエントリを 0 として読み取る正規化で吸収でき、execute の版別実行挙動はこの観測に限れば不要。#249 の修正後、26.3 の同テストはダンプでも 0 を返した。また `packages/bridge/src/convert-cli.servers.test.ts` は 26.3 の保存ワールドにあるゼロと 42 を CLI で変換し、BDS の出力ワールドでそれぞれ 0 と 42 を確認した（各テストを3回実行）。
+
+### PR の浅い checkout と base SHA（#225）
+
+[CI run 45150800820](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45150800820/job/137611563490) は merge commit `743a585` を深さ 2 で取得した。checkout のログ上のマージ先は `f493ddf`、イベントの base SHA は `b700b79` で異なり、後者を使う diff は `bad object` となった。`tools/server-test-plan.test.ts` の使い捨て Git リポジトリでも、浅い checkout の範囲外の base は diff に失敗し、SHA を明示的に取得すると文書差分と PoC 差分を選択できた。取得できない場合は全実機テストを選択する。
+
+### 保存された command storage（#201）
+
+Java 26.3 で複数の名前空間に compound、long 最大値と long 配列を保存したワールドについて、変換器の型付き初期データを復号して `JavaServer.dump()` と比較した結果は一致した。根拠は [実サーバーテスト](../packages/bridge/src/initial-storage.servers.test.ts)。

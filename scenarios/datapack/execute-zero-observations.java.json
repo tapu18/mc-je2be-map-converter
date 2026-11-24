@@ -1,0 +1,57 @@
+{
+  "java": "26.3",
+  "responses": {
+    "#all_mismatch": {
+      "command": "Test failed",
+      "getBeforeSave": "#all_mismatch has 0 [probe]",
+      "getAfterSave": "#all_mismatch has 0 [probe]",
+      "getAfterRestart": "#all_mismatch has 0 [probe]"
+    },
+    "#masked_diff": {
+      "command": "Test failed",
+      "getBeforeSave": "#masked_diff has 0 [probe]",
+      "getAfterSave": "#masked_diff has 0 [probe]",
+      "getAfterRestart": "#masked_diff has 0 [probe]"
+    },
+    "#unloaded_if": {
+      "command": "Test failed",
+      "getBeforeSave": "#unloaded_if has 0 [probe]",
+      "getAfterSave": "#unloaded_if has 0 [probe]",
+      "getAfterRestart": "#unloaded_if has 0 [probe]"
+    },
+    "#wrong_dimension": {
+      "command": "Test failed",
+      "getBeforeSave": "#wrong_dimension has 0 [probe]",
+      "getAfterSave": "#wrong_dimension has 0 [probe]",
+      "getAfterRestart": "#wrong_dimension has 0 [probe]"
+    }
+  },
+  "saved": {
+    "#all_mismatch": 0,
+    "#masked_diff": 0,
+    "#unloaded_if": 0,
+    "#wrong_dimension": 0
+  },
+  "savedNbt": [
+    {
+      "Objective": "probe",
+      "Locked": 1,
+      "Name": "#all_mismatch"
+    },
+    {
+      "Objective": "probe",
+      "Locked": 1,
+      "Name": "#masked_diff"
+    },
+    {
+      "Objective": "probe",
+      "Locked": 1,
+      "Name": "#unloaded_if"
+    },
+    {
+      "Objective": "probe",
+      "Locked": 1,
+      "Name": "#wrong_dimension"
+    }
+  ]
+}

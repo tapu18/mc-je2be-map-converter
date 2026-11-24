@@ -14,6 +14,22 @@ const fixed = JSON.parse(readFileSync(join(root, "tools", "servers.json"), "utf8
 };
 export const fixedJavaDataVersion = fixed.java.dataVersion;
 
+/** Preserve integer long bounds before JSON.parse can round them. */
+export function parseCommandTree(json: string): CommandTreeNode {
+  const tree = JSON.parse(json, (key: string, value: unknown, context?: { source?: string }) => {
+    if ((key === "min" || key === "max") && typeof value === "number" && !Number.isSafeInteger(value) && context?.source && /^-?\d+$/.test(context.source)) return BigInt(context.source);
+    return value;
+  }) as CommandTreeNode;
+  const visit = (node: CommandTreeNode): void => {
+    if (node.parser !== "brigadier:long" && node.properties) {
+      for (const key of ["min", "max"]) if (typeof node.properties[key] === "bigint") node.properties[key] = Number(node.properties[key]);
+    }
+    for (const child of Object.values(node.children ?? {})) visit(child);
+  };
+  visit(tree);
+  return tree;
+}
+
 export interface JavaGrammarSource {
   version: string;
   url: string;
@@ -28,6 +44,24 @@ export interface JavaGrammarInstallation extends CommandGrammar {
   commandsPath: string;
   commandsSha256: string;
   packMinor: number;
+}
+
+type GrammarDescriptor = Omit<JavaGrammarInstallation, "java" | "serverDirectory" | "commandsPath">;
+
+function installationFromDescriptor(descriptor: GrammarDescriptor, directory: string): JavaGrammarInstallation {
+  // Ignore path fields in old descriptors as well: their original checkout may no longer exist.
+  const { java: _java, serverDirectory: _serverDirectory, commandsPath: _commandsPath, ...metadata } = descriptor as JavaGrammarInstallation;
+  return {
+    ...metadata,
+    java: join(dirname(directory), "jre", "bin", "java"),
+    serverDirectory: join(directory, descriptor.version, "server"),
+    commandsPath: join(directory, descriptor.version, "generated", "reports", "commands.json"),
+  };
+}
+
+function descriptorFromInstallation(installation: JavaGrammarInstallation): GrammarDescriptor {
+  const { java: _java, serverDirectory: _serverDirectory, commandsPath: _commandsPath, ...descriptor } = installation;
+  return descriptor;
 }
 
 function assertSource(source: JavaGrammarSource): void {
@@ -103,11 +137,14 @@ export async function setupJavaGrammar(source: JavaGrammarSource): Promise<JavaG
   const generated = join(output, "generated");
   const commandsPath = join(generated, "reports", "commands.json");
   if (existsSync(descriptor) && existsSync(commandsPath)) {
-    const previous = JSON.parse(readFileSync(descriptor, "utf8")) as JavaGrammarInstallation;
-    if (previous.source.sha1 === source.sha1 && previous.source.functionDirectory === source.functionDirectory && previous.commandsPath === commandsPath
+    const previous = installationFromDescriptor(JSON.parse(readFileSync(descriptor, "utf8")) as GrammarDescriptor, grammarRoot);
+    if (previous.version === source.version && previous.source.sha1 === source.sha1 && previous.source.functionDirectory === source.functionDirectory
       && existsSync(join(serverDirectory, "server.jar"))
       && createHash("sha1").update(readFileSync(join(serverDirectory, "server.jar"))).digest("hex") === source.sha1
-      && previous.commandsSha256 === sha256(readFileSync(commandsPath))) return previous;
+      && previous.commandsSha256 === sha256(readFileSync(commandsPath))) {
+      writeFileSync(descriptor, JSON.stringify(descriptorFromInstallation(previous), null, 2) + "\n");
+      return previous;
+    }
   }
   mkdirSync(serverDirectory, { recursive: true });
   copyFileSync(archive, join(serverDirectory, "server.jar"));
@@ -126,16 +163,16 @@ export async function setupJavaGrammar(source: JavaGrammarSource): Promise<JavaG
     textFormat: textFormatFor(metadata.dataVersion), packMinor: metadata.packMinor,
     source, java, serverDirectory, commandsPath, commandsSha256: sha256(readFileSync(commandsPath)),
   };
-  writeFileSync(descriptor, JSON.stringify(installation, null, 2) + "\n");
+  writeFileSync(descriptor, JSON.stringify(descriptorFromInstallation(installation), null, 2) + "\n");
   return installation;
 }
 
-export function loadJavaGrammars(): JavaGrammarInstallation[] {
+export function loadJavaGrammars(directory = grammarRoot): JavaGrammarInstallation[] {
   return javaGrammarSources().flatMap((source) => {
-    const file = join(grammarRoot, source.version, "grammar.json");
+    const file = join(directory, source.version, "grammar.json");
     if (!existsSync(file)) return [];
-    const installation = JSON.parse(readFileSync(file, "utf8")) as JavaGrammarInstallation;
-    if (installation.source.sha1 !== source.sha1 || sha256(readFileSync(installation.commandsPath)) !== installation.commandsSha256) throw new Error(`stale/corrupt grammar: ${source.version}`);
+    const installation = installationFromDescriptor(JSON.parse(readFileSync(file, "utf8")) as GrammarDescriptor, directory);
+    if (installation.version !== source.version || installation.source.sha1 !== source.sha1 || sha256(readFileSync(installation.commandsPath)) !== installation.commandsSha256) throw new Error(`stale/corrupt grammar: ${source.version}`);
     return [installation];
   });
 }
@@ -143,5 +180,5 @@ export function loadJavaGrammars(): JavaGrammarInstallation[] {
 export function loadGrammarTree(grammar: JavaGrammarInstallation): CommandTreeNode {
   const bytes = readFileSync(grammar.commandsPath);
   if (sha256(bytes) !== grammar.commandsSha256) throw new Error(`corrupt grammar: ${grammar.version}`);
-  return JSON.parse(bytes.toString("utf8")) as CommandTreeNode;
+  return parseCommandTree(bytes.toString("utf8"));
 }

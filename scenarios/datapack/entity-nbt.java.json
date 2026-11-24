@@ -1,0 +1,17 @@
+{
+  "java": "26.3",
+  "state": {
+    "storage": {
+      "m2:entity": {
+        "name": "{\"text\":\"Probe\"}",
+        "equipment": {
+          "mainhand": {
+            "count": 1,
+            "id": "minecraft:stone"
+          }
+        },
+        "health": 20
+      }
+    }
+  }
+}
