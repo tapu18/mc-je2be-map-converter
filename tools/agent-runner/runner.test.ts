@@ -25,9 +25,20 @@ async function fixture() {
   };
   await writeFile(dataPath, JSON.stringify(initial));
   const script = String.raw`
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmdirSync } from 'node:fs';
 import { basename } from 'node:path';
 const file = process.env.RUNNER_FIXTURE;
+// Multiple mocked commands can run concurrently. Serialize their read-modify-write
+// transactions so no command reads a truncated file or loses another command's update.
+const lock = file + '.lock';
+for (;;) {
+  try { mkdirSync(lock); break; }
+  catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  }
+}
+const save = d => { writeFileSync(file, JSON.stringify(d)); rmdirSync(lock); };
 const d = JSON.parse(readFileSync(file, 'utf8'));
 const args = process.argv.slice(2);
 const tool = basename(process.argv[1]);
@@ -65,7 +76,7 @@ if (tool === 'git') {
   } else throw Error('Unexpected gh ' + args);
 } else if (tool === 'codex' || tool === 'claude') {
   if (d.launchFails || (tool === 'codex' && args.includes('--approve-for-me') && args.includes('--sandbox'))) {
-    writeFileSync(file, JSON.stringify(d));
+    save(d);
     console.error('error: invalid CLI arguments');
     process.exit(2);
   }
@@ -77,12 +88,12 @@ if (tool === 'git') {
   } else {
     if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
     (d.workerPrompts ??= []).push(prompt);
-    if (d.workerLog) { for (const line of d.workerLog) out(line); writeFileSync(file, JSON.stringify(d)); process.exit(1); }
+    if (d.workerLog) { for (const line of d.workerLog) out(line); save(d); process.exit(1); }
     out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
     if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
   }
 } else throw Error('Unexpected executable ' + tool);
-writeFileSync(file, JSON.stringify(d));
+save(d);
 if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode = 1;
 `;
   for (const tool of ['git', 'gh', 'codex', 'claude']) {
