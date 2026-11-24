@@ -26,7 +26,12 @@
       "getAfterRestart": "#wrong_dimension has 0 [probe]"
     }
   },
-  "saved": {},
+  "saved": {
+    "#all_mismatch": 0,
+    "#masked_diff": 0,
+    "#unloaded_if": 0,
+    "#wrong_dimension": 0
+  },
   "savedNbt": [
     {
       "Objective": "probe",

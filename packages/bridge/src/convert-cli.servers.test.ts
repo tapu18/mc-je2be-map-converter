@@ -26,6 +26,7 @@ it("converts through the CLI to a directory and importable archive without chang
   try {
     await java.exec("scoreboard objectives add t dummy");
     await java.exec("scoreboard players set kept t 42");
+    await java.exec("scoreboard players set zero t 0");
     await java.exec('setblock 2 -60 2 minecraft:command_block[facing=south]{Command:"data get storage fixture:missing",auto:0b}');
     await java.dump({});
   } finally { await java.stop(); }
@@ -62,6 +63,7 @@ it("converts through the CLI to a directory and importable archive without chang
     try {
       const scores = await bds.request<{ objective: string; scores: { participant: string; score: number }[] }[]>("scores");
       expect(scores.result?.find(o => o.objective === "t")?.scores.find(s => s.participant === "kept")?.score).toBe(42);
+      expect(scores.result?.find(o => o.objective === "t")?.scores.find(s => s.participant === "zero")?.score).toBe(0);
     } finally { await bds.stop(); }
     if (process.env.JE2BE_ACCEPTANCE_ARTIFACTS) {
       const target = process.env.JE2BE_ACCEPTANCE_ARTIFACTS;
