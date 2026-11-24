@@ -120,7 +120,9 @@ export class StringReader {
       this.cursor = start;
       throw this.error("整数が必要", start);
     }
-    return BigInt(s);
+    const n = BigInt(s);
+    if (n < -(1n << 63n) || n >= (1n << 63n)) throw this.error(`整数の範囲外 '${s}'`, start);
+    return n;
   }
 
   readDouble(): number {

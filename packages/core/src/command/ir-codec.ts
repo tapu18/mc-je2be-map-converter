@@ -92,6 +92,7 @@ const selectorValue: Check = one(
 const selector = obj({variable: str, arguments: arr(obj({key: str, negated: bool, value: selectorValue}))});
 const value = one(
   obj({kind: lit("bool"), value: bool}), obj({kind: lit("number"), value: num}),
+  obj({kind: lit("long"), value: x => typeof x === "bigint" && x >= -(1n << 63n) && x < (1n << 63n)}),
   obj({kind: lit("string", "name", "word"), value: str}), obj({kind: lit("selector"), selector}),
   obj({kind: lit("coordinates"), coordinates: arr(obj({kind: lit("absolute", "relative", "local"), value: num}))}),
   obj({kind: lit("block"), id: str, tag: bool, states: record(str)}, {nbt}),

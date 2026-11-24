@@ -8,8 +8,10 @@ type Run = (program: string, args: string[], options: { cwd: string }) => Promis
 // Only these ignored paths are disposable build/setup output; sample-map and other
 // ignored files may contain user data. Git reports ignored directories collapsed.
 function generated(path: string): boolean {
-  return /(^|\/)(node_modules|servers|dist)\/$/.test(path) ||
+  return /(^|\/)(node_modules|servers|dist|__pycache__)\/$/.test(path) ||
     path.endsWith('.tsbuildinfo') || path === 'packages/bridge-pack/pack/scripts/' ||
+    // The runtime host pack has no tracked files, so git collapses its build output to pack/.
+    path === 'packages/runtime-host/pack/' || path === 'packages/runtime-host/pack/scripts/' ||
     /^poc\/[^/]+\/pack\/(scripts|structures)\/$/.test(path);
 }
 

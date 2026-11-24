@@ -22,7 +22,7 @@ import {
   type TextFormat,
 } from "@je2be/core";
 import { loadBlockDefaults } from "./block-defaults.ts";
-import { fixedJavaDataVersion, loadGrammarTree, loadJavaGrammars } from "./java-grammars.ts";
+import { fixedJavaDataVersion, loadGrammarTree, loadJavaGrammars, parseCommandTree } from "./java-grammars.ts";
 import { decompress, JavaWorld } from "./java-world.ts";
 
 export interface RewriteResources {
@@ -36,7 +36,7 @@ export interface RewriteResources {
 
 /** 書き換えに使う文法・対応表を読む。textFormat はワールドの DataVersion から決める */
 export function loadRewriteContext(res: RewriteResources, textFormat: TextFormat): RewriteContext {
-  const tree = JSON.parse(readFileSync(res.commandsJson, "utf8")) as CommandTreeNode;
+  const tree = parseCommandTree(readFileSync(res.commandsJson, "utf8"));
   return rewriteContext(tree, textFormat, res.mappingsJson, res.blocksJson);
 }
 
