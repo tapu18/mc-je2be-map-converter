@@ -289,6 +289,24 @@ async function main() {
             await comment(task.issue, `${marker}\n管理プログラムは、人が status:paused を外すまでこの Issue を再開しません。`);
           continue;
         }
+        // Only worker-originated waits are automatic. Runner-originated stops (phase
+        // blocked) require explicit intervention even if old dependencies are closed.
+        if (task.phase === 'working' && hasLabel(item, 'status:blocked') &&
+            !hasLabel(item, 'needs-approval') &&
+            !item.labels.some(l => l.name.startsWith('status:') && l.name !== 'status:blocked')) {
+          const deps = dependencies(item.body);
+          const resolved = deps.length > 0 && (await Promise.all(deps.map(number => issue(number))))
+            .every(dep => dep.state === 'CLOSED' && !hasLabel(dep, 'needs-approval'));
+          const pulls = resolved ? await prs(task) : [];
+          if (resolved && !pulls.some(pr => pr.state === 'OPEN' && hasLabel(pr, 'needs-approval'))) {
+            await status(task.issue, 'status:ready');
+            task.attempts = 0;
+            await save();
+            await status(task.issue, 'status:in-progress');
+            item.labels = item.labels.filter(l => !l.name.startsWith('status:'));
+            item.labels.push({ name: 'status:in-progress' });
+          }
+        }
         if (task.phase === 'blocked') {
           if (!hasLabel(item, 'status:ready') || hasLabel(item, 'needs-approval')) { log(`#${task.issue} 保留中（再開指示待ち）`); continue; }
           task.attempts = 0;

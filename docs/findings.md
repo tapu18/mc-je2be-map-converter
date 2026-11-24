@@ -60,6 +60,8 @@
 
 | 事実 | 根拠 |
 | --- | --- |
+| Java 26.3 の関数タグで `return 7`・`return 4` を順に呼ぶと結果は 11。`execute if function` では先頭の非ゼロ return で後続関数を実行しない | `packages/bridge/src/scenario/runtime-function-condition.servers.test.ts` |
+| Java 26.3 の `execute if function` は、明示的な `return -1` では成立し、`return 0`・`return fail`・通常終了では成立しない。`unless` はその逆 | `packages/bridge/src/scenario/runtime-function-condition.servers.test.ts` |
 | `scoreboard players operation ... /=` は、Java が負の無限大方向に切り捨て（7 / -2 = -4）、BE が 0 方向（-3） | `scenarios/scores/arithmetic.json` |
 | `%=` は、Java が割る数と同じ符号（7 % -2 = -1、-7 % 2 = 1）、BE が割られる数と同じ符号（1、-1） | 同上 |
 | `scoreboard players add` で int があふれると、Java は折り返し（7 + 2147483647 = -2147483642）、BE は加算が失敗して値が変わらない | 同上 |
@@ -98,6 +100,8 @@ BDS 1.26.66.1 でも `poc/mcstructure-version/version.servers.test.ts` が成功
 | BDS の1チャンク200個は `maxCommandChainLength`（1・100000）、`functionCommandLimit`（1・10000）、`randomTickSpeed`（0・100）を変えても毎tick100更新だった。プレイヤーなしの常時読み込みエリアでは `tick-distance`（4→12）と `persistent-ticking-area-max-chunks`（100→16）の変更後も毎tick100更新。 `commandBlocksEnabled` を false にすると0更新、true で100更新に戻った | [設定別の結果](../poc/repeat-density/README.md#実測結果)、[根拠データ](../poc/repeat-density/results.json)（#31） |
 
 ## コマンドの文法（Java 26.3）
+
+- 管理コマンド `ban` の `game_profile` は `@s`、`@e`、`@n` をプレイヤー限定違反として拒否し、それぞれに `type=player` を付けると受理する。`@a`、`@p`、`@r` も受理する。偽の execute 条件下で解析し実行しない対照付きの実測（`packages/bridge/src/admin-syntax.servers.test.ts`、#243）。管理コマンドは関数文脈では使用できないため、`checkJavaSyntax` の拒否だけではセレクター違反を特定できない。
 
 | 事実 | 根拠 |
 | --- | --- |

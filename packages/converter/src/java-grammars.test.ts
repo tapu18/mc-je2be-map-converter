@@ -38,3 +38,9 @@ it.each([false, true])("loads copied grammars with legacy paths: %s", (legacy) =
     expect(loadGrammarTree(grammar!)).toEqual(JSON.parse(commands));
   } finally { rmSync(temp, { recursive: true, force: true }); }
 });
+import { parseCommandTree } from "./java-grammars.ts";
+
+it("preserves long bounds from commands JSON", () => {
+  const tree = parseCommandTree('{"type":"root","children":{"value":{"type":"argument","parser":"brigadier:long","properties":{"min":9007199254740993,"max":9223372036854775807}}}}');
+  expect(tree.children?.value?.properties).toEqual({min: 9007199254740993n, max: 9223372036854775807n});
+});
