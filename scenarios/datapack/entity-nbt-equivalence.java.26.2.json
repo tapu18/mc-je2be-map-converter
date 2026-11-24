@@ -1,0 +1,33 @@
+{
+  "java": "26.2",
+  "state": {
+    "storage": {
+      "m2:entity": {
+        "name_matches": 1,
+        "get_equipment": 1,
+        "get_CustomName": 1,
+        "get_HandItems": 0,
+        "get_equipment_offhand": 1,
+        "name": "Probe",
+        "get_equipment_mainhand": 1,
+        "equipment": {
+          "mainhand": {
+            "count": 1,
+            "id": "minecraft:stone"
+          },
+          "feet": {
+            "count": 1,
+            "id": "minecraft:iron_boots"
+          },
+          "offhand": {
+            "count": 1,
+            "id": "minecraft:dirt"
+          }
+        },
+        "health": 20,
+        "get_ArmorItems": 0,
+        "get_equipment_feet": 1
+      }
+    }
+  }
+}

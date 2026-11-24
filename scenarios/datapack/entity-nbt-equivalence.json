@@ -1,0 +1,58 @@
+{
+  "description": "同じ名前 Probe と主手・副手・足の装備について版別の data get と storage コピーを観測する",
+  "setup": [
+    "summon minecraft:armor_stand 0 -60 0 {Tags:[\"probe\"]}",
+    "execute if data entity @e[type=minecraft:armor_stand,tag=probe,limit=1] HandItems run data merge entity @e[type=minecraft:armor_stand,tag=probe,limit=1] {CustomName:'\"Probe\"'}",
+    "execute unless data entity @e[type=minecraft:armor_stand,tag=probe,limit=1] HandItems run data merge entity @e[type=minecraft:armor_stand,tag=probe,limit=1] {CustomName:'Probe'}",
+    "item replace entity @e[type=minecraft:armor_stand,tag=probe,limit=1] weapon.mainhand with minecraft:stone",
+    "item replace entity @e[type=minecraft:armor_stand,tag=probe,limit=1] weapon.offhand with minecraft:dirt",
+    "item replace entity @e[type=minecraft:armor_stand,tag=probe,limit=1] armor.feet with minecraft:iron_boots"
+  ],
+  "actions": [
+    {
+      "run": "data modify storage m2:entity name set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] CustomName"
+    },
+    {
+      "run": "data modify storage m2:entity hand set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] HandItems"
+    },
+    {
+      "run": "data modify storage m2:entity armor set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] ArmorItems"
+    },
+    {
+      "run": "data modify storage m2:entity equipment set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] equipment"
+    },
+    {
+      "run": "execute store result storage m2:entity health int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Health"
+    },
+    {
+      "run": "execute store success storage m2:entity get_CustomName int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] CustomName"
+    },
+    {
+      "run": "execute store success storage m2:entity get_HandItems int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] HandItems"
+    },
+    {
+      "run": "execute store success storage m2:entity get_ArmorItems int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] ArmorItems"
+    },
+    {
+      "run": "execute store success storage m2:entity get_equipment int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] equipment"
+    },
+    {
+      "run": "execute store success storage m2:entity get_equipment_mainhand int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] equipment.mainhand"
+    },
+    {
+      "run": "execute store success storage m2:entity get_equipment_offhand int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] equipment.offhand"
+    },
+    {
+      "run": "execute store success storage m2:entity get_equipment_feet int 1 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] equipment.feet"
+    },
+    {
+      "run": "execute store success storage m2:entity name_matches int 1 if entity @e[type=minecraft:armor_stand,tag=probe,name=Probe,limit=1]"
+    }
+  ],
+  "observe": {
+    "storage": [
+      "m2:entity"
+    ]
+  },
+  "bedrockPending": "Java の版ごとの NBT を調べる"
+}
