@@ -20,7 +20,7 @@ export function executeCommand(state: RuntimeState, ir: CommandIR): ExecutionRes
   return outcome.success ? {success: true, result: outcome.result} : {success: false, error: outcome.error};
 }
 
-type Outcome = ExecutionResult & {returned?: boolean};
+type Outcome = ExecutionResult & {returned?: boolean; explicitReturn?: boolean};
 function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
   const fail = (error: string): ExecutionResult => ({success: false, error});
   type Store = {kind: "storage"; id: string; path: Extract<NonNullable<typeof ir.context[number]["nodes"][number]["value"]>, {kind: "nbtPath"}>["path"]; scale: number; success: boolean} | {kind: "score"; holder: string; objective: string; success: boolean};
@@ -33,13 +33,18 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
     const store = step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "storage" && storagePath && typeNode?.name === "int" && scaleNode?.value?.kind === "number";
     const scoreStore = step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "score" && idNode?.value?.kind === "name" && pathNode?.value?.kind === "word";
     const scoreCondition = (step.kind === "if" || step.kind === "unless") && a?.name === "score" && b?.value?.kind === "name" && idNode?.value?.kind === "word" && ((pathNode?.name === "matches" && typeNode?.value?.kind === "range") || (["=", "<", "<=", ">", ">="].includes(pathNode?.name ?? "") && typeNode?.value?.kind === "name" && scaleNode?.value?.kind === "word"));
-    if (!condition && !store && !scoreStore && !scoreCondition) return fail("unsupported execute step");
+    const functionCondition = (step.kind === "if" || step.kind === "unless") && a?.name === "function" && b?.value?.kind === "resource";
+    if (!condition && !store && !scoreStore && !scoreCondition && !functionCondition) return fail("unsupported execute step");
   }
   let conditionFailed = false;
   for (const step of ir.context) {
     const [a, b, idNode, pathNode, typeNode, scaleNode] = step.nodes;
     const id = idNode?.value, p = pathNode?.value;
-    if ((step.kind === "if" || step.kind === "unless") && a?.name === "data" && b?.name === "storage" && id?.kind === "resource" && p?.kind === "nbtPath") {
+    if ((step.kind === "if" || step.kind === "unless") && a?.name === "function" && b?.value?.kind === "resource") {
+      const result = execute(state, {source: ir.source, context: [], command: {name: "function", nodes: [b]}}, depth);
+      if (!result.success && result.error.startsWith("unsupported")) return result;
+      if ((result.success && result.explicitReturn === true && result.result !== 0) !== (step.kind === "if")) { conditionFailed = true; break; }
+    } else if ((step.kind === "if" || step.kind === "unless") && a?.name === "data" && b?.name === "storage" && id?.kind === "resource" && p?.kind === "nbtPath") {
       const found = getNbtPath(state.storage.get(id.id), p.path).length > 0;
       if (found !== (step.kind === "if")) { conditionFailed = true; break; }
     } else if (step.kind === "store" && (a?.name === "result" || a?.name === "success") && b?.name === "storage" && id?.kind === "resource" && p?.kind === "nbtPath" && typeNode?.name === "int" && scaleNode?.value?.kind === "number") {
@@ -85,7 +90,7 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
           }
           if (returned) break;
         }
-        outcome = returned ? (returned.success ? {success: true, result: returned.result} : {success: false, error: returned.error}) : {success: true, result: count};
+        outcome = returned ? (returned.success ? {success: true, result: returned.result, explicitReturn: true} : {success: false, error: returned.error, explicitReturn: true}) : {success: true, result: count};
       }
     }
   } else outcome = command.name === "scoreboard" ? executeScoreCommand(state.scores, command) : executeStorageCommand(state.storage, command);

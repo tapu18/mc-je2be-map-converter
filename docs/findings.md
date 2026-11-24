@@ -60,6 +60,7 @@
 
 | 事実 | 根拠 |
 | --- | --- |
+| Java 26.3 の `execute if function` は、明示的な `return -1` では成立し、`return 0`・`return fail`・通常終了では成立しない。`unless` はその逆 | `packages/bridge/src/scenario/runtime-function-condition.servers.test.ts` |
 | `scoreboard players operation ... /=` は、Java が負の無限大方向に切り捨て（7 / -2 = -4）、BE が 0 方向（-3） | `scenarios/scores/arithmetic.json` |
 | `%=` は、Java が割る数と同じ符号（7 % -2 = -1、-7 % 2 = 1）、BE が割られる数と同じ符号（1、-1） | 同上 |
 | `scoreboard players add` で int があふれると、Java は折り返し（7 + 2147483647 = -2147483642）、BE は加算が失敗して値が変わらない | 同上 |
