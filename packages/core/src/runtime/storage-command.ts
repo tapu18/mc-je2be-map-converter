@@ -51,6 +51,20 @@ export function executeStorageCommand(storage: StorageState, command: NonNullabl
   const sourcePath = path(nodes, "sourcePath");
   let values: NbtTag[];
   if (direct) values = [direct];
+  else if (sourceId && sourcePath && nodes.some((n, i) => n.name === "string" && nodes[i + 1]?.name === "storage")) {
+    const source = getNbtPath(storage.get(sourceId), sourcePath);
+    if (source.some(v => v.type !== "string")) return fail("unsupported non-string substring source");
+    values = [];
+    for (const tag of source) {
+      if (tag.type !== "string") continue;
+      const length = tag.value.length;
+      const startArg = number(nodes, "start") ?? 0, endArg = number(nodes, "end") ?? length;
+      const start = startArg < 0 ? length + startArg : startArg;
+      const end = endArg < 0 ? length + endArg : endArg;
+      if (start < 0 || end > length || start > end) return fail("substring bounds");
+      values.push({type: "string", value: tag.value.slice(start, end)});
+    }
+  }
   else if (sourceId && nodes.some(n => n.name === "from") && nodes.some((n, i) => n.name === "from" && nodes[i + 1]?.name === "storage")) values = sourcePath ? getNbtPath(storage.get(sourceId), sourcePath).map(copyNbt) : [copyNbt(storage.get(sourceId))];
   else return fail("unsupported storage value source");
   if (!values.length) return fail("source path missing");

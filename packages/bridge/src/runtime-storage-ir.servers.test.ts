@@ -42,4 +42,7 @@ it("merges compound storage values recursively", () => {
   expect(run("data modify storage test:paths b.list append value 3")).toMatchObject({success: true});
   expect(run("data modify storage test:paths b.object merge value {x:1}")).toMatchObject({success: true});
   expect(nbtToPlain(state.storage.get("test:paths"))).toEqual({a: {x: 3, y: 2}, b: {list: [3], object: {x: 1}}});
+  expect(run('data modify storage test:paths source set value "abcdef"')).toMatchObject({success: true});
+  expect(run('data modify storage test:paths dest set string storage test:paths source 1 -1')).toMatchObject({success: true});
+  expect(nbtToPlain(state.storage.get("test:paths"))).toMatchObject({dest: "bcde"});
 });

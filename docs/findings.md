@@ -278,7 +278,7 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 
 ### storage の NBT パス代入（#99）
 
-Java 26.3 では、同じ値を storage に再代入すると変更なしとなる。また `missing.list[0].x` への代入は対象なしで失敗するが、途中の `missing.list` は空リストとして生成される。同じテストで `insert -1` はリスト末尾に追加され、storage の compound merge は入れ子のキーを保持して再帰的に更新し、同値なら変更なしとなること、欠けたパスへの append と merge がそれぞれリストと compound を作ることも確認した。根拠は `packages/bridge/src/nbt-mutation.servers.test.ts`（各3回成功）。
+Java 26.3 では、同じ値を storage に再代入すると変更なしとなる。また `missing.list[0].x` への代入は対象なしで失敗するが、途中の `missing.list` は空リストとして生成される。同じテストで `insert -1` はリスト末尾に追加され、storage の compound merge は入れ子のキーを保持して再帰的に更新し、同値なら変更なしとなること、欠けたパスへの append と merge がそれぞれリストと compound を作り、文字列 `abcdef` の範囲 `1 -1` が `bcde` になることも確認した。根拠は `packages/bridge/src/nbt-mutation.servers.test.ts`（各3回成功）。
 ## Java 版別シナリオの記録（#216）
 
 実測。`scenarios/datapack/` と `scenarios/scores/` の21シナリオを、各版の実サーバーで新規ワールドから実行し、`*.java.<版>.json` の正規化済み state を 26.3 の `*.java.json` と比較した。コマンドブロックは明示的に有効化した。

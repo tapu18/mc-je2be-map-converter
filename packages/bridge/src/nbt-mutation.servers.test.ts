@@ -44,3 +44,12 @@ it("creates missing list and compound targets for storage modifications", async 
     expect(await java.exec("data get storage test:paths a")).toMatch(/object: \{x: 1\}/);
   } finally { await java.stop(); }
 });
+
+it("takes a substring from a storage string using negative end indices", async () => {
+  const java = await JavaServer.start();
+  try {
+    await java.exec('data modify storage test:paths source set value "abcdef"');
+    expect(await java.exec('data modify storage test:paths dest set string storage test:paths source 1 -1')).toMatch(/Modified storage/);
+    expect(await java.exec('data get storage test:paths dest')).toMatch(/bcde/);
+  } finally { await java.stop(); }
+});
