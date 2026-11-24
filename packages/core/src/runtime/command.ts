@@ -41,9 +41,17 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
     const [a, b, idNode, pathNode, typeNode, scaleNode] = step.nodes;
     const id = idNode?.value, p = pathNode?.value;
     if ((step.kind === "if" || step.kind === "unless") && a?.name === "function" && b?.value?.kind === "resource") {
-      const result = execute(state, {source: ir.source, context: [], command: {name: "function", nodes: [b]}}, depth);
-      if (!result.success && result.error.startsWith("unsupported")) return result;
-      if ((result.success && result.explicitReturn === true && result.result !== 0) !== (step.kind === "if")) { conditionFailed = true; break; }
+      const target = b.value;
+      const names = target.tag ? state.functionTags.get(target.id) : [target.id];
+      if (!names || names.some(name => !state.functions.has(name))) return fail("unknown function");
+      let matched = false;
+      for (const name of names) {
+        const node = {...b, value: {...target, id: name, tag: false}};
+        const result = execute(state, {source: ir.source, context: [], command: {name: "function", nodes: [node]}}, depth);
+        if (!result.success && result.error.startsWith("unsupported")) return result;
+        if (result.success && result.explicitReturn === true && result.result !== 0) { matched = true; break; }
+      }
+      if (matched !== (step.kind === "if")) { conditionFailed = true; break; }
     } else if ((step.kind === "if" || step.kind === "unless") && a?.name === "data" && b?.name === "storage" && id?.kind === "resource" && p?.kind === "nbtPath") {
       const found = getNbtPath(state.storage.get(id.id), p.path).length > 0;
       if (found !== (step.kind === "if")) { conditionFailed = true; break; }
@@ -79,18 +87,24 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
       const names = target.tag ? state.functionTags.get(target.id) : [target.id];
       if (!names || names.some(name => !state.functions.has(name))) outcome = fail("unknown function");
       else {
-        let count = 0;
-        let returned: Outcome | undefined;
+        let total = 0;
+        let successes = 0;
+        let single: Outcome | undefined;
         for (const name of names) {
+          let count = 0;
+          let returned: Outcome | undefined;
           for (const line of state.functions.get(name)!) {
             const result = execute(state, line, depth + 1);
             count++;
             if (!result.success && result.error.startsWith("unsupported")) { returned = result; break; }
             if (result.returned) { returned = result; break; }
           }
-          if (returned) break;
+          if (returned && !returned.success && returned.error.startsWith("unsupported")) { single = returned; break; }
+          const result: Outcome = returned ? (returned.success ? {success: true, result: returned.result, explicitReturn: true} : {success: false, error: returned.error, explicitReturn: true}) : {success: true, result: count};
+          single = result;
+          if (result.success) { successes++; total += result.result; }
         }
-        outcome = returned ? (returned.success ? {success: true, result: returned.result, explicitReturn: true} : {success: false, error: returned.error, explicitReturn: true}) : {success: true, result: count};
+        outcome = target.tag ? (single && !single.success && single.error.startsWith("unsupported") ? single : successes ? {success: true, result: total} : fail("function tag failed")) : single ?? fail("unknown function");
       }
     }
   } else outcome = command.name === "scoreboard" ? executeScoreCommand(state.scores, command) : executeStorageCommand(state.storage, command);
