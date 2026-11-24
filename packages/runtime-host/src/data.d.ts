@@ -1,3 +1,3 @@
-import type { ObjectiveData, PlacedEntity } from "./types.js";
+import type { ObjectiveData, PlacedEntity } from "./types.ts";
 export const objectives: ObjectiveData;
 export const entities: PlacedEntity[];

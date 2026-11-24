@@ -12,7 +12,7 @@ vi.mock("@minecraft/server", () => ({ world: {
   setDynamicProperty: (key: string, value: unknown) => fake.properties.set(key, value),
   scoreboard: { getObjective: fake.getObjective, addObjective: fake.addObjective },
 } }));
-vi.mock("./restore.js", () => ({ restoreEntities: fake.restore }));
+vi.mock("./restore.ts", () => ({ restoreEntities: fake.restore }));
 import { initialize, INIT_PROPERTY } from "./initialize.ts";
 
 beforeEach(() => {
