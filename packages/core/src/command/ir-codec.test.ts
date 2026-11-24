@@ -8,6 +8,14 @@ const tree: CommandTreeNode = {type: "root", children: {
 const parser = new CommandParser(tree, {textFormat: "snbt"});
 
 describe("versioned IR", () => {
+  it("round trips a long argument exactly", () => {
+    const longParser = new CommandParser({type: "root", children: {probe: {type: "literal", children: {value: {type: "argument", parser: "brigadier:long", executable: true}}}}}, {textFormat: "snbt"});
+    const source = "probe 9007199254740993";
+    const parsed = longParser.parse(source);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const document = {grammarVersion: "26.3", textFormat: "snbt" as const, ir: toCommandIR(source, parsed.nodes)};
+    expect(deserializeCommandIR(serializeCommandIR(document))).toEqual({ok: true, document});
+  });
   it("round trips parsed nested NBT and all typed arrays without loss", () => {
     const source = 'data {x:5000000000L,nested:{name:"hi",list:[{x:1b},{x:2b}]},b:[B;-128b,127b],i:[I;-2147483648,2147483647],l:[L;-9223372036854775808L,9223372036854775807L]}';
     const parsed = parser.parse(source);

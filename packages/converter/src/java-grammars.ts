@@ -14,6 +14,22 @@ const fixed = JSON.parse(readFileSync(join(root, "tools", "servers.json"), "utf8
 };
 export const fixedJavaDataVersion = fixed.java.dataVersion;
 
+/** Preserve integer long bounds before JSON.parse can round them. */
+export function parseCommandTree(json: string): CommandTreeNode {
+  const tree = JSON.parse(json, (key: string, value: unknown, context?: { source?: string }) => {
+    if ((key === "min" || key === "max") && typeof value === "number" && !Number.isSafeInteger(value) && context?.source && /^-?\d+$/.test(context.source)) return BigInt(context.source);
+    return value;
+  }) as CommandTreeNode;
+  const visit = (node: CommandTreeNode): void => {
+    if (node.parser !== "brigadier:long" && node.properties) {
+      for (const key of ["min", "max"]) if (typeof node.properties[key] === "bigint") node.properties[key] = Number(node.properties[key]);
+    }
+    for (const child of Object.values(node.children ?? {})) visit(child);
+  };
+  visit(tree);
+  return tree;
+}
+
 export interface JavaGrammarSource {
   version: string;
   url: string;
@@ -164,5 +180,5 @@ export function loadJavaGrammars(directory = grammarRoot): JavaGrammarInstallati
 export function loadGrammarTree(grammar: JavaGrammarInstallation): CommandTreeNode {
   const bytes = readFileSync(grammar.commandsPath);
   if (sha256(bytes) !== grammar.commandsSha256) throw new Error(`corrupt grammar: ${grammar.version}`);
-  return JSON.parse(bytes.toString("utf8")) as CommandTreeNode;
+  return parseCommandTree(bytes.toString("utf8"));
 }
