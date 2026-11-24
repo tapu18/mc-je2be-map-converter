@@ -99,6 +99,21 @@ describe("java world", () => {
     expect(out[3 * 4096 + 4]).toBe(2); // 書き換えたチャンクは zlib（ここでは恒等の圧縮）
   });
 
+  it("reads omitted scores as zero only for valid score entries", () => {
+    const row = (fields: Record<string, ReturnType<typeof nbt.string> | ReturnType<typeof nbt.int>>) => nbt.compound(fields);
+    const sb = nbt.compound({ data: nbt.compound({ PlayerScores: nbt.list("compound", [
+      row({ Objective: nbt.string("t"), Name: nbt.string("zero") }),
+      row({ Objective: nbt.string("t"), Name: nbt.string("explicit"), Score: nbt.int(0) }),
+      row({ Objective: nbt.string("t"), Name: nbt.string("nonzero"), Score: nbt.int(-7) }),
+      row({ Objective: nbt.string("t"), Name: nbt.string("invalid"), Score: nbt.string("0") }),
+      row({ Objective: nbt.string("t") }),
+      row({ Name: nbt.string("missing-objective") }),
+    ]) }) });
+    expect(readScoreboard(sb)).toEqual([{ objective: "t", scores: [
+      { participant: "zero", score: 0 }, { participant: "explicit", score: 0 }, { participant: "nonzero", score: -7 },
+    ] }]);
+  });
+
   it("reads scoreboard and command storage", () => {
     const sb = nbt.compound({
       data: nbt.compound({
