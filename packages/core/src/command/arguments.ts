@@ -68,6 +68,7 @@ export type NbtPathNode =
 export type ArgumentValue =
   | { kind: "bool"; value: boolean }
   | { kind: "number"; value: number }
+  | { kind: "long"; value: bigint }
   | { kind: "string"; value: string }
   | { kind: "selector"; selector: EntitySelector }
   /** プレイヤー名、UUID、スコアの保持者名、`*` */
@@ -558,7 +559,23 @@ export const ARGUMENT_PARSERS: Record<string, ArgumentParser> = {
     checkBounds(r, start, value, p);
     return { kind: "number", value };
   },
-  "brigadier:long": (r) => ({ kind: "number", value: Number(r.readLong()) }),
+  "brigadier:long": (r, p) => {
+    const start = r.cursor;
+    const value = r.readLong();
+    for (const key of ["min", "max"] as const) {
+      const bound = p?.[key];
+      if (bound === undefined) continue;
+      // JSON.parse may already have rounded an unsafe integer; never use it silently.
+      if (typeof bound !== "bigint" && !(typeof bound === "number" && Number.isSafeInteger(bound))) {
+        throw r.error(`long の ${key} は正確な整数である必要がある`, start);
+      }
+      const exact = BigInt(bound);
+      if ((key === "min" && value < exact) || (key === "max" && value > exact)) {
+        throw r.error(`long の ${key} の範囲外（${value}）`, start);
+      }
+    }
+    return { kind: "long", value };
+  },
   "brigadier:float": (r, p) => {
     const start = r.cursor;
     const value = r.readDouble();

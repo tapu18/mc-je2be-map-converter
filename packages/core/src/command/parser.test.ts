@@ -282,8 +282,18 @@ describe("引数", () => {
   });
 });
 
-it("#205: 合成 long 文法では安全整数を超える値が丸められる現状を再現する", () => {
+it("合成 long 文法で精度と符号付き 64 bit の境界を保持する", () => {
   const parser = new CommandParser({ type: "root", children: { probe: lit({ children: { value: arg("brigadier:long", { executable: true }) } }) } }, { textFormat: "snbt" });
   const result = parser.parse("probe 9007199254740993");
-  expect(result.ok && result.nodes[1]?.value).toEqual({ kind: "number", value: 9007199254740992 });
+  expect(result.ok && result.nodes[1]?.value).toEqual({ kind: "long", value: 9007199254740993n });
+  for (const value of ["-9223372036854775808", "9223372036854775807"]) expect(parser.parse(`probe ${value}`).ok).toBe(true);
+  for (const value of ["-9223372036854775809", "9223372036854775808"]) expect(parser.parse(`probe ${value}`).ok).toBe(false);
+});
+
+it("long の文法境界を正確に検査する", () => {
+  const parser = new CommandParser({ type: "root", children: { probe: lit({ children: { value: arg("brigadier:long", { executable: true, properties: { min: 9007199254740993n, max: 9007199254740995n } }) } }) } }, { textFormat: "snbt" });
+  for (const value of ["9007199254740993", "9007199254740995"]) expect(parser.parse(`probe ${value}`).ok).toBe(true);
+  for (const value of ["9007199254740992", "9007199254740996"]) expect(parser.parse(`probe ${value}`).ok).toBe(false);
+  const unsafe = new CommandParser({ type: "root", children: { probe: lit({ children: { value: arg("brigadier:long", { executable: true, properties: { min: 9007199254740992 } }) } }) } }, { textFormat: "snbt" });
+  expect(unsafe.parse("probe 9007199254740993").ok).toBe(false);
 });
