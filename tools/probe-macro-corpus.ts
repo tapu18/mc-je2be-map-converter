@@ -9,6 +9,7 @@ if (!input || !grammar) throw new Error("usage: node tools/probe-macro-corpus.ts
 const parser = new CommandParser(JSON.parse(readFileSync(grammar, "utf8")) as CommandTreeNode, { textFormat: "snbt" });
 const counts: Record<string, number> = {};
 let total = 0, matched = 0, commandHole = 0, holes = 0, whitespaceExample = 0, differingShapes = 0, fixedSay = 0;
+let whitespaceWitnessHoles = 0, whitespaceWitnessLines = 0, unresolvedNoParse = 0, unresolvedOneShape = 0;
 const say = parser.root.children?.say;
 const sayChildren = Object.entries(say?.children ?? {});
 const safeSay = say?.type === "literal" && sayChildren.length === 1 && sayChildren[0]?.[0] === "message" && sayChildren[0]?.[1].parser === "minecraft:message" && sayChildren[0]?.[1].executable === true;
@@ -35,6 +36,30 @@ for (const line of readFileSync(input, "utf8").split("\n")) {
   }
   if (fixed && shapes.size > 1) throw new Error("fixed-shape invariant failed");
   if (shapes.size > 1) differingShapes++;
+  else if (!fixed) {
+    if (shapes.size === 0) unresolvedNoParse++;
+    else unresolvedOneShape++;
+  }
+  // Compare successful parses while changing only one parameter, from a
+  // single token to a value containing spaces. Repeated names change together;
+  // count their occurrences, not independent parameters.
+  let witnessed = 0;
+  for (const name of names) {
+    let changed = false;
+    for (const baseline of values.filter(v => !v.includes(" "))) {
+      const parse = (value: string) => parser.parse(cmd.slice(1).replace(/\$\(([^()]+)\)/g, (_m, key: string) => key === name ? value : baseline));
+      const before = parse(baseline);
+      if (!before.ok) continue;
+      const signature = (nodes: typeof before.nodes) => JSON.stringify(nodes.map(({ kind, name, parser, jump }) => [kind, name, parser, jump]));
+      for (const value of ["0 0 0", "run say x"]) {
+        const after = parse(value);
+        if (after.ok && signature(before.nodes) !== signature(after.nodes)) changed = true;
+      }
+    }
+    if (changed) witnessed += [...cmd.matchAll(/\$\(([^()]+)\)/g)].filter(m => m[1] === name).length;
+  }
+  whitespaceWitnessHoles += witnessed;
+  if (witnessed) whitespaceWitnessLines++;
   // This only establishes an example where all holes can contain spaces; it
   // does not determine whether the number of arguments changes.
   if (parser.parse(cmd.slice(1).replace(/\$\(([^()]+)\)/g, "0 0 0")).ok) whitespaceExample++;
@@ -43,4 +68,4 @@ for (const line of readFileSync(input, "utf8").split("\n")) {
   matched++;
   for (const hole of result.holes) counts[hole.parser] = (counts[hole.parser] ?? 0) + 1;
 }
-console.log(JSON.stringify({ total, holes, commandHole, matched, unmatched: total - matched, whitespaceExample, fixedSay, differingShapes, shapeUnresolved: total - differingShapes - fixedSay, holeTypesForFirstSuccessfulProbe: counts }, null, 2));
+console.log(JSON.stringify({ total, holes, commandHole, matched, unmatched: total - matched, whitespaceExample, whitespaceWitnessHoles, whitespaceWitnessLines, fixedSay, differingShapes, shapeUnresolved: total - differingShapes - fixedSay, unresolvedNoParse, unresolvedOneShape, holeTypesForFirstSuccessfulProbe: counts }, null, 2));
