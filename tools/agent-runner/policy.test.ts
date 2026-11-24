@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeClaims, canMerge, checksFailed, dependencies } from './policy.ts';
+import { activeClaims, baseAllowsMerge, canMerge, checksFailed, dependencies } from './policy.ts';
 import type { Issue, PullRequest } from './policy.ts';
 
 const issue: Issue = { number: 7, title: 'test', body: '', state: 'OPEN', labels: [], comments: [] };
@@ -58,5 +58,20 @@ describe('runner policy', () => {
   it('distinguishes failed CI from absent or pending CI', () => {
     expect(checksFailed({ ...passing(), statusCheckRollup: [] })).toBe(false);
     expect(checksFailed({ ...passing(), statusCheckRollup: [{ conclusion: 'FAILURE' }] })).toBe(true);
+  });
+});
+
+describe('base merge safety', () => {
+  const success = { headSha: 'base', event: 'push', status: 'completed', conclusion: 'success' };
+  it('blocks a failed latest completed push, ignoring cancelled and pending runs', () => {
+    expect(baseAllowsMerge([{ ...success, status: 'in_progress', conclusion: null },
+      { ...success, conclusion: 'cancelled' }, { ...success, conclusion: 'failure' }, success], [], [])).toBe(false);
+    expect(baseAllowsMerge([], [], [])).toBe(false);
+    expect(baseAllowsMerge([success], [], [])).toBe(true);
+  });
+  it('blocks overlapping changes until the branch includes the base', () => {
+    expect(baseAllowsMerge([success], ['shared'], ['shared'])).toBe(false);
+    expect(baseAllowsMerge([success], ['base'], ['pr'])).toBe(true);
+    expect(baseAllowsMerge([success], [], ['shared'])).toBe(true);
   });
 });

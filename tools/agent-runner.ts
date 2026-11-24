@@ -9,7 +9,7 @@ import { agentArguments, AgentLaunchError, failedBeforeWork, validateWorkerArgs 
 import { followProgress } from './agent-runner/progress.ts';
 import { managerConfig, managerDue, managerPrompt, managerReport } from './agent-runner/manager.ts';
 import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
-import { activeClaims, canMerge, checksFailed, dependencies, hasLabel } from './agent-runner/policy.ts';
+import { activeClaims, baseAllowsMerge, canMerge, checksFailed, dependencies, hasLabel, latestBaseRun } from './agent-runner/policy.ts';
 import type { Issue, PullRequest, WorkflowRun } from './agent-runner/policy.ts';
 
 interface Config {
@@ -79,6 +79,50 @@ async function main() {
   const prs = (task: Task) => json<PullRequest[]>(['pr', 'list', '--head', task.branch, '--state', 'all', '--json',
     'number,state,isDraft,baseRefName,headRefName,headRefOid,mergeStateStatus,reviewDecision,labels,closingIssuesReferences,statusCheckRollup']);
   const ciRuns = (pr: PullRequest) => json<WorkflowRun[]>(['run', 'list', '--workflow', 'ci.yml', '--branch', pr.headRefName, '--limit', '100', '--json', 'headSha,event,status,conclusion']);
+  const baseRuns = () => json<WorkflowRun[]>(['run', 'list', '--workflow', 'ci.yml', '--branch', config.base, '--event', 'push', '--limit', '100', '--json', 'headSha,event,status,conclusion']);
+  const git = (args: string[]) => command('git', args, { cwd: root, signal: abort.signal });
+  const api = async <T>(path: string): Promise<T> => JSON.parse(await command('gh', ['api', path], { cwd: root, signal: abort.signal })) as T;
+  const reportBaseFailure = async (run: WorkflowRun) => {
+    const marker = `<!-- agent-runner-base-ci:${run.headSha} -->`;
+    const associated = await api<{ number: number }[]>(`repos/${config.repo}/commits/${run.headSha}/pulls`);
+    for (const pull of associated) {
+      const details = await json<{ closingIssuesReferences: { number: number }[] }>(['pr', 'view', String(pull.number), '--json', 'closingIssuesReferences']);
+      for (const ref of details.closingIssuesReferences) {
+        const target = await issue(ref.number);
+        if (!target.comments.some(c => c.body.includes(marker)))
+          await gh(['issue', 'comment', String(ref.number), '--body', `${marker}\n${config.base} の push CI が ${run.conclusion} です（commit ${run.headSha}、PR #${pull.number}）。自動マージを停止します。Actions の CI を調査してください。`]);
+        return;
+      }
+    }
+    const existing = await json<{ number: number }[]>(['issue', 'list', '--state', 'all', '--search', `agent-runner base CI ${run.headSha} in:title`, '--json', 'number']);
+    if (!existing.length) await gh(['issue', 'create', '--title', `agent-runner base CI ${run.headSha}`, '--body', `${marker}\n${config.base} の push CI が ${run.conclusion} です。自動マージを停止しています。Actions の CI を調査してください。`]);
+  };
+  const baseSafety = async (pr: PullRequest): Promise<boolean> => {
+    const runs = await baseRuns();
+    const latest = latestBaseRun(runs);
+    if (latest && latest.conclusion !== 'success') {
+      log(`${config.base} push CI ${latest.headSha}: ${latest.conclusion}。自動マージ停止`);
+      await reportBaseFailure(latest);
+      return false;
+    }
+    if (!latest) { log(`${config.base} の完了した push CI がないため自動マージ停止`); return false; }
+    await git(['fetch', '--no-tags', 'origin', config.base, pr.headRefName]);
+    const baseSha = (await git(['rev-parse', `origin/${config.base}`])).trim();
+    const headSha = (await git(['rev-parse', `origin/${pr.headRefName}`])).trim();
+    if (headSha !== pr.headRefOid) return false;
+    const ancestor = (await git(['merge-base', baseSha, headSha])).trim();
+    const paths = async (from: string, to: string) => (await git(['diff', '--no-renames', '--name-only', '-z', from, to])).split('\0').filter(Boolean);
+    const baseChanges = await paths(ancestor, baseSha);
+    const prChanges = await paths(ancestor, headSha);
+    if (!baseAllowsMerge(runs, baseChanges, prChanges)) {
+      log(`PR #${pr.number}: base と同じファイルを変更。ブランチを更新して CI を待ちます`);
+      await gh(['pr', 'update-branch', String(pr.number)]);
+      return false;
+    }
+    // Refuse a merge if the base moved while calculating the intersection.
+    const remote = (await git(['ls-remote', 'origin', `refs/heads/${config.base}`])).split(/\s/)[0];
+    return remote === baseSha;
+  };
   const ready = () => json<Issue[]>(['issue', 'list', '--state', 'open', '--label', 'status:ready', '--limit', '100',
     ...(config.milestone ? ['--milestone', config.milestone] : []), '--json', 'number,title,body,state,labels,comments']);
   const eligible = async (item: Issue) => {
@@ -286,7 +330,7 @@ async function main() {
             // Recheck immediately; gh's SHA guard rejects head updates during merge.
             const freshIssue = await issue(task.issue);
             const fresh = (await prs(task)).find(p => p.number === pr.number);
-            if (fresh && canMerge(freshIssue, fresh, config.base, await ciRuns(fresh))) {
+            if (fresh && canMerge(freshIssue, fresh, config.base, await ciRuns(fresh)) && await baseSafety(fresh)) {
               await gh(['pr', 'merge', String(pr.number), '--merge', '--match-head-commit', fresh.headRefOid]);
               log(`Merged #${pr.number} for issue #${task.issue}`);
             }
