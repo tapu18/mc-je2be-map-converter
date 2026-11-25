@@ -38,18 +38,25 @@ for (const row of rows) {
     writes.set(key, [...(writes.get(key) ?? []), m[2]!]);
   }
 }
-const counts: Record<string, number> = { macroLines: 0, holes: 0, probeFailed: 0, idHoles: 0, noStorageCall: 0, noMatchingWrite: 0, matchingWrite: 0, literalCandidate: 0, mergeCandidate: 0, storageHasMerge: 0, storageHasSetValue: 0, storageHasOtherWrite: 0, noDirectInvocation: 0, otherInvocation: 0, inlineInvocation: 0, withStorageInvocation: 0, withEntityInvocation: 0, withBlockInvocation: 0, withUnknownInvocation: 0, bareOrOtherInvocation: 0 };
+const counts: Record<string, number> = { macroLines: 0, holes: 0, probeFailed: 0, idHoles: 0, differingHoleTypes: 0, noStorageCall: 0, noMatchingWrite: 0, matchingWrite: 0, literalCandidate: 0, mergeCandidate: 0, storageHasMerge: 0, storageHasSetValue: 0, storageHasOtherWrite: 0, noDirectInvocation: 0, otherInvocation: 0, inlineInvocation: 0, withStorageInvocation: 0, withEntityInvocation: 0, withBlockInvocation: 0, withUnknownInvocation: 0, bareOrOtherInvocation: 0 };
 for (const row of rows) {
   const cmd = row.cmd.trim();
   if (!cmd.startsWith('$')) continue;
   counts.macroLines!++;
   counts.holes! += [...cmd.matchAll(/\$\(([^()]+)\)/g)].length;
-  const result = ['minecraft:stone', 'x', '0', '@s', '0 0 0', '{}'].map(v => probeMacroTemplate(parser, cmd, v)).find(Boolean);
-  if (!result) { counts.probeFailed!++; continue; }
-  for (const hole of result.holes) {
-    if (!['minecraft:item_stack', 'minecraft:item_predicate', 'minecraft:block_state', 'minecraft:block_predicate'].includes(hole.parser)) continue;
+  const results = ['minecraft:stone', 'x', '0', '@s', '0 0 0', '{}'].map(v => probeMacroTemplate(parser, cmd, v)).filter(r => r !== undefined);
+  if (!results.length) { counts.probeFailed!++; continue; }
+  const byPosition = new Map<number, typeof results[number]['holes']>();
+  for (const result of results) for (const hole of result.holes) {
+    const found = byPosition.get(hole.start) ?? [];
+    found.push(hole);
+    byPosition.set(hole.start, found);
+  }
+  for (const variants of byPosition.values()) {
+    if (new Set(variants.map(h => h.parser)).size > 1) counts.differingHoleTypes!++;
     // A hole after the opening component/state/NBT syntax does not occupy the ID.
-    if (/[\[{]/.test(cmd.slice(hole.start - hole.offset, hole.start))) continue;
+    const hole = variants.find(h => ['minecraft:item_stack', 'minecraft:item_predicate', 'minecraft:block_state', 'minecraft:block_predicate'].includes(h.parser) && !/[\[{]/.test(cmd.slice(h.start - h.offset, h.start)));
+    if (!hole) continue;
     counts.idHoles!++;
     const sources = calls.get(`${row.scope}\0${row.function}`) ?? [];
     if (!sources.length) {
