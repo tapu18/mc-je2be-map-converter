@@ -6,18 +6,25 @@ import { ARGUMENT_PARSERS } from "./arguments.ts";
 import { StringReader } from "./reader.ts";
 
 const catalog: CommandGrammar[] = [
+  { version: "1.20.4", dataVersion: 3700, packFormat: 26, textFormat: "json", commandsSha256: "old" },
   { version: "1.20.5", dataVersion: 3837, packFormat: 41, textFormat: "json", commandsSha256: "same" },
   { version: "1.20.6", dataVersion: 3839, packFormat: 41, textFormat: "json", commandsSha256: "same" },
   { version: "1.21.5", dataVersion: 4325, packFormat: 71, textFormat: "snbt", commandsSha256: "different" },
 ];
 
 describe("versioned command grammar selection", () => {
+  it("selects 1.20.4 from a world or a standalone data pack", () => {
+    expect(selectCommandGrammar(catalog, { dataVersion: 3700, packFormat: 41 })).toMatchObject({ ok: true, grammar: { version: "1.20.4" }, matchedBy: "data-version" });
+    expect(selectCommandGrammar(catalog, { packFormatRange: readPackFormatRange({ pack: { pack_format: 26 } })! })).toMatchObject({ ok: true, grammar: { version: "1.20.4" }, matchedBy: "pack-format" });
+    expect(selectCommandGrammar(catalog, { dataVersion: 3699 })).toMatchObject({ ok: false, reason: "unavailable" });
+    expect(selectCommandGrammar(catalog, { packFormatRange: { min: [26, 0], max: [41, 0] } })).toMatchObject({ ok: false, reason: "ambiguous" });
+  });
   it("prefers the world's exact DataVersion even if a pack declares an older format", () => {
     expect(selectCommandGrammar(catalog, { dataVersion: 4325, packFormat: 41 })).toMatchObject({ ok: true, grammar: { version: "1.21.5" }, matchedBy: "data-version" });
   });
   it("uses pack_format only if its known grammars agree", () => {
     expect(selectCommandGrammar(catalog, { packFormat: 41 })).toMatchObject({ ok: true, grammar: { version: "1.20.6" }, matchedBy: "pack-format" });
-    expect(selectCommandGrammar([...catalog, { ...catalog[0]!, version: "other", commandsSha256: "other" }], { packFormat: 41 })).toMatchObject({ ok: false, reason: "ambiguous" });
+    expect(selectCommandGrammar([...catalog, { ...catalog[1]!, version: "other", commandsSha256: "other" }], { packFormat: 41 })).toMatchObject({ ok: false, reason: "ambiguous" });
   });
   it("does not turn missing version coverage into a successful latest-version parse", () => {
     expect(selectCommandGrammar(catalog, { dataVersion: 3953, packFormat: 41 })).toMatchObject({ ok: false, reason: "unavailable" });

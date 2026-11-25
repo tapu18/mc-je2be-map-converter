@@ -405,3 +405,7 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 ### 確定世代の再起動（#303）
 
 `packages/runtime-host/src/persistence.servers.test.ts` は BDS 1.26.66.1 で、通常のランタイム起動後にセッションのコマンドでスコアと storage を変更し、tick 境界で確定して正常停止したワールドを再起動した。両方の復元と BE スコアへの投影は独立したワールドで 3 回成功した。`packages/bridge/src/output-world.servers.test.ts` では BE コマンドによるスコア変更も正常停止・再起動後に残り、修正後に3回成功した。強制終了、部分書き込み、容量不足はこれらのテストでは検証していない。
+
+### Java 1.20.4 の文法（#191）
+
+固定した公式サーバーから生成した文法の版情報は DataVersion 3700、データパック形式 26 だった。`packages/bridge/src/versioned-grammar.servers.test.ts` で JSON テキスト、ゲームルール、チーム色、座標など14例の受理・不受理を生成文法のパーサと Java 1.20.4 で比較し、3回一致した。旧アイテムや particle の網羅的な対応を示すものではない。
