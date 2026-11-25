@@ -82,7 +82,7 @@ function mixedProbe(cmd: string) {
   }
   return { parsed, holes: mapped, failure: best?.category ?? 'other' };
 }
-const counts: Record<string, number> = { macroLines: 0, holes: 0, probeFailed: 0, mixedParsed: 0, mixedUnmappedHoles: 0, failedUnsupportedParser: 0, failedUnknownLiteral: 0, failedIncomplete: 0, failedInvalidArgument: 0, failedOther: 0, idHoles: 0, differingHoleTypes: 0, noStorageCall: 0, noMatchingWrite: 0, matchingWrite: 0, literalCandidate: 0, mergeCandidate: 0, compoundSetCandidate: 0, candidateAny: 0, unresolvedNoCall: 0, unresolvedNoWrites: 0, unresolvedWrites: 0, storageHasMerge: 0, storageHasSetValue: 0, storageHasOtherWrite: 0, storageHasSetFrom: 0, storageHasSetString: 0, storageHasRemove: 0, noDirectInvocation: 0, otherInvocation: 0, inlineInvocation: 0, withStorageInvocation: 0, withEntityInvocation: 0, withBlockInvocation: 0, withUnknownInvocation: 0, bareOrOtherInvocation: 0 };
+const counts: Record<string, number> = { macroLines: 0, holes: 0, probeFailed: 0, mixedParsed: 0, mixedUnmappedHoles: 0, failedUnsupportedParser: 0, failedUnknownLiteral: 0, failedIncomplete: 0, failedInvalidArgument: 0, failedOther: 0, idHoles: 0, differingHoleTypes: 0, noStorageCall: 0, noMatchingWrite: 0, matchingWrite: 0, literalCandidate: 0, mergeCandidate: 0, compoundSetCandidate: 0, copySourceHasWrites: 0, copyLiteralCandidate: 0, candidateAny: 0, unresolvedNoCall: 0, unresolvedNoWrites: 0, unresolvedWrites: 0, storageHasMerge: 0, storageHasSetValue: 0, storageHasOtherWrite: 0, storageHasSetFrom: 0, storageHasSetString: 0, storageHasRemove: 0, noDirectInvocation: 0, otherInvocation: 0, inlineInvocation: 0, withStorageInvocation: 0, withEntityInvocation: 0, withBlockInvocation: 0, withUnknownInvocation: 0, bareOrOtherInvocation: 0 };
 for (const row of rows) {
   const cmd = row.cmd.trim();
   if (!cmd.startsWith('$')) continue;
@@ -202,7 +202,30 @@ for (const row of rows) {
       });
     });
     if (compoundSet) counts.compoundSetCandidate!++;
-    if (literal || merged || compoundSet) counts.candidateAny!++;
+    // Follow one simple-path storage-to-storage set-from edge. This is
+    // a possible value, not a guarantee that either command executes in order.
+    let copySourceHasWrites = false;
+    let copyLiteral = false;
+    for (const source of sources) {
+      const [storage, path] = source.split('\0');
+      const field = `${path ? path + '.' : ''}${hole.name}`;
+      if (!/^[a-zA-Z0-9_+.-]+$/.test(field)) continue;
+      for (const write of writes.get(`${row.scope}\0${storage}`) ?? []) {
+        const match = /^([^\s]+) set from storage ([a-z0-9_./:-]+) ([a-zA-Z0-9_+.-]+)$/.exec(write);
+        if (!match || (match[1] !== field && !field.startsWith(match[1]! + '.'))) continue;
+        const originField = match[3]! + field.slice(match[1]!.length);
+        const originWrites = writes.get(`${row.scope}\0${resource(match[2]!)}`) ?? [];
+        if (originWrites.length) copySourceHasWrites = true;
+        for (const origin of originWrites) {
+          const prefix = `${originField} set value `;
+          if (!origin.startsWith(prefix)) continue;
+          try { if (parseSnbt(origin.slice(prefix.length).trim()).type === 'string') copyLiteral = true; } catch { /* unsupported SNBT */ }
+        }
+      }
+    }
+    if (copySourceHasWrites) counts.copySourceHasWrites!++;
+    if (copyLiteral) counts.copyLiteralCandidate!++;
+    if (literal || merged || compoundSet || copyLiteral) counts.candidateAny!++;
     else if (!allWrites.length) counts.unresolvedNoWrites!++;
     else counts.unresolvedWrites!++;
   }
