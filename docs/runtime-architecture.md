@@ -46,8 +46,8 @@ Java 26.3 の生成文法を使った Node テスト `ir-codec.servers.test.ts` 
 
 現在の `executeCommand` は中断したジェネレーターを明示フレームとして LIFO の実行キューで進める。既定予算は命令 100,000、関数深さ 128、分岐 10,000 で、呼び出しごとにリセットする。命令は入れ子の `return run` と関数条件の内部呼び出しも数え、分岐は条件と実行する関数タグの各要素（通常の関数も1要素）を数える。超過時は直ちに診断して残りの処理と保留中の store を実行しないが、既に行った書き込みは戻さない。この値と超過時の伝播はランタイム独自の安全策であり、Java の上限やエラー伝播との一致は未確認。
 
-Node のフェイクホストでは Java の正解データ（#96）と意味論を比較する。BDS では API 制約、起動、永続化、ネイティブとの境界を検証する。片方だけではそれぞれ API の制約または網羅と再現を確かめにくい。現在の中核は単一の文字列保持者の scoreboard と storage の一部、単独の storage 条件・`store result ... int` を CommandIR から実行する。セレクタ、複数 execute ステップ、storage の非文字列 substring、関数呼び出し、保存と実機ホストは未対応である。未知の操作は失敗を返す。
+Node のフェイクホストでは Java の正解データ（#96）と意味論を比較する。BDS では API 制約、起動、永続化、ネイティブとの境界を検証する。片方だけではそれぞれ API の制約または網羅と再現を確かめにくい。現在の中核は単一の文字列保持者の scoreboard と storage の一部、単独の storage 条件・`store result ... int` を CommandIR から実行する。セレクタ、複数 execute ステップ、storage の非文字列 substring、セレクタなどの複数対象と仮想 NBT は未対応である。未知の操作は失敗を返す。
 
 変換器は初期化パックの `scripts/datapacks.js` に `datapacks` を出力する。`schemaVersion: 1` と保存された有効順の `packs` を持ち、各パックの `functions` は関数 ID から行順の IR codec JSON 文字列の配列への対応、`tags` は関数タグ ID から元の JSON への対応である。ワールドの版で選んだオーバーレイを順に適用する。パック順とタグの `replace`・任意参照は保持し、解決は将来のランタイムに委ねる。`minecraft:load` と `minecraft:tick` も通常のタグとして保存する。版を選べないパック、パースできない関数、マクロはレポートに診断し、関数単位で同梱しない。データを置く段階であり、関数の自動実行はまだ接続していない。
 
-変換器の storage 初期データは初期化パックの `scripts/storage.js` に `storage` 配列として収める。各要素は `id`（名前空間付きキー）と順序付き `chunks` を持ち、連結すると `schemaVersion: 1` の JSON になる。値は IR と同じ型付き符号化であり、`deserializeStorage` で compound に復号する。各片は UTF-8 で 32,767 バイト以下。読み取り・符号化の失敗は変換レポートの `storage.errors` に記録する。ランタイムへの取り込みと確定は未実装（#102）。
+変換器の storage 初期データは初期化パックの `scripts/storage.js` に `storage` 配列として収める。各要素は `id`（名前空間付きキー）と順序付き `chunks` を持ち、連結すると `schemaVersion: 1` の JSON になる。値は IR と同じ型付き符号化であり、`deserializeStorage` で compound に復号する。各片は UTF-8 で 32,767 バイト以下。読み取り・符号化の失敗は変換レポートの `storage.errors` に記録する。起動時に確定済み状態がなければ取り込んで確定し、以後は確定状態を復元する。管理対象 objective の fake-player スコアは BE 側の変更も取り込み、storage と共に tick 境界で同じ世代として確定する（#303）。
