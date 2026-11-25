@@ -1,6 +1,6 @@
 // 実際に生成した 26.2 / 26.3 の文法で正規化を比較する。
 import { expect, it } from "vitest";
-import { CommandParser, normalize1_21_2Arguments, normalize26_2TeamColor, normalize26_3DataArgumentNames, toCommandIR } from "@je2be/core";
+import { CommandParser, normalize1_21_2Arguments, normalize1_21_11Worldborder, normalize26_2TeamColor, normalize26_3DataArgumentNames, toCommandIR } from "@je2be/core";
 import { javaGrammarSources, loadGrammarTree, setupJavaGrammar } from "@je2be/converter";
 
 it("normalizes the 26.2 data and function coordinate paths parsed with generated grammars", async () => {
@@ -25,6 +25,23 @@ it("normalizes the 26.2 data and function coordinate paths parsed with generated
     const old = parsers[0]!.parse(command), current = parsers[1]!.parse(command);
     if (!old.ok || !current.ok) throw new Error(`Could not parse ${command}: ${JSON.stringify({ old, current })}`);
     expect(normalize26_3DataArgumentNames(toCommandIR(command, old.nodes))).toEqual(toCommandIR(command, current.nodes));
+  }
+});
+
+it("normalizes worldborder seconds to the 1.21.11 time value", async () => {
+  const sources = javaGrammarSources();
+  const grammars = await Promise.all(["1.21.10", "1.21.11"].map(version => {
+    const source = sources.find(s => s.version === version);
+    if (!source) throw new Error(`Missing grammar ${version}`);
+    return setupJavaGrammar(source);
+  }));
+  const parsers = grammars.map(g => new CommandParser(loadGrammarTree(g), { textFormat: g.textFormat }));
+  for (const prefix of ["worldborder add 1", "worldborder set 20", "worldborder warning time"]) {
+    const old = parsers[0]!.parse(`${prefix} 7`), current = parsers[1]!.parse(`${prefix} 7s`);
+    if (!old.ok || !current.ok) throw new Error(`Could not parse ${prefix}: ${JSON.stringify({ old, current })}`);
+    const before = normalize1_21_11Worldborder(toCommandIR(`${prefix} 7`, old.nodes)).command!.nodes.at(-1)!;
+    const after = toCommandIR(`${prefix} 7s`, current.nodes).command!.nodes.at(-1)!;
+    expect({ name: before.name, parser: before.parser, value: before.value }).toEqual({ name: after.name, parser: after.parser, value: after.value });
   }
 });
 
