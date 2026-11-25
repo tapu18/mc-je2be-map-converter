@@ -1,0 +1,28 @@
+{
+  "java": "26.3",
+  "state": {
+    "scores": {
+      "result": {
+        "#multiple": 1,
+        "#self": 3,
+        "#negative": -2,
+        "#unless_matches": 1,
+        "#no_team": 3,
+        "#exact": 1,
+        "#team": 1,
+        "#range": 1,
+        "#unset": 0,
+        "#upper": 2,
+        "#unless_entity": 1,
+        "#gamemode": 0,
+        "#unless_compare": 1,
+        "#lower": 1,
+        "#mid": 1,
+        "#low": -1,
+        "#overflow": 2147483647,
+        "#high": 3,
+        "#players": 0
+      }
+    }
+  }
+}
