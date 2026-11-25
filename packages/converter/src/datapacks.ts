@@ -78,7 +78,8 @@ export function collectDatapacks(world: string) {
             const normalized = normalizeCommandIR(toCommandIR(line, parsed.nodes), grammar.version);
             if (!normalized.ok) {
               const { reason, start, end } = normalized;
-              diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason, start, end });
+              const indent = raw.length - raw.trimStart().length;
+              diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason, start: indent + start, end: indent + end });
               valid = false;
               continue;
             }
