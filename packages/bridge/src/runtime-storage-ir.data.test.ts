@@ -61,43 +61,6 @@ it("stores score results and evaluates score ranges", () => {
   expect(state.scores.get("#missing_check", "result")).toBe(1);
 });
 
-it("matches the calls scenario against Java except executor expansion", () => {
-  const parser = new CommandParser(JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode, {textFormat: "snbt"});
-  const scenario = JSON.parse(readFileSync(new URL("../../../scenarios/datapack/calls.json", import.meta.url), "utf8"));
-  const expected = JSON.parse(readFileSync(new URL("../../../scenarios/datapack/calls.java.json", import.meta.url), "utf8"));
-  const state = new RuntimeState();
-  const parse = (line: string) => {
-    const parsed = parser.parse(line);
-    if (!parsed.ok) throw new Error(`${line}: ${parsed.error.message}`);
-    return toCommandIR(line, parsed.nodes);
-  };
-  for (const [name, lines] of Object.entries(scenario.datapack.functions) as [string, string[]][]) state.functions.set(name, lines.map(parse));
-  for (const [name, tag] of Object.entries(scenario.datapack.functionTags) as [string, {values: string[]}][]) state.functionTags.set(name, tag.values);
-  for (const line of scenario.setup as string[]) expect(executeCommand(state, parse(line)).success, line).toBe(true);
-  // The marker setup and the last two actions require entity selection and execution contexts (#231, #262).
-  const knownDiffs = {"actions.executorExpansion": "未実装（#231）", "storage.m2:calls.executors": "未実装（#231）"};
-  const actions = scenario.actions as {run: string}[];
-  expect(actions).toHaveLength(12);
-  for (const action of actions.slice(0, 4)) executeCommand(state, parse(action.run));
-  expect(actions.slice(4, 10).map(a => a.run.split(" ").slice(0, 3).join(" "))).toEqual([
-    "summon minecraft:marker 13", "summon minecraft:marker 9", "summon minecraft:marker 11",
-    "scoreboard players set", "scoreboard players set", "scoreboard players set",
-  ]);
-  for (const action of actions.slice(10)) {
-    expect(action.run).toMatch(/^execute positioned 8 -60 8 as @e\[type=marker,tag=worker,sort=(nearest|furthest)\] run function m2:calls\/executor$/);
-    expect(executeCommand(state, parse(action.run))).toEqual({success: false, error: "unsupported execute step"});
-  }
-  expect(knownDiffs["actions.executorExpansion"]).toBe("未実装（#231）");
-  expect(Object.fromEntries(state.scores.objectives.get("result")!)).toEqual(expected.state.scores.result);
-  const actual = nbtToPlain(state.storage.get("m2:calls")) as Record<string, unknown>;
-  const golden = expected.state.storage["m2:calls"] as Record<string, unknown>;
-  expect(actual.executors).not.toEqual(golden.executors);
-  expect(knownDiffs["storage.m2:calls.executors"]).toBe("未実装（#231）");
-  const {executors: _actualExecutors, ...actualComparable} = actual;
-  const {executors: _goldenExecutors, ...goldenComparable} = golden;
-  expect(actualComparable).toEqual(goldenComparable);
-});
-
 it("merges compound storage values recursively", () => {
   const parser = new CommandParser(JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode, {textFormat: "snbt"});
   const state = new RuntimeState();

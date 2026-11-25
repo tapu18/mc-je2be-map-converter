@@ -409,3 +409,7 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 ### Java 1.20.4 の文法（#191）
 
 固定した公式サーバーから生成した文法の版情報は DataVersion 3700、データパック形式 26 だった。`packages/bridge/src/versioned-grammar.servers.test.ts` で JSON テキスト、ゲームルール、チーム色、座標など14例の受理・不受理を生成文法のパーサと Java 1.20.4 で比較し、3回一致した。旧アイテムや particle の網羅的な対応を示すものではない。
+
+## 実行コンテキストの正解照合（#231）
+
+Java 26.3 の実サーバーで `execute-context`、`execute-anchor`、`execute-dimension`、`calls` の記録を再検証し、フェイクホストでも4本の正規化済み観測値が一致した。`calls` では、関数内の `@s` から読み出したスコアが近い順に `1, 2, 3`、遠い順に `3, 2, 1` になった。根拠は `packages/bridge/src/scenario/scenarios.servers.test.ts`、`packages/bridge/src/runtime-context-ir.data.test.ts`、`scenarios/datapack/calls.java.json`。
