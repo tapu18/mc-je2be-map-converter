@@ -2,9 +2,12 @@ import type { CommandIR } from "../command/parser.ts";
 import type { ExecutionResult } from "./index.ts";
 import { setNbtPath } from "./nbt-mutation.ts";
 import { getNbtPath } from "./nbt-path.ts";
-import { executeScoreCommand } from "./score-command.ts";
+import { scoreRuntime } from "../features/score/registration.ts";
 import { Scoreboard } from "./scores.ts";
-import { executeStorageCommand, StorageState } from "./storage-command.ts";
+import { StorageState } from "../features/storage/runtime.ts";
+import { storageRuntime } from "../features/storage/registration.ts";
+
+export const runtimeFamilies = [scoreRuntime, storageRuntime] as const;
 
 /** Runtime state shared across commands. */
 export class RuntimeState {
@@ -107,7 +110,10 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
         outcome = target.tag ? (single && !single.success && single.error.startsWith("unsupported") ? single : successes ? {success: true, result: total} : fail("function tag failed")) : single ?? fail("unknown function");
       }
     }
-  } else outcome = command.name === "scoreboard" ? executeScoreCommand(state.scores, command) : executeStorageCommand(state.storage, command);
+  } else {
+    const family = runtimeFamilies.find(entry => entry.assess({status: "parsed", ir}).status === "runtime");
+    outcome = family ? family.execute(state, ir) : fail("unsupported command");
+  }
   if (!outcome.success && outcome.error.startsWith("unsupported")) return outcome;
   for (const store of stores.reverse()) {
     const value = outcome.success ? (store.success ? 1 : outcome.result) : 0;
