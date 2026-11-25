@@ -17,3 +17,4 @@ export * from "./normalize-26-3.ts";
 export * from "./normalize-1-21-2.ts";
 export * from "./normalize-26-2.ts";
 export * from "./normalize-1-21-11.ts";
+export * from "./normalize-26-1.ts";
