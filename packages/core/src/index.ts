@@ -13,3 +13,5 @@ export * from "./runtime/scores.ts";
 export * from "./features/score/runtime.ts";
 export * from "./runtime/command.ts";
 export * from "./features/storage/runtime.ts";
+export type { Block, ExecutionHost, Position, Rotation, RuntimeEntity } from "./runtime/context.ts";
+export { resolvePosition } from "./runtime/context.ts";

@@ -1,3 +1,4 @@
+import { entityTarget } from "../../runtime/context.ts";
 import type { CapabilityInput, CapabilityResult } from "../capability.ts";
 import { invalidCapability } from "../capability.ts";
 
@@ -17,7 +18,10 @@ export function assessScore(input: CapabilityInput): CapabilityResult {
   } else if (command?.name === "scoreboard" && group === "players") {
     const holder = text("targets") ?? text("target");
     const objective = text("objective") ?? text("targetObjective");
-    if (holder && holder !== "*") {
+    const selection = nodes.find(n => n.name === "target" || n.name === "targets")?.value;
+    if (selection?.kind === "selector" && entityTarget(selection)) {
+      supported = !!objective && (op === "get" || (op === "set" && nodes.some(n => n.name === "score" && n.value?.kind === "number")));
+    } else if (holder && holder !== "*") {
       if (op === "reset") supported = true;
       else if (objective && op === "get") supported = true;
       else if (objective && op === "operation") {
