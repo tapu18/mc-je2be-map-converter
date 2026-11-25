@@ -67,7 +67,12 @@ async function main() {
   const input: unknown = JSON.parse(await readFile(resolve(values.config!), 'utf8'));
   const config = validateConfig(input);
   validateWorkerArgs(config.agentArgs);
-  for (const override of Object.values(config.workerOverrides)) validateWorkerArgs(override.agentArgs ?? config.agentArgs);
+  agentArguments(config.agent, config.agentArgs);
+  for (const override of Object.values(config.workerOverrides)) {
+    const args = override.agentArgs ?? config.agentArgs;
+    validateWorkerArgs(args);
+    agentArguments(override.agent ?? config.agent, args);
+  }
   const managerArgs = config.manager.enabled ? agentArguments(config.manager.agent, config.manager.agentArgs) : [];
   const root = (await command('git', ['rev-parse', '--show-toplevel'], { cwd: process.cwd() })).trim();
   const codeAt = async (ref: string) => (await command('git', ['rev-parse', `${ref}:tools/agent-runner.ts`, `${ref}:tools/agent-runner`], { cwd: root, signal: abort.signal })).trim().split('\n');
