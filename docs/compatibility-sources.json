@@ -43,11 +43,11 @@
       "sound": 14
     },
     "familyOutput": {
-      "command": 23198,
+      "command": 23014,
       "sound": 1243,
       "effect": 197,
       "click": 61,
-      "entity": 543,
+      "entity": 541,
       "particle": 58,
       "game_rule": 5,
       "hover": 2
@@ -61,8 +61,8 @@
       "invalid": 58,
       "unmatched": 605,
       "matched": 94649,
-      "output": 16751,
-      "outputWithWarnings": 2598
+      "output": 16665,
+      "outputWithWarnings": 2589
     }
   }
 }

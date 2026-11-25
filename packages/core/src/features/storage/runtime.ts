@@ -1,9 +1,9 @@
-import type { NbtPathNode } from "../command/arguments.ts";
-import type { CommandIR, ParsedNode } from "../command/parser.ts";
-import type { NbtCompound, NbtTag } from "../nbt/nbt.ts";
-import type { ExecutionResult } from "./index.ts";
-import { copyNbt, insertNbtPath, mergeNbt, removeNbtPath, setNbtPath } from "./nbt-mutation.ts";
-import { getNbtPath } from "./nbt-path.ts";
+import type { NbtPathNode } from "../../command/arguments.ts";
+import type { CommandIR, ParsedNode } from "../../command/parser.ts";
+import type { NbtCompound, NbtTag } from "../../nbt/nbt.ts";
+import type { ExecutionResult } from "../../runtime/index.ts";
+import { copyNbt, insertNbtPath, mergeNbt, removeNbtPath, setNbtPath } from "../../runtime/nbt-mutation.ts";
+import { getNbtPath } from "../../runtime/nbt-path.ts";
 
 const fail = (error: string): ExecutionResult => ({success: false, error});
 const result = (count: number): ExecutionResult => count ? {success: true, result: count} : fail("nothing changed");
