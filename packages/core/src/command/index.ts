@@ -21,3 +21,4 @@ export * from "./normalize-26-1.ts";
 export * from "./normalize-schedule-26-3.ts";
 export * from "./normalize-1-21.ts";
 export * from "./normalize-1-21-9.ts";
+export { normalizeCommandIR, type CommandNormalization } from "./normalize-command.ts";

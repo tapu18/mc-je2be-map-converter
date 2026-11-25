@@ -189,10 +189,11 @@ describe("command rewrite against the real grammar and mappings", () => {
       ["scoreboard objectives setdisplay belowName", "scoreboard objectives setdisplay belowname"],
       ["execute if entity @e[type=minecraft:boat]", "execute if entity @e[type=boat]"],
     ] as const;
+    const unsupported = ["return run schedule clear foo", "worldborder warning time 2147483647"];
     try {
       expect(await java.exec(commands[0][0])).toContain("6000");
       expect(await java.exec(commands[1][0])).toContain("true");
-      for (const [i, [command]] of commands.entries()) {
+      for (const [i, command] of [...commands.map(([input]) => input), ...unsupported].entries()) {
         expect(await java.exec(`setblock ${i + 1} -58 2 command_block{Command:${JSON.stringify(command)}}`)).toContain("Changed the block");
       }
       expect(await java.exec("save-all flush")).toContain("Saved the game");
@@ -200,8 +201,12 @@ describe("command rewrite against the real grammar and mappings", () => {
       await java.stop();
     }
     const report = rewriteWorldCommands(java.worldDirectory, await rewriteResources());
-    expect(report).toMatchObject({ textFormat: "json", counts: { invalid: 0, unsupported: 0, unchanged: 1, rewritten: 4 } });
-    expect(report.commandBlocks.map((entry) => [entry.java, entry.bedrock]).sort()).toEqual(commands.filter(([input, output]) => input !== output).sort());
+    expect(report).toMatchObject({ textFormat: "json", counts: { invalid: 0, unsupported: 2, unchanged: 1, rewritten: 4 } });
+    expect(report.commandBlocks.filter(entry => entry.status === "rewritten").map(entry => [entry.java, entry.bedrock]).sort()).toEqual(commands.filter(([input, output]) => input !== output).sort());
+    expect(report.commandBlocks.filter(entry => entry.status === "unsupported")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ java: unsupported[0], issues: [{ severity: "unsupported", message: expect.stringContaining("26.2 → 26.3: schedule clear") }] }),
+      expect.objectContaining({ java: unsupported[1], issues: [{ severity: "unsupported", message: expect.stringContaining("1.21.10 → 1.21.11: worldborder") }] }),
+    ]));
     for (const [, command] of commands) expect(await bds.exec(command), command).toMatchObject({ ok: true });
   });
 

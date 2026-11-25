@@ -1,7 +1,7 @@
 import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import AdmZip from "adm-zip";
-import { CommandParser, comparePackVersions, readPackFormatRange, selectCommandGrammar, serializeCommandIR, toCommandIR } from "@je2be/core";
+import { CommandParser, comparePackVersions, normalizeCommandIR, readPackFormatRange, selectCommandGrammar, serializeCommandIR, toCommandIR } from "@je2be/core";
 import { loadGrammarTree, loadJavaGrammars } from "./java-grammars.ts";
 import { readJavaValidationContext } from "./validation-context.ts";
 
@@ -10,7 +10,7 @@ export function collectDatapacks(world: string) {
   const context = readJavaValidationContext(world);
   const grammars = loadJavaGrammars();
   const packs: { name: string; grammar?: string; functions: Record<string, string[]>; tags: Record<string, unknown> }[] = [];
-  const diagnostics: { pack: string; path: string; reason: string }[] = [];
+  const diagnostics: { pack: string; path: string; reason: string; start?: number; end?: number }[] = [];
   const omitted = new Set<string>();
   for (const entry of context.packOrder) if ("builtin" in entry && entry.builtin !== "vanilla") diagnostics.push({ pack: entry.builtin, path: "", reason: "builtin pack not bundled" });
   for (const path of context.datapacks) {
@@ -75,7 +75,15 @@ export function collectDatapacks(world: string) {
             if (!line || line.startsWith("#")) continue;
             const parsed = parser.parse(line);
             if (!parsed.ok || line.startsWith("$")) { diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: line.startsWith("$") ? "macro unsupported" : "command parse failed" }); valid = false; continue; }
-            lines.push(serializeCommandIR({ grammarVersion: grammar.version, textFormat: grammar.textFormat, ir: toCommandIR(line, parsed.nodes) }));
+            const normalized = normalizeCommandIR(toCommandIR(line, parsed.nodes), grammar.version);
+            if (!normalized.ok) {
+              const { reason, start, end } = normalized;
+              const indent = raw.length - raw.trimStart().length;
+              diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason, start: indent + start, end: indent + end });
+              valid = false;
+              continue;
+            }
+            lines.push(serializeCommandIR({ grammarVersion: grammar.version, textFormat: grammar.textFormat, ir: normalized.ir }));
           }
           if (valid) pack.functions[id] = lines;
         } else diagnostics.push({ pack: name, path: key, reason: "grammar unavailable" });

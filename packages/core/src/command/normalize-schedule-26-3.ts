@@ -1,8 +1,9 @@
 import { readResourceLocation } from "./arguments.ts";
+import type { CommandNormalization } from "./normalize-command.ts";
 import { CommandSyntaxError, StringReader } from "./reader.ts";
 import type { CommandIR, ParsedNode } from "./parser.ts";
 
-export type ScheduleNormalization = { ok: true; ir: CommandIR } | { ok: false; reason: string; start: number; end: number };
+export type ScheduleNormalization = CommandNormalization;
 
 /** 26.2 → 26.3: schedule clear の文字列を ID として扱える場合だけ正規化する。 */
 export function normalize26_3Schedule(ir: CommandIR): ScheduleNormalization {

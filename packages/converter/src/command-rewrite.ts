@@ -51,7 +51,8 @@ function worldRewriteContext(res: RewriteResources, dataVersion: number | undefi
   const selection = selectCommandGrammar(loadJavaGrammars(), { dataVersion });
   if (!selection.ok) return undefined;
   const grammar = selection.grammar;
-  return rewriteContext(loadGrammarTree(grammar), grammar.textFormat, res.mappingsJson, join(dirname(grammar.commandsPath), "blocks.json"));
+  const context = rewriteContext(loadGrammarTree(grammar), grammar.textFormat, res.mappingsJson, join(dirname(grammar.commandsPath), "blocks.json"));
+  return { ...context, sourceVersion: grammar.version };
 }
 
 export interface CommandBlockRewrite {

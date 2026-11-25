@@ -396,7 +396,9 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 
 ### worldborder の時間指定（#199）
 
-`packages/bridge/src/worldborder-normalize.servers.test.ts` で Java 1.21.10 の `7` と 1.21.11 の `7s` を比較した。固定した境界から `add`、`set`、`warning time` を個別に実行すると、応答に示される時間はどちらも 7 秒だった（3回実行）。進行中の境界の操作全般や大きな値の等価性はこのテストでは検証していない。
+`packages/bridge/src/worldborder-normalize.servers.test.ts` で Java 1.21.10 の `7` と 1.21.11 の `7s` を比較した。固定した境界から `add`、`set`、`warning time` を個別に実行すると、応答に示される時間はどちらも 7 秒だった（3回実行）。進行中の境界の操作全般は未検証。
+
+#302 で同テストに極端な `warning time` を追加した。Java 1.21.10 の `2147483647` では応答に 2147483647 秒、1.21.11 の `2147483647s` では 107374182.35 秒が表示された。
 
 ### time set の固定時刻名（#199）
 
@@ -419,3 +421,9 @@ Java 26.3 の実サーバーで `execute-context`、`execute-anchor`、`execute-
 `packages/bridge/src/versioned-grammar-spawn-attribute.servers.test.ts` で、Java 1.20.6 の UUID と 1.21 の `minecraft:<uuid>` を使って同じカスタム modifier を操作し、3種類の演算で取得値・適用後の属性値・削除後の属性値が一致した。速度効果の組み込み modifier も、旧 UUID と新 ID `minecraft:effect.speed` で同じ値を取得できた。
 
 同テストで、実行元の yaw が 20、pitch が 40 のとき、Java 1.21.8 の `setworldspawn 2 64 3 ~15` と 1.21.9 の `setworldspawn 2 64 3 ~15 0` はともに座標 `[2, 64, 3]` と yaw 35 を保存し、1.21.9 の pitch は 0 だった。`spawnpoint` の両版の構文も Java が受理した。プレイヤー不在のため、個人のスポーン地点の保存は測定していない。
+
+## 変換時の版境界の連結（#302）
+
+`packages/bridge/src/datapack-convert.servers.test.ts` では、Java 1.20.5、1.21.1、26.2 で保存したワールドを変換した。生成した `datapacks.js` に含まれる固定時刻指定、`execute if items` と時刻指定の組み合わせ、`data modify block` の IR はそれぞれ 26.3 の生成文法でパースした IR と一致した。名前空間を省いた `schedule clear` を含む関数は、変換レポートにパック名・ファイル名・行番号付きの診断が出て、関数ごと出力から省かれた。
+
+`packages/bridge/src/rewrite.servers.test.ts` では、Java 1.20.5 で保存した `time set noon` のコマンドブロックが `time set 6000` に書き換わり、BDS が受理した。同じワールドの名前空間を省いた `schedule clear` と極端な `worldborder warning time` は、コマンドブロックの位置付きで診断された。
