@@ -8,3 +8,5 @@ world.afterEvents.worldLoad.subscribe(() => {
 
 // 公開された中核の入口。呼び出しとホスト実装は後続の作業で接続する。
 export { executeInstruction } from "@je2be/core/runtime";
+export { RuntimeSession, candidates, entity, readBlock, writeBlock, nativeCommand, readProperty, writeProperty } from "./host.ts";
+export { RuntimeState } from "../../core/src/runtime/command.ts";
