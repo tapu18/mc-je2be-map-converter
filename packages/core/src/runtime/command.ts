@@ -17,14 +17,37 @@ export class RuntimeState {
   readonly functionTags = new Map<string, string[]>();
 }
 
-/** Execute supported single-context forms. Unknown steps are rejected before executing the command. */
-export function executeCommand(state: RuntimeState, ir: CommandIR): ExecutionResult {
-  const outcome = execute(state, ir, 0);
-  return outcome.success ? {success: true, result: outcome.result} : {success: false, error: outcome.error};
+/** Per-invocation safety limits, independent of Java's unmeasured limits. */
+export interface ExecutionBudget { instructions: number; depth: number; branches: number }
+export const defaultExecutionBudget: ExecutionBudget = {instructions: 100000, depth: 128, branches: 10000};
+type Outcome = ExecutionResult & {returned?: boolean; explicitReturn?: boolean};
+type Request = {kind: "command"; ir: CommandIR; depth: number} | {kind: "branch"};
+type Frame = Generator<Request, Outcome, Outcome>;
+
+/** Execute supported single-context forms using an explicit stack of suspended frames. */
+export function executeCommand(state: RuntimeState, ir: CommandIR, budget: ExecutionBudget = defaultExecutionBudget): ExecutionResult {
+  if (Object.values(budget).some(limit => !Number.isSafeInteger(limit) || limit < 0)) return {success: false, error: "invalid execution budget"};
+  const frames: Frame[] = [];
+  let instructions = 0, branches = 0;
+  let request: Request = {kind: "command", ir, depth: 0};
+  let value: Outcome = {success: true, result: 0};
+  while (true) {
+    if (request.kind === "command") {
+      if (++instructions > budget.instructions) return {success: false, error: "instruction budget exceeded"};
+      if (request.depth > budget.depth) return {success: false, error: "depth budget exceeded"};
+      frames.push(execute(state, request.ir, request.depth));
+    } else if (++branches > budget.branches) return {success: false, error: "branch budget exceeded"};
+    while (frames.length) {
+      const next = frames[frames.length - 1]!.next(value);
+      if (!next.done) { request = next.value; break; }
+      value = next.value;
+      frames.pop();
+    }
+    if (!frames.length) return value.success ? {success: true, result: value.result} : {success: false, error: value.error};
+  }
 }
 
-type Outcome = ExecutionResult & {returned?: boolean; explicitReturn?: boolean};
-function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
+function* execute(state: RuntimeState, ir: CommandIR, depth: number): Frame {
   const fail = (error: string): ExecutionResult => ({success: false, error});
   type Store = {kind: "storage"; id: string; path: Extract<NonNullable<typeof ir.context[number]["nodes"][number]["value"]>, {kind: "nbtPath"}>["path"]; scale: number; success: boolean} | {kind: "score"; holder: string; objective: string; success: boolean};
   const stores: Store[] = [];
@@ -41,6 +64,7 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
   }
   let conditionFailed = false;
   for (const step of ir.context) {
+    if (step.kind === "if" || step.kind === "unless") yield {kind: "branch"};
     const [a, b, idNode, pathNode, typeNode, scaleNode] = step.nodes;
     const id = idNode?.value, p = pathNode?.value;
     if ((step.kind === "if" || step.kind === "unless") && a?.name === "function" && b?.value?.kind === "resource") {
@@ -50,7 +74,7 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
       let matched = false;
       for (const name of names) {
         const node = {...b, value: {...target, id: name, tag: false}};
-        const result = execute(state, {source: ir.source, context: [], command: {name: "function", nodes: [node]}}, depth);
+        const result = yield {kind: "command", ir: {source: ir.source, context: [], command: {name: "function", nodes: [node]}}, depth};
         if (!result.success && result.error.startsWith("unsupported")) return result;
         if (result.success && result.explicitReturn === true && result.result !== 0) { matched = true; break; }
       }
@@ -79,13 +103,13 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
   else if (!command) outcome = fail("missing command");
   else if (command.name === "return") {
     const value = command.nodes[0]?.value;
-    if (command.run) outcome = {...execute(state, command.run, depth), returned: true};
+    if (command.run) outcome = {...(yield {kind: "command", ir: command.run, depth}), returned: true};
     else if (value?.kind === "number") outcome = {success: true, result: value.value, returned: true};
     else if (command.nodes[0]?.name === "fail") outcome = {success: false, error: "return fail", returned: true};
     else outcome = fail("unsupported return");
   } else if (command.name === "function") {
     const target = command.nodes[0]?.value;
-    if (target?.kind !== "resource" || depth >= 128) outcome = fail("unsupported function");
+    if (target?.kind !== "resource") outcome = fail("unsupported function");
     else {
       const names = target.tag ? state.functionTags.get(target.id) : [target.id];
       if (!names || names.some(name => !state.functions.has(name))) outcome = fail("unknown function");
@@ -94,10 +118,11 @@ function execute(state: RuntimeState, ir: CommandIR, depth: number): Outcome {
         let successes = 0;
         let single: Outcome | undefined;
         for (const name of names) {
+          yield {kind: "branch"};
           let count = 0;
           let returned: Outcome | undefined;
           for (const line of state.functions.get(name)!) {
-            const result = execute(state, line, depth + 1);
+            const result = yield {kind: "command", ir: line, depth: depth + 1};
             count++;
             if (!result.success && result.error.startsWith("unsupported")) { returned = result; break; }
             if (result.returned) { returned = result; break; }

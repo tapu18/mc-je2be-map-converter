@@ -117,3 +117,21 @@ it("merges compound storage values recursively", () => {
   expect(run('data modify storage test:paths dest set string storage test:paths source 1 -1')).toMatchObject({success: true});
   expect(nbtToPlain(state.storage.get("test:paths"))).toMatchObject({dest: "bcde"});
 });
+
+it("bounds nested calls, instructions and branches without running later commands", () => {
+  const parser = new CommandParser(JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode, {textFormat: "snbt"});
+  const parse = (line: string) => {
+    const parsed = parser.parse(line);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return toCommandIR(line, parsed.nodes);
+  };
+  const state = new RuntimeState();
+  state.functions.set("test:loop", [parse("function test:loop")]);
+  expect(executeCommand(state, parse("function test:loop"), {instructions: 1000, depth: 200, branches: 1000})).toEqual({success: false, error: "depth budget exceeded"});
+  state.functions.set("test:wide", [parse("data merge storage test:budget {first:1}"), parse("data merge storage test:budget {later:1}")]);
+  expect(executeCommand(state, parse("function test:wide"), {instructions: 2, depth: 10, branches: 10})).toEqual({success: false, error: "instruction budget exceeded"});
+  expect(nbtToPlain(state.storage.get("test:budget"))).toEqual({first: 1});
+  state.functionTags.set("test:many", ["test:wide", "test:wide"]);
+  expect(executeCommand(state, parse("function #test:many"), {instructions: 100, depth: 10, branches: 1})).toEqual({success: false, error: "branch budget exceeded"});
+  expect(executeCommand(state, parse("execute if function test:loop run return 1"), {instructions: 1000, depth: 10, branches: 1000})).toEqual({success: false, error: "depth budget exceeded"});
+});
