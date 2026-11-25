@@ -427,3 +427,45 @@ Java 26.3 の実サーバーで `execute-context`、`execute-anchor`、`execute-
 `packages/bridge/src/datapack-convert.servers.test.ts` では、Java 1.20.5、1.21.1、26.2 で保存したワールドを変換した。生成した `datapacks.js` に含まれる固定時刻指定、`execute if items` と時刻指定の組み合わせ、`data modify block` の IR はそれぞれ 26.3 の生成文法でパースした IR と一致した。名前空間を省いた `schedule clear` を含む関数は、変換レポートにパック名・ファイル名・行番号付きの診断が出て、関数ごと出力から省かれた。
 
 `packages/bridge/src/rewrite.servers.test.ts` では、Java 1.20.5 で保存した `time set noon` のコマンドブロックが `time set 6000` に書き換わり、BDS が受理した。同じワールドの名前空間を省いた `schedule clear` と極端な `worldborder warning time` は、コマンドブロックの位置付きで診断された。
+
+## 地形とコマンドのブロック状態の対応差（#111）
+
+Java 26.3 の `blocks.json` が列挙する 1,286 ID・35,723 状態を測った。Geyser の固定表（`e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`、BE 1.26.60）とは Java 側のキーが重複・欠落なしで一致した。Java 26.3 の保存形式で全状態を 70 チャンクの合成ワールドに置き、ファイルを開き直して全座標の状態を照合した。状態の間には空気を挟み、ゲーム内の tick を経由せずに Chunker 1.21.0 で `BEDROCK_R26_60` へ変換した。変換後の LevelDB を開き、全チャンクの目印と空気の対照セルを確認してから、各座標の全層を読んだ。
+
+| BE 出力の比較 | Java 状態数 |
+| --- | ---: |
+| 主層が一致し、副層に非空気ブロックなし | 21,734 |
+| 主層だけに差 | 632 |
+| 副層だけに差 | 13,054 |
+| 主層と副層の両方に差 | 303 |
+| 合計 | 35,723 |
+
+主層に差がある 935 状態のうち、47 状態は ID が異なり、888 状態は同じ ID で型付きプロパティが異なった。副層に非空気ブロックがある 13,357 状態ではすべて `minecraft:water[liquid_depth=0]` を読んだ。このうち 13,325 状態に Java の `waterlogged=true` があった。比較した Geyser 表の行は単一の BE ブロック状態を持つ。たとえば `beetroots[age=1]` の主層は Chunker が `minecraft:beetroot[growth=2]`、Geyser 表が `minecraft:beetroot[growth=3]`。BDS 1.26.66.1 で合成ワールドを開き、現行の書き換えが出力する `execute if block 61 67 15 minecraft:beetroot ["growth"=3] run say match` は成功数 0、同じ座標で `growth=2` を指定すると成功数 1 だった。ほかの状態の差は変換直後の保存値の比較で、コマンドの実行はこの例で測った。
+
+### 配布マップでの頻度
+
+差があった全 13,989 状態と、各状態の保存セル数・出現 ZIP 数は [差分一覧（TSV）](research/block-state-differences.tsv) に記録した。BE の文字列プロパティは引用符付き。副層が空欄の場合は、そのセルに非空気ブロックがなかった。
+
+配布 ZIP 19 本に含まれる保存ワールド 18 件の全ディメンションから 483 region・265,760 チャンクを読んだ。パレットの添字を数えると 25,950,519,296 セル（空気を含む）で、そのうち 25,950,516,648 セルの ID とプロパティが 26.3 の状態表と完全一致した。26.x の文字列で保存された既定状態は 26.3 の既定値で補った。旧版の状態の改名や DataFixer による更新、コマンドの参照回数やプレイ中の変化は集計対象外。
+
+| BE 出力の比較 | コーパスで出現した Java 状態数 | 保存セル数 |
+| --- | ---: | ---: |
+| 主層だけに差 | 110 | 518,777 |
+| 副層だけに差 | 341 | 12,263 |
+| 主層と副層の両方に差 | 1 | 757 |
+| 合計 | 452 | 531,797 |
+
+主層に差のあるセルは 519,534 個で、Java ID 別の上位は `brown_mushroom_block`（450,290）、`water`（52,681）、`lava`（11,770）。ビートルートの再現例と同じ `beetroots[age=1]` は 1 ZIP で 1 セル見つかった。
+
+### 再現
+
+`npm run setup:servers` と `npm run setup:mappings` を済ませ、Java 26.3 が生成した `level.dat` と Java ソースを起動できる JDK（実測は 21）を用意する。検証用の `level.dat` は、たとえば `npm run test:servers -- packages/bridge/src/playtest.servers.test.ts` で作成される `servers/java-26.3/je2be-test/level.dat` を使える。
+
+```sh
+scratch=$(mktemp -d)
+node tools/block-state-audit/measure.ts "$scratch/run" servers/java-26.3/je2be-test/level.dat
+python3 -I tools/block-state-audit/corpus.py /path/to/sample-map "$scratch/run/comparison.json" \
+  servers/reports-26.3/reports/blocks.json "$scratch/differences.tsv"
+```
+
+BDS の照合には `BedrockServer.start({ world: "<scratch>/run/bedrock", tickingArea: [48, 0, 63, 15] })` を使い、上記の 2 コマンドを `exec` で実行した。関連する `playtest.servers.test.ts` と `rewrite.servers.test.ts` は計 11 件成功。対応策の検証は #323。
