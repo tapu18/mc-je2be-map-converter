@@ -8,7 +8,10 @@ import { expect, it, vi } from "vitest";
 import { collectDatapacks } from "./datapacks.ts";
 
 vi.mock("./java-grammars.ts", () => ({
-  loadJavaGrammars: () => [{ version: "test", dataVersion: 1, packFormat: 42, textFormat: "json", source: { functionDirectory: "function" } }],
+  loadJavaGrammars: () => [
+    { version: "test", dataVersion: 1, packFormat: 42, textFormat: "json", source: { functionDirectory: "function" } },
+    { version: "1.20.4", dataVersion: 3700, packFormat: 26, textFormat: "json", source: { functionDirectory: "functions" } },
+  ],
   loadGrammarTree: () => ({ type: "root", children: { say: { type: "literal", executable: true } } }),
 }));
 
@@ -42,5 +45,22 @@ it("collects enabled folder and zip functions and tags in saved order and report
     const unknown = collectDatapacks(world);
     expect(unknown.packs[0]!.functions).toEqual({});
     expect(unknown.report.diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ pack: "one", path: "pack.mcmeta", reason: "unavailable" }), expect.objectContaining({ pack: "one", path: "data/demo/function/a.mcfunction", reason: "grammar unavailable" })]));
+  } finally { rmSync(world, { recursive: true, force: true }); }
+});
+
+it("selects 1.20.4 for a saved world and its legacy data pack", () => {
+  const world = mkdtempSync(join(tmpdir(), "je2be-1204-"));
+  try {
+    const compound = (entries: [string, NbtTag][]): NbtTag & { type: "compound" } => ({ type: "compound", value: new Map(entries) });
+    const enabled: NbtTag = { type: "list", elementType: "string", value: [{ type: "string", value: "file/old" }] };
+    writeFileSync(join(world, "level.dat"), gzipSync(writeNbt({ name: "", tag: compound([["Data", compound([["DataVersion", { type: "int", value: 3700 }], ["DataPacks", compound([["Enabled", enabled], ["Disabled", { type: "list", elementType: "string", value: [] }]])]])]]) }, "java")));
+    const pack = join(world, "datapacks", "old");
+    mkdirSync(join(pack, "data", "demo", "functions"), { recursive: true });
+    writeFileSync(join(pack, "pack.mcmeta"), JSON.stringify({ pack: { pack_format: 26 } }));
+    writeFileSync(join(pack, "data", "demo", "functions", "a.mcfunction"), "say\n");
+    const result = collectDatapacks(world);
+    expect(result.packs[0]).toMatchObject({ grammar: "1.20.4" });
+    expect(deserializeCommandIR(result.packs[0]!.functions["demo:a"]![0]!)).toMatchObject({ ok: true, document: { grammarVersion: "1.20.4" } });
+    expect(result.report.diagnostics).toEqual([]);
   } finally { rmSync(world, { recursive: true, force: true }); }
 });
