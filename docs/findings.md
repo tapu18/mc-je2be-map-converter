@@ -397,3 +397,7 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 ### worldborder の時間指定（#199）
 
 `packages/bridge/src/worldborder-normalize.servers.test.ts` で Java 1.21.10 の `7` と 1.21.11 の `7s` を比較した。固定した境界から `add`、`set`、`warning time` を個別に実行すると、応答に示される時間はどちらも 7 秒だった（3回実行）。進行中の境界の操作全般や大きな値の等価性はこのテストでは検証していない。
+
+### time set の固定時刻名（#199）
+
+`packages/bridge/src/time-marker-normalize.servers.test.ts` は Java 1.21.11 と 26.1 で tick を止め、`time set day/noon/night/midnight` 後の保存値を調べた。旧版の `level.dat` の `DayTime` と新版の `world_clocks.dat` の overworld `total_ticks` を 24000 で割った余りは、両版とも順に 1000・6000・13000・18000 だった（3回実行、既定データパック）。
