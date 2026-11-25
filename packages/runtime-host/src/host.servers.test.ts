@@ -31,14 +31,17 @@ world.afterEvents.worldLoad.subscribe(async () => {
   const write = writeBlock("overworld", pos, {type: "minecraft:stone", states: {}}), block = readBlock("overworld", pos);
   const outside = readBlock("overworld", {x: 0, y: 9999, z: 0});
   const spawned = dim.spawnEntity("minecraft:armor_stand", pos);
-  const list = candidates("overworld"), found = entity(spawned.id), missing = entity("not-an-entity");
+  const list = candidates("overworld"), found = entity(spawned.id);
+  const removedId = spawned.id; spawned.remove();
+  const missing = entity(removedId);
   const native = nativeCommand("overworld", "testforblock 0 100 0 stone", "synchronous");
-  const unknown = nativeCommand("overworld", "testforblock 0 100 0 stone", "deferred");
+  const nativeSession = new RuntimeSession();
+  const unknown = nativeSession.runNative("overworld", "testforblock 0 100 0 stone", "deferred"), unknownStopped = nativeSession.execute(commands[0]);
   const unloaded = readBlock("overworld", {x: 100000, y: 100, z: 100000});
   const badBlock = writeBlock("overworld", pos, {type: "invalid:block", states: {}});
   const badNative = nativeCommand("overworld", "invalid_command", "synchronous");
   const propertyWrite = writeProperty("host:test", 42), property = readProperty("host:test");
-  console.warn("HOST_PROBE " + JSON.stringify({add,set,score,reset,remaining,remove,conflict,stopped,write,block,outside,list,found,missing,native,unknown,unloaded,badBlock,badNative,propertyWrite,property}));
+  console.warn("HOST_PROBE " + JSON.stringify({add,set,score,reset,remaining,remove,conflict,stopped,write,block,outside,list,found,missing,native,unknown,unknownStopped,unloaded,badBlock,badNative,propertyWrite,property}));
  } catch (error) { console.warn("HOST_PROBE_ERROR " + String(error) + " " + error.stack); }
 });
 `);
@@ -49,7 +52,7 @@ world.afterEvents.worldLoad.subscribe(async () => {
         const line = await bds.waitForLog(line => line.includes("HOST_PROBE ") || line.includes("HOST_PROBE_ERROR "), 60_000, "host probe");
         if (line.includes("HOST_PROBE_ERROR ")) throw Error(line);
         const result = JSON.parse(line.slice(line.indexOf("HOST_PROBE ") + "HOST_PROBE ".length));
-        expect(result).toMatchObject({ add: {core: {success: true}, projection: {ok: true}}, set: {core: {success: true, result: 42}, projection: {ok: true}}, score: 42, reset: {projection: {ok: true}}, remaining: [], remove: {projection: {ok: true}}, conflict: {projection: {ok: false}}, stopped: {status: "inconsistent"}, write: {ok: true}, block: {ok: true, value: {type: "minecraft:stone"}}, outside: {ok: false, error: {kind: "out-of-bounds"}}, list: {ok: true, value: {complete: false}}, found: {ok: true, value: {type: "minecraft:armor_stand"}}, missing: {ok: false}, native: {ok: true, value: {status: "known", successCount: 1}}, unknown: {ok: true, value: {status: "unknown"}}, unloaded: {ok: false, error: {kind: "unloaded"}}, badBlock: {ok: false}, badNative: {ok: false}, propertyWrite: {ok: true}, property: {ok: true, value: 42} });
+        expect(result).toMatchObject({ add: {core: {success: true}, projection: {ok: true}}, set: {core: {success: true, result: 42}, projection: {ok: true}}, score: 42, reset: {projection: {ok: true}}, remaining: [], remove: {projection: {ok: true}}, conflict: {projection: {ok: false}}, stopped: {status: "inconsistent"}, write: {ok: true}, block: {ok: true, value: {type: "minecraft:stone"}}, outside: {ok: false, error: {kind: "out-of-bounds"}}, list: {ok: true, value: {complete: false}}, found: {ok: true, value: {type: "minecraft:armor_stand"}}, missing: {ok: false, error: {kind: "absent"}}, native: {ok: true, value: {status: "known", successCount: 1}}, unknown: {result: {ok: true, value: {status: "unknown"}}}, unknownStopped: {status: "unknown-native"}, unloaded: {ok: false, error: {kind: "unloaded"}}, badBlock: {ok: false}, badNative: {ok: false}, propertyWrite: {ok: true}, property: {ok: true, value: 42} });
         expect(result.list.value.ids).toContain(result.found.value.id);
       } finally { await bds.stop(); }
     }

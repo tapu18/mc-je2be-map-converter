@@ -88,9 +88,18 @@ function project(before: Scores, after: Scores): Projection {
 export class RuntimeSession {
   readonly state: RuntimeState;
   private consistent = true;
+  private unknownNative = false;
   constructor(state = new RuntimeState()) { this.state = state; }
+  runNative(dimension: string, command: string, completion: "synchronous" | "deferred") {
+    if (!this.consistent) return { status: "inconsistent" as const };
+    if (this.unknownNative) return { status: "unknown-native" as const };
+    const result = nativeCommand(dimension, command, completion);
+    if (result.ok && result.value.status === "unknown") this.unknownNative = true;
+    return { status: "executed" as const, result };
+  }
   execute(ir: CommandIR) {
     if (!this.consistent) return { status: "inconsistent" as const };
+    if (this.unknownNative) return { status: "unknown-native" as const };
     const before = snapshot(this.state);
     const core = executeCommand(this.state, ir);
     const projection = project(before, snapshot(this.state));
