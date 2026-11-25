@@ -66,10 +66,10 @@ NODE
 | 対象 | 観測値 | 限界 |
 | --- | --- | --- |
 | 既存製品用 `main.js` | 6,168 bytes、起動要求から結果ログまで 1,085 / 1,022 / 1,082 ms | #217、BDS 1.26.63.1。manifest・生成データを除く。マクロなし |
-| Java 26.3 `commands.json` | 583,592 bytes | 生成元ファイル、圧縮前 |
+| Java 26.3 `commands.json` | 583,592 bytes、gzip 19,663 bytes | 生成元ファイル。gzip は `gzip -n -c` で測定した単体の圧縮サイズで、実際のパックへの格納・展開は未測定 |
 | 全文法 PoC | パック合計 12,624,623 bytes、起動要求から初回パース 602 / 783 / 613 ms | [記録](../../poc/runtime-load/README.md)、BDS 1.26.63.1。manifest と JS を含む、対応表を含むが使用検証は一部。上の製品用と入口・測定操作が異なり時間差を負荷の差と解釈できない |
 | 型紙案 | 上記の共有ソースと必要な表が代理指標。完成パック・起動時間・メモリは未測定 | 型紙処理、フォールバック、表の範囲が未確定。全文法不要とも、全文法案より小さいとも断定できない |
 
-再現: `npm ci && npm run setup:servers && npm run setup:mappings && npm run build:pack` 後、`wc -c packages/core/src/command/{arguments,reader,snbt,rawtext,rewrite}.ts packages/core/src/mappings/mappings.ts servers/reports-26.3/reports/commands.json servers/mappings/mappings.json`。表の内訳は `node -e 'const x=JSON.parse(require("fs").readFileSync("servers/mappings/mappings.json")); for(const [k,v] of Object.entries(x)) console.log(k,Buffer.byteLength(JSON.stringify(v)))'`。固定版・出典は `tools/servers.json` と生成表の `source` を参照。全文法 PoC と基準のサーバーテストは各 README と `packages/runtime-host/src/bundle.servers.test.ts` を参照。生成された第三者データはコミットしない。
+再現: `npm ci && npm run setup:servers && npm run setup:mappings && npm run build:pack` 後、`wc -c packages/core/src/command/{arguments,reader,snbt,rawtext,rewrite}.ts packages/core/src/mappings/mappings.ts servers/reports-26.3/reports/commands.json servers/mappings/mappings.json`。gzip は `gzip -n -c servers/reports-26.3/reports/commands.json | wc -c`。表の内訳は `node -e 'const x=JSON.parse(require("fs").readFileSync("servers/mappings/mappings.json")); for(const [k,v] of Object.entries(x)) console.log(k,Buffer.byteLength(JSON.stringify(v)))'`。固定版・出典は `tools/servers.json` と生成表の `source` を参照。全文法 PoC と基準のサーバーテストは各 README と `packages/runtime-host/src/bundle.servers.test.ts` を参照。生成された第三者データはコミットしない。
 
 メモリのバイト数は、JSON 文字列・パース済みオブジェクト・`MappingLookup` の複数 Map と型紙・キャッシュが共存しうるため、ファイルサイズから求められない。BDS が使えるヒープ計測手段を確認し、同じ版・ワールド・ホスト・試行回数で基準と両方式のピークおよびロード後を測る必要がある。現状は未測定であり、保存サイズをメモリサイズとして扱わない。全型の動的値、複数穴、元版別の正規化、失敗時の診断と Java 実サーバー比較も未検証。

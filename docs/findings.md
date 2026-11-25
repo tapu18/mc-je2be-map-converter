@@ -308,7 +308,7 @@ python3 -I scripts/dump_commands.py /home/tapukoko/code/mc-je2be-map-converter/s
 node tools/probe-macro-corpus.ts /tmp/issue155-commands.jsonl servers/reports-26.3/reports/commands.json
 ```
 
-同環境で Java 26.3 の `commands.json` は 583,592 bytes、`servers/mappings/mappings.json` は 10,357,025 bytes（`wc -c`）。これは元データのサイズであり、実際に同梱が必要な範囲や起動時メモリの測定ではない。
+同環境で Java 26.3 の `commands.json` は 583,592 bytes、`servers/mappings/mappings.json` は 10,357,025 bytes（`wc -c`）。`commands.json` を `gzip -n -c` で圧縮すると 19,663 bytes（2026-11-25、#240）。これはデータのサイズであり、実際に同梱が必要な範囲や起動時メモリの測定ではない。
 
 ### コマンド形の候補（#112）
 
