@@ -404,4 +404,4 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 
 ### 確定世代の再起動（#303）
 
-`packages/runtime-host/src/persistence.servers.test.ts` は BDS 1.26.66.1 で、動的プロパティにスコアと型付き storage を確定し、正常停止したワールドを再起動して両方を復元した。独立したワールドで 3 回成功した。強制終了、部分書き込み、容量不足、通常のランタイム起動との接続はこのテストでは検証していない。
+`packages/runtime-host/src/persistence.servers.test.ts` は BDS 1.26.66.1 で、通常のランタイム起動後にセッションのコマンドでスコアと storage を変更し、tick 境界で確定して正常停止したワールドを再起動した。両方の復元と BE スコアへの投影は独立したワールドで 3 回成功した。強制終了、部分書き込み、容量不足はこのテストでは検証していない。

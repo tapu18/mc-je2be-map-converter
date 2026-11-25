@@ -90,6 +90,8 @@ export class RuntimeSession {
   private consistent = true;
   private unknownNative = false;
   constructor(state = new RuntimeState()) { this.state = state; }
+  get isConsistent(): boolean { return this.consistent; }
+  halt(): void { this.consistent = false; }
   runNative(dimension: string, command: string, completion: "synchronous" | "deferred") {
     if (!this.consistent) return { status: "inconsistent" as const };
     if (this.unknownNative) return { status: "unknown-native" as const };

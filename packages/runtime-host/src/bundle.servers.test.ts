@@ -9,6 +9,7 @@ it("loads the production bundle and executes a core score instruction on BDS thr
     mkdirSync(join(pack, "scripts"));
     cpSync(new URL("../pack/scripts/main.js", import.meta.url), join(pack, "scripts/main.js"));
     writeFileSync(join(pack, "scripts/data.js"), "export const objectives = []; export const entities = [];\n");
+    writeFileSync(join(pack, "scripts/storage.js"), "export const storage = [];\n");
     writeFileSync(join(pack, "scripts/probe.js"), `
 import { world } from "@minecraft/server";
 import { executeInstruction } from "./main.js";
