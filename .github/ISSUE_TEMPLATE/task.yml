@@ -12,7 +12,7 @@ body:
     id: done
     attributes:
       label: 完了条件
-      description: 機械的に確かめられる条件をチェックリストで。確かめられないものは「人の確認」と明記する
+      description: 機械的に確かめられる条件をチェックリストで。確かめられないものは「人の確認」と明記する。時間の経過を待つ観測は worker の完了条件に入れず、仕組みの Issue と観測の Issue に分ける。観測の Issue は status:blocked にし、解除条件に日時を書いて PM 巡回で確認する
       value: |
         - [ ]
     validations:
