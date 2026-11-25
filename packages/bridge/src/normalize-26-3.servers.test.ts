@@ -16,6 +16,11 @@ it("normalizes the 26.2 data and function coordinate paths parsed with generated
     "execute if data block 1 2 3 foo run say hello",
     "execute store result block 1 2 3 foo int 1 run say hello",
     "function test:foo with block 1 2 3",
+    "execute if items block 1 2 3 container.0 minecraft:stone run say hello",
+    "execute unless items entity @s weapon.mainhand minecraft:stone run say hello",
+    "item modify block 1 2 3 container.0 test:modifier",
+    "item replace entity @s weapon.mainhand from block 1 2 3 container.0",
+    "place feature minecraft:oak 1 2 3",
   ]) {
     const old = parsers[0]!.parse(command), current = parsers[1]!.parse(command);
     if (!old.ok || !current.ok) throw new Error(`Could not parse ${command}: ${JSON.stringify({ old, current })}`);
