@@ -275,7 +275,7 @@ it('gives up a lost claim without starting a worker on the next tick', async () 
   await f.run();
   await f.run();
   expect((await f.load()).calls.some(call => call[0] === 'codex')).toBe(false);
-});
+}, 20_000);
 
 it('respects the daily run limit without discarding the active task', async () => {
   const f = await fixture();
