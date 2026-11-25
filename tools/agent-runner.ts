@@ -20,6 +20,7 @@ interface Config {
   pollSeconds: number;
   timeoutSeconds: number;
   maxAttempts: number;
+  maxTotalAttempts: number;
   maxRunsPerDay: number;
   autoMerge: boolean;
   agentArgs: string[];
@@ -32,6 +33,7 @@ interface Task {
   worktree: string;
   claim: string;
   attempts: number;
+  totalAttempts?: number;
   phase: 'claiming' | 'working' | 'review' | 'blocked' | 'done';
   error?: string;
   launches?: { agent: string; args: string[]; startedAt: number; finishedAt?: number; counted: boolean }[];
@@ -245,8 +247,13 @@ async function main() {
     };
     const run = async (task: Task, item: Issue, pr?: PullRequest) => {
       if (task.attempts >= config.maxAttempts) { await stopTask(task, `実行回数の上限 ${config.maxAttempts} 回に到達`); return; }
+      if ((task.totalAttempts ?? task.attempts) >= config.maxTotalAttempts) { await stopTask(task, `合計実行回数の上限 ${config.maxTotalAttempts} 回に到達`); return; }
       if (state.runs >= config.maxRunsPerDay) { log('Daily run limit reached; waiting.'); return; }
       await prepare(task);
+      const remoteHead = async () => (await git(['ls-remote', '--heads', 'origin', `refs/heads/${task.branch}`])).trim().split(/\s+/)[0] || undefined;
+      let before: string | undefined;
+      try { before = await remoteHead() ?? (await git(['rev-parse', `origin/${config.base}`])).trim(); }
+      catch (error) { log(`Could not record remote head: ${String(error)}`); }
       const matching = Object.entries(config.workerOverrides).filter(([label]) => hasLabel(item, label));
       if (matching.length > 1) throw new AgentLaunchError(`Multiple worker overrides match issue #${task.issue}: ${matching.map(([label]) => label).join(', ')}`);
       const override = matching[0]?.[1];
@@ -254,6 +261,7 @@ async function main() {
       const args = agentArguments(agent, override?.agentArgs ?? config.agentArgs);
       const launch: NonNullable<Task['launches']>[number] = { agent, args, startedAt: Date.now(), counted: true };
       (task.launches ??= []).push(launch);
+      task.totalAttempts = (task.totalAttempts ?? task.attempts) + 1;
       task.attempts++;
       state.runs++;
       task.phase = 'working';
@@ -275,12 +283,25 @@ async function main() {
             ['ENOENT', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) {
           // Invalid invocation / missing executable is infrastructure failure, not work.
           task.attempts--;
+          task.totalAttempts!--;
           state.runs--;
           launch.counted = false;
           await save();
           throw new AgentLaunchError(`AI CLI could not start. Fix the configuration and restart.\n${task.error}`);
         }
       } finally { launch.finishedAt = Date.now(); await progress.close(); await save(); }
+      if (before) {
+        try {
+          const after = await remoteHead();
+          if (after && after !== before) {
+            await git(['fetch', 'origin', after]);
+            await git(['merge-base', '--is-ancestor', before, after]);
+            task.attempts--;
+            launch.counted = false;
+            log(`#${task.issue} pushed a new commit; attempt refunded`);
+          }
+        } catch (error) { log(`Could not verify pushed progress: ${String(error)}`); }
+      }
       // CLI exit is not evidence of completion. Reconcile with GitHub next tick.
       await save();
     };
@@ -338,6 +359,7 @@ async function main() {
         if (task.phase === 'blocked') {
           if (!hasLabel(item, 'status:ready') || hasLabel(item, 'needs-approval')) { log(`#${task.issue} 保留中（再開指示待ち）`); continue; }
           task.attempts = 0;
+          task.totalAttempts = 0;
           task.phase = 'working';
           await status(task.issue, 'status:in-progress');
           await save();
@@ -424,7 +446,7 @@ async function main() {
 function validateConfig(input: unknown): Config {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Config must be an object');
   const raw = input as Record<string, unknown>;
-  const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxRunsPerDay: 12, autoMerge: true, agentArgs: [], workerOverrides: {} };
+  const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxTotalAttempts: 10, maxRunsPerDay: 12, autoMerge: true, agentArgs: [], workerOverrides: {} };
   const config = { ...defaults, ...raw } as unknown as Config;
   for (const key of Object.keys(raw)) if (![...Object.keys(defaults), 'repo', 'milestone', 'manager'].includes(key)) throw new Error(`Unknown config key: ${key}`);
   config.manager = managerConfig(raw.manager);
@@ -438,7 +460,7 @@ function validateConfig(input: unknown): Config {
   if (!['codex', 'claude'].includes(config.agent)) throw new Error('agent must be codex or claude');
   if (typeof config.base !== 'string' || !/^[\w][\w./-]*$/.test(config.base)) throw new Error('Invalid base branch');
   if (config.milestone !== undefined && (typeof config.milestone !== 'string' || !config.milestone)) throw new Error('Invalid milestone');
-  for (const key of ['pollSeconds', 'timeoutSeconds', 'maxAttempts', 'maxRunsPerDay'] as const) {
+  for (const key of ['pollSeconds', 'timeoutSeconds', 'maxAttempts', 'maxTotalAttempts', 'maxRunsPerDay'] as const) {
     if (!Number.isSafeInteger(config[key]) || config[key] < 1) throw new Error(`${key} must be a positive integer`);
   }
   if (typeof config.autoMerge !== 'boolean' || !Array.isArray(config.agentArgs) || !config.agentArgs.every(arg => typeof arg === 'string')) throw new Error('Invalid autoMerge or agentArgs');

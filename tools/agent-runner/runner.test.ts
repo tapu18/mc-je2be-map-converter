@@ -19,7 +19,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; remoteHead?: string; pushHead?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -53,7 +53,7 @@ if (tool === 'git') {
   else if (args[0] === 'rev-parse' && args[1].startsWith('origin/')) out(args[1] === 'origin/main' ? 'base' : 'abc');
   else if (args[0] === 'merge-base') out('base');
   else if (args[0] === 'diff') {}
-  else if (args[0] === 'ls-remote') out('base refs/heads/main');
+  else if (args[0] === 'ls-remote') out(args[1] === '--heads' ? (d.remoteHead ? d.remoteHead + ' refs/heads/' + d.branch : '') : 'base refs/heads/main');
   else if (args[0] === 'worktree' && args[1] === 'list') out(d.tree ? 'worktree ' + d.tree + '\nbranch refs/heads/' + d.branch + '\n' : '');
   else if (args[0] === 'worktree' && args[1] === 'add') { d.branch = args[3]; d.tree = args[4]; mkdirSync(d.tree, {recursive:true}); }
   else if (args[0] !== 'fetch') throw Error('Unexpected git ' + args);
@@ -88,6 +88,7 @@ if (tool === 'git') {
   } else {
     if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
     (d.workerPrompts ??= []).push(prompt);
+    if (d.pushHead) d.remoteHead = d.pushHead;
     if (d.workerLog) { for (const line of d.workerLog) out(line); save(d); process.exit(1); }
     out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
     if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
@@ -116,6 +117,24 @@ if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode =
   };
   return { root, config, run, load, update, state, updateState };
 }
+
+it('refunds pushed progress but counts idle runs and enforces the total limit', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', maxAttempts: 2, maxTotalAttempts: 3 }));
+  await f.update(d => { d.workerFails = true; d.pushHead = 'commit1'; });
+  await f.run(); // Claim the issue before launching the worker.
+  await f.run();
+  expect((await f.state()).tasks[0]).toMatchObject({ attempts: 0, totalAttempts: 1, launches: [{ counted: false }] });
+  await f.update(d => { delete d.pushHead; });
+  await f.run();
+  expect((await f.state()).tasks[0]).toMatchObject({ attempts: 1, totalAttempts: 2 });
+  await f.update(d => { d.pushHead = 'commit2'; });
+  await f.run();
+  expect((await f.state()).tasks[0]).toMatchObject({ attempts: 1, totalAttempts: 3 });
+  await f.run();
+  expect((await f.state()).tasks[0].phase).toBe('blocked');
+  expect((await f.load()).workerPrompts).toHaveLength(3);
+}, 20_000);
 
 it('warns in the terminal, state, and PM prompt when base code changes', async () => {
   const f = await fixture();
@@ -256,7 +275,7 @@ it('gives up a lost claim without starting a worker on the next tick', async () 
   await f.run();
   await f.run();
   expect((await f.load()).calls.some(call => call[0] === 'codex')).toBe(false);
-});
+}, 20_000);
 
 it('respects the daily run limit without discarding the active task', async () => {
   const f = await fixture();
