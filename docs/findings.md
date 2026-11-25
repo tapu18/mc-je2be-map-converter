@@ -383,3 +383,7 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 ### CI schedule の実行履歴（#241）
 
 2026-11-24 の調査時点で `gh run list --workflow ci.yml --event schedule --limit 100` に表示された実行は [run 45323204840](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45323204840) のみだった。UTC 11月24日 03:59:11 に作成・開始され、04:10:38 に成功した。`check` と `servers / result` も成功した。CI の cron は `23 18 * * *` で、直前の予定は 11月23日 18:23 UTC。予定との対応は履歴から直接確認できない。11月22日 18:23 UTC の予定に対応すると特定できる実行は見つからなかった。
+
+### Script API ホスト接続（#234）
+
+`packages/runtime-host/src/host.servers.test.ts`（BDS 1.26.66.1）では、現行 `executeCommand` の objective 追加、`scoreboard players set alice test 42`、保持者と objective の削除を Script API へ投影し、3回連続で値と結果を確認した。同テストで既存 objective との衝突による投影失敗と以降の実行停止、ブロックの読み書き・未ロード・範囲外・不正 ID、候補とエンティティ取得、ネイティブ命令、動的プロパティを確認した。削除済みの文字列保持者を `getScore` で読むと例外となったため、削除は参加者一覧で検証した。候補の完全性は検証しておらず、ホストは常に不完全と返す。
