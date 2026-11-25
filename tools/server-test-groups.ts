@@ -14,7 +14,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const GROUPS: Record<string, string[]> = {
   // 正解データのシナリオ。CI ではこのファイルだけシナリオ ID で分割する。
   scenarios: ["packages/bridge/src/scenario/scenarios.servers.test.ts"],
-  grammar: ["packages/bridge/src/versioned-grammar.servers.test.ts"],
+  grammar: ["packages/bridge/src/versioned-grammar"],
   bridge: ["packages/"],
   "poc-a": ["poc/tick-order/", "poc/launcher/dimension", "poc/coordinates/"],
   performance: ["poc/repeat-performance/"],

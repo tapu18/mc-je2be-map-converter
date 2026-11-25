@@ -413,3 +413,9 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 ## 実行コンテキストの正解照合（#231）
 
 Java 26.3 の実サーバーで `execute-context`、`execute-anchor`、`execute-dimension`、`calls` の記録を再検証し、フェイクホストでも4本の正規化済み観測値が一致した。`calls` では、関数内の `@s` から読み出したスコアが近い順に `1, 2, 3`、遠い順に `3, 2, 1` になった。根拠は `packages/bridge/src/scenario/scenarios.servers.test.ts`、`packages/bridge/src/runtime-context-ir.data.test.ts`、`scenarios/datapack/calls.java.json`。
+
+## attribute modifier とスポーン回転の版差（#301）
+
+`packages/bridge/src/versioned-grammar-spawn-attribute.servers.test.ts` で、Java 1.20.6 の UUID と 1.21 の `minecraft:<uuid>` を使って同じカスタム modifier を操作し、3種類の演算で取得値・適用後の属性値・削除後の属性値が一致した。速度効果の組み込み modifier も、旧 UUID と新 ID `minecraft:effect.speed` で同じ値を取得できた。
+
+同テストで、実行元の yaw が 20、pitch が 40 のとき、Java 1.21.8 の `setworldspawn 2 64 3 ~15` と 1.21.9 の `setworldspawn 2 64 3 ~15 0` はともに座標 `[2, 64, 3]` と yaw 35 を保存し、1.21.9 の pitch は 0 だった。`spawnpoint` の両版の構文も Java が受理した。プレイヤー不在のため、個人のスポーン地点の保存は測定していない。
