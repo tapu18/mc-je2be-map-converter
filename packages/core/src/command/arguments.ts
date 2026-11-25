@@ -682,7 +682,8 @@ export const ARGUMENT_PARSERS: Record<string, ArgumentParser> = {
     const unit = r.peek();
     const scale = unit === "d" ? 24000 : unit === "s" ? 20 : 1;
     if (unit === "d" || unit === "s" || unit === "t") r.skip();
-    const ticks = Math.round(n * scale);
+    // TimeArgument scales a Java float and rounds it to a signed int.
+    const ticks = Math.max(-2_147_483_648, Math.min(2_147_483_647, Math.round(Math.fround(Math.fround(n) * scale)))) || 0;
     checkBounds(r, start, ticks, p);
     return { kind: "time", ticks };
   },

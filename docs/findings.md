@@ -253,6 +253,8 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 
 Java 26.3 の [schedule-restart](../scenarios/datapack/schedule-restart.json) では、100 tick 後の関数を予約して 30 tick 進め、保存・停止して同じワールドを再起動した。再起動直後とさらに 50 tick 後は未実行、100 tick 後には実行済みだった（[記録](../scenarios/datapack/schedule-restart.java.json)）。予約時と関数の実行時のゲーム内時刻の差は 100 tick だった。したがって、この実験では停止前に進めた 30 tick を含め、予定は予約時からのゲーム内 tick を維持していた。再起動直後の残り時間は 50 tick より長く 100 tick 以下だった。起動中にも tick が進むため、再起動直後の正確な残り tick 数や長期停止中の実時間の影響はこの実験では測っていない。
 
+#101 の Java 26.3 RCON 確認では、`tick freeze` 中に同じ関数を同じ期限に 2 回 `append` しても実行は 1 回だった。同じ ID の関数とタグは両方実行され、`schedule clear #probe:a` は構文エラーだった。1 tick 後に予約済みの関数をモード省略で 2 tick 後に予約し直すと、1 tick 後の実行は消えた。同じ tick の先頭の関数から `schedule clear` すると、その tick で後に登録した対象の実行も消えた。`0t` は実行時に拒否され、`0.0249999999s` と `2147483648t` はそれぞれ 1、2,147,483,647 tick として予約された。ゲーム内時刻 10 のときに 2 tick 後を予約し、`execute store result` で取得した値は 12 だった。Node 側の回帰確認は [schedule.data.test.ts](../packages/runtime-host/src/schedule.data.test.ts) にある。
+
 ## execute の追加修飾句（#134）
 
 Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観測した（[正解データ](../scenarios/datapack/execute-extra.java.json)）。負座標の `align xyz` は [-2, -60, 8]、`align xz` は [-2, -59.3, 8] になった。防具立てへの `facing entity` は feet と eyes で pitch が異なり、`rotated as` は対象の [90, 30]、`positioned as` は対象の位置を得た。

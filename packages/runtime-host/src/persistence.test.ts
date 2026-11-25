@@ -31,6 +31,25 @@ describe("committed runtime state", () => {
     expect(() => commitState(fake, state)).toThrow("capacity");
     expect(restoreState(fake)?.scores.get("alice", "points")).toBe(-42);
   });
+  it("commits the schedule clock and ordered callbacks with scores and storage", () => {
+    const fake = new Fake(), state = sample();
+    const previous = {tick: 4, entries: [{id: "test:z", tag: true, dueTick: 5}, {id: "test:a", tag: false, dueTick: 5}]};
+    state.schedule.restore(previous);
+    commitState(fake, state);
+    expect(restoreState(fake)?.schedule.snapshot()).toEqual(previous);
+
+    expect([...state.schedule.advanceTick()]).toEqual([{id: "test:z", tag: true}, {id: "test:a", tag: false}]);
+    state.scores.set("alice", "points", 5);
+    fake.fail = true;
+    expect(() => commitState(fake, state)).toThrow("capacity");
+    expect(restoreState(fake)?.schedule.snapshot()).toEqual(previous);
+    expect(restoreState(fake)?.scores.get("alice", "points")).toBe(-42);
+
+    fake.fail = false;
+    commitState(fake, state);
+    expect(restoreState(fake)).toEqual(state);
+    expect(restoreState(fake)?.schedule.snapshot()).toEqual({tick: 5, entries: []});
+  });
   it("commits initial state once without overwriting a committed generation", () => {
     const fake = new Fake(); expect(restoreOrInitialize(fake, sample)).toEqual(sample());
     expect(restoreOrInitialize(fake, () => { throw Error("initial values used"); })).toEqual(sample());

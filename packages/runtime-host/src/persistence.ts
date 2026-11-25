@@ -1,14 +1,16 @@
 import { deserializeStorage, serializeStorage } from "../../core/src/command/ir-codec.ts";
 import { RuntimeState } from "../../core/src/runtime/command.ts";
+import type { ExecutionHost } from "../../core/src/runtime/context.ts";
 
 /** Minimal synchronous dynamic-property interface, also usable by a Node fake. */
 export interface Properties {
   get(key: string): unknown;
   set(key: string, value?: string): void;
 }
-type Entry = { kind: "score" | "storage"; id: string; generation: number; chunks: number; slot: number };
+type Entry = { kind: "score" | "storage" | "schedule"; id: string; generation: number; chunks: number; slot: number };
 type Index = { version: 1; generation: number; entries: Entry[] };
 const marker = "je2be:state:commit";
+const scheduleId = "queue";
 const key = (generation: number, slot: number, chunk: number) => `je2be:state:${generation}:${slot}:${chunk}`;
 
 /** Splits without separating surrogate pairs and without relying on Node or DOM APIs. */
@@ -30,7 +32,7 @@ function readIndex(properties: Properties): Index | undefined {
   if (index.version !== 1 || !Number.isSafeInteger(index.generation) || index.generation < 1 || !Array.isArray(index.entries)) throw Error("invalid state index");
   const seen = new Set<string>();
   for (const e of index.entries) {
-    if ((e.kind !== "score" && e.kind !== "storage") || typeof e.id !== "string" || !Number.isSafeInteger(e.generation) || e.generation < 1 || e.generation > index.generation || !Number.isSafeInteger(e.slot) || e.slot < 0 || !Number.isSafeInteger(e.chunks) || e.chunks < 1 || seen.has(`${e.kind}:${e.id}`)) throw Error("invalid state index entry");
+    if ((e.kind !== "score" && e.kind !== "storage" && !(e.kind === "schedule" && e.id === scheduleId)) || typeof e.id !== "string" || !Number.isSafeInteger(e.generation) || e.generation < 1 || e.generation > index.generation || !Number.isSafeInteger(e.slot) || e.slot < 0 || !Number.isSafeInteger(e.chunks) || e.chunks < 1 || seen.has(`${e.kind}:${e.id}`)) throw Error("invalid state index entry");
     seen.add(`${e.kind}:${e.id}`);
   }
   return index;
@@ -48,15 +50,18 @@ function units(state: RuntimeState): Map<string, {kind: Entry["kind"]; id: strin
   const result = new Map<string, {kind: Entry["kind"]; id: string; data: string}>();
   for (const [id, scores] of state.scores.objectives) result.set(`score:${id}`, {kind: "score", id, data: JSON.stringify([...scores].sort(([a], [b]) => a.localeCompare(b)))});
   for (const [id, value] of state.storage.values) result.set(`storage:${id}`, {kind: "storage", id, data: serializeStorage(value)});
+  const schedule = state.schedule.snapshot();
+  if (schedule.tick || schedule.entries.length) result.set(`schedule:${scheduleId}`, {kind: "schedule", id: scheduleId, data: JSON.stringify(schedule)});
   return result;
 }
 /** Restore only the committed index. Missing or malformed committed data is an error. */
-export function restoreState(properties: Properties): RuntimeState | undefined {
+export function restoreState(properties: Properties, host?: ExecutionHost): RuntimeState | undefined {
   const index = readIndex(properties); if (!index) return undefined;
-  const state = new RuntimeState();
+  const state = new RuntimeState(host);
   for (const e of index.entries) {
     const data = payload(properties, e);
     if (e.kind === "storage") state.storage.values.set(e.id, deserializeStorage(data));
+    else if (e.kind === "schedule") state.schedule.restore(JSON.parse(data));
     else {
       const scores: unknown = JSON.parse(data);
       if (!Array.isArray(scores)) throw Error(`invalid scores ${e.id}`);
