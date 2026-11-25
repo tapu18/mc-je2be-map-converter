@@ -65,7 +65,7 @@ export function workerPrompt({ task, item, repo, root, base, pr }: {
         ...reasons,
         '完了条件を満たすか、時間切れまで続けてください。区切りの記録は続けるための手段であり、終了する理由ではありません。',
         '依存の未完了や人の判断が必要なら、待つ Issue を本文に Depends on: #番号 で記載し、根拠と再開手順をコメントして status:blocked にしてください。判断の Issue には needs-approval を付けて終了してください。',
-        'npm ci、必要な setup:servers / setup:mappings、build:pack を行い、実装・適切な検証・コミット・push・PR作成まで進めてください。',
+        'node tools/agent-runner/prepare.ts で準備を確認してください。準備済みの手順は省き、本題から始めます。未準備または入力が変わった手順は実行します。その後、実装・適切な検証・コミット・push・PR作成まで進めてください。',
         `配布マップの原本は ${join(root, 'sample-map')}（git管理外）にあります。必要なら読み取り用に参照し、原本を変更・GitHubへ公開しないでください。`,
         'PR本文に Closes #' + task.issue + ' を記載。既存PRがあれば修正してください。完了条件を検証できるまでdraftにしてください。',
         'npm run check と関連する実サーバーテストを通し、完了条件を満たしたらPRをreadyにしてください。CI失敗時は原因を調べて修正してください。',

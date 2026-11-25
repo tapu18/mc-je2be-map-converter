@@ -40,7 +40,29 @@ Ctrl+C / SIGTERM で停止する。実行中の CLI とその子プロセスを�
 | `maxRunsPerDay` | `12`。UTC の1日あたり AI 起動回数上限。日付が変われば再開 |
 | `autoMerge` | `true`。`false` なら PR 作成・修正まで進め、マージは手動 |
 | `agentArgs` | `[]`。AI CLI に渡す追加引数の配列。シェルは介さない |
+| `workerOverrides` | Issue のラベルごとの worker 設定。省略時は上書きなし。下記参照 |
 | `manager` | PM 巡回の設定。省略すると無効。下記参照 |
+
+## worker のモデルと比較
+
+`workerOverrides` にラベルをキーとして `agent` と `agentArgs` を指定できる。省略した項目はトップレベルから継承し、引数配列は置換する。複数の設定ラベルが同じ Issue に付いている場合は起動せずエラーにする。設定は各起動時の Issue の最新ラベルで選び、PM には適用しない。具体的なモデルと費用上限は所有者が設定する。
+
+```json
+{
+  "repo": "owner/repository",
+  "workerOverrides": {
+    "model:strong": { "agent": "claude", "agentArgs": ["--model", "ここにモデルを指定"] }
+  }
+}
+```
+
+`model:strong` は PM が難しい Issue に付ける。設定を変更したら管理プログラムを再起動する。起動時の CLI と実際の引数を状態ファイルと各起動ログに記録するため、引数に秘密情報を入れない。
+
+```sh
+npm run agents -- --report
+```
+
+読み取り専用の JSON Lines を Issue ごとに出力する。`launches` は記録された起動数、`runs` は各起動の agent・実際の CLI 引数（モデル指定を含む）・開始終了時刻・所要ミリ秒・上限に数えたか、`merged` は現在 GitHub 上でそのブランチの PR がマージ済みかを示す。起動エラーも履歴に残り `counted` は false、強制終了など終了時刻がない場合の所要時間は null。旧バージョンの履歴は復元できず、`legacyAttempts` は最後に保存されたリセット可能な試行回数であり累計ではない。旧履歴と新履歴が混在する Issue は新しい記録のみ集計する。GitHub 接続と設定が必要で、管理プログラムや状態ファイルは変更しない。
 
 ## PM 巡回
 

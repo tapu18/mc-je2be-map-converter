@@ -1,6 +1,6 @@
-import type { CommandIR, ParsedNode } from "../command/parser.ts";
-import { Scoreboard, type ScoreOperation } from "./scores.ts";
-import type { ExecutionResult } from "./index.ts";
+import type { CommandIR, ParsedNode } from "../../command/parser.ts";
+import { Scoreboard, type ScoreOperation } from "../../runtime/scores.ts";
+import type { ExecutionResult } from "../../runtime/index.ts";
 
 const fail = (error: string): ExecutionResult => ({ success: false, error });
 const ok = (result: number): ExecutionResult => ({ success: true, result });

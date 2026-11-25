@@ -10,6 +10,7 @@ const parser = new CommandParser(JSON.parse(readFileSync(grammar, "utf8")) as Co
 const counts: Record<string, number> = {};
 let total = 0, matched = 0, commandHole = 0, holes = 0, whitespaceExample = 0, differingShapes = 0, fixedSay = 0;
 let whitespaceWitnessHoles = 0, whitespaceWitnessLines = 0, unresolvedNoParse = 0, unresolvedOneShape = 0;
+let pairEligible = 0, pairNewDifferent = 0, pairNewSuccessful = 0;
 const say = parser.root.children?.say;
 const sayChildren = Object.entries(say?.children ?? {});
 const safeSay = say?.type === "literal" && sayChildren.length === 1 && sayChildren[0]?.[0] === "message" && sayChildren[0]?.[1].parser === "minecraft:message" && sayChildren[0]?.[1].executable === true;
@@ -33,6 +34,22 @@ for (const line of readFileSync(input, "utf8").split("\n")) {
   for (const baseline of values) for (const name of [undefined, ...names]) for (const value of name === undefined ? [baseline] : values) {
     const parsed = parser.parse(cmd.slice(1).replace(/\$\(([^()]+)\)/g, (_match, key: string) => key === name ? value : baseline));
     if (parsed.ok) shapes.add(JSON.stringify(parsed.nodes.map(({ kind, name, parser, jump }) => [kind, name, parser, jump])));
+  }
+  // Try two distinct names simultaneously. Other names share a baseline; equal
+  // names always share a value. This adds witnesses, never a proof of fixity.
+  const previousSize = shapes.size;
+  if (names.length >= 2) {
+    pairEligible++;
+    const pairValues = ["0", "x", "@s", "0 0 0", "{}", "run say x"];
+    for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+      for (const baseline of ["0", "x", "@s"]) for (const a of pairValues) for (const b of pairValues) {
+        const parsed = parser.parse(cmd.slice(1).replace(/\$\(([^()]+)\)/g, (_match, key: string) =>
+          key === names[i] ? a : key === names[j] ? b : baseline));
+        if (parsed.ok) shapes.add(JSON.stringify(parsed.nodes.map(({ kind, name, parser, jump }) => [kind, name, parser, jump])));
+      }
+    }
+    if (previousSize === 0 && shapes.size > 0) pairNewSuccessful++;
+    if (previousSize <= 1 && shapes.size > 1) pairNewDifferent++;
   }
   if (fixed && shapes.size > 1) throw new Error("fixed-shape invariant failed");
   if (shapes.size > 1) differingShapes++;
@@ -68,4 +85,4 @@ for (const line of readFileSync(input, "utf8").split("\n")) {
   matched++;
   for (const hole of result.holes) counts[hole.parser] = (counts[hole.parser] ?? 0) + 1;
 }
-console.log(JSON.stringify({ total, holes, commandHole, matched, unmatched: total - matched, whitespaceExample, whitespaceWitnessHoles, whitespaceWitnessLines, fixedSay, differingShapes, shapeUnresolved: total - differingShapes - fixedSay, unresolvedNoParse, unresolvedOneShape, holeTypesForFirstSuccessfulProbe: counts }, null, 2));
+console.log(JSON.stringify({ total, holes, commandHole, matched, unmatched: total - matched, whitespaceExample, whitespaceWitnessHoles, whitespaceWitnessLines, fixedSay, differingShapes, shapeUnresolved: total - differingShapes - fixedSay, unresolvedNoParse, unresolvedOneShape, pairEligible, pairNewDifferent, pairNewSuccessful, holeTypesForFirstSuccessfulProbe: counts }, null, 2));
