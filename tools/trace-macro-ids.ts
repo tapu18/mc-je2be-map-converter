@@ -11,6 +11,7 @@ const rows = readFileSync(input, 'utf8').trim().split('\n').map(s => JSON.parse(
 const parser = new CommandParser(JSON.parse(readFileSync(grammar, 'utf8')) as CommandTreeNode, { textFormat: 'snbt' });
 const calls = new Map<string, string[]>();
 const writes = new Map<string, string[]>();
+const writeKinds = new Map<string, Set<string>>();
 const invocations = new Map<string, Set<string>>();
 const resource = (id: string) => id.includes(':') ? id : `minecraft:${id}`;
 for (const row of rows) {
@@ -33,9 +34,13 @@ for (const row of rows) {
     const key = `${row.scope}\0${id}`;
     calls.set(key, [...(calls.get(key) ?? []), `${resource(m[2]!)}\0${m[3] ?? ""}`]);
   }
-  for (const m of row.cmd.matchAll(/\bdata\s+(?:modify|merge|remove)\s+storage\s+([^\s]+)\s+(.+)/g)) {
-    const key = `${row.scope}\0${resource(m[1]!)}`;
-    writes.set(key, [...(writes.get(key) ?? []), m[2]!]);
+  for (const m of row.cmd.matchAll(/\bdata\s+(modify|merge|remove)\s+storage\s+([^\s]+)\s+(.+)/g)) {
+    const key = `${row.scope}\0${resource(m[2]!)}`;
+    writes.set(key, [...(writes.get(key) ?? []), m[3]!]);
+    const kinds = writeKinds.get(key) ?? new Set<string>();
+    const kind = m[1] === 'modify' ? (/\b(set|append|prepend|insert|merge)\s+(?:-?\d+\s+)?(value|from|string)\b/.exec(m[3]!)?.slice(1).join('-') ?? 'modify-other') : m[1]!;
+    kinds.add(kind);
+    writeKinds.set(key, kinds);
   }
 }
 // Try mixed substitutions on failed rows. A successful parse may leave some holes in
@@ -43,10 +48,11 @@ for (const row of rows) {
 function mixedProbe(cmd: string) {
   const holes = [...cmd.matchAll(/\$\(([^()]+)\)/g)];
   const names = [...new Set(holes.map(h => h[1]!))];
-  const values = ['minecraft:stone', 'x', '0', '@s', '0 0 0', '{}'];
+  const values = ['minecraft:stone', 'x', '0', '@s', '0 0 0', '{}', '1', '64', '{text:"x"}'];
   const mapped: { name: string; start: number; end: number; argument: string; parser: string; offset: number }[] = [];
   let parsed = false;
-  for (let attempt = 0; attempt < Math.min(6 ** names.length, 512); attempt++) {
+  let best: { position: number; category: string } | undefined;
+  for (let attempt = 0; attempt < Math.min(values.length ** names.length, 8192); attempt++) {
     let n = attempt, concrete = '', cursor = 1;
     const replacements = names.map(() => { const value = values[n % values.length]!; n = Math.floor(n / values.length); return value; });
     const positions = holes.map(h => {
@@ -59,16 +65,24 @@ function mixedProbe(cmd: string) {
     });
     concrete += cmd.slice(cursor);
     const result = parser.parse(concrete);
-    if (!result.ok) continue;
+    if (!result.ok) {
+      const message = result.error.message;
+      const category = message.startsWith('未対応の引数の型') ? 'unsupportedParser'
+        : message.startsWith('不明なコマンドかサブコマンド') ? 'unknownLiteral'
+        : message.startsWith('引数が足りない') || message.startsWith('コマンドが途中') ? 'incomplete'
+        : result.error.parser ? 'invalidArgument' : 'other';
+      if (!best || result.error.position > best.position) best = { position: result.error.position, category };
+      continue;
+    }
     parsed = true;
     for (const { h, concreteStart, concreteEnd } of positions) {
       const node = result.nodes.find(node => node.kind === 'argument' && node.start <= concreteStart && node.end >= concreteEnd);
       if (node?.parser) mapped.push({ name: h[1]!, start: h.index, end: h.index + h[0].length, argument: node.name, parser: node.parser, offset: concreteStart - node.start });
     }
   }
-  return { parsed, holes: mapped };
+  return { parsed, holes: mapped, failure: best?.category ?? 'other' };
 }
-const counts: Record<string, number> = { macroLines: 0, holes: 0, probeFailed: 0, mixedParsed: 0, mixedUnmappedHoles: 0, idHoles: 0, differingHoleTypes: 0, noStorageCall: 0, noMatchingWrite: 0, matchingWrite: 0, literalCandidate: 0, mergeCandidate: 0, compoundSetCandidate: 0, candidateAny: 0, unresolvedNoCall: 0, unresolvedNoWrites: 0, unresolvedWrites: 0, storageHasMerge: 0, storageHasSetValue: 0, storageHasOtherWrite: 0, noDirectInvocation: 0, otherInvocation: 0, inlineInvocation: 0, withStorageInvocation: 0, withEntityInvocation: 0, withBlockInvocation: 0, withUnknownInvocation: 0, bareOrOtherInvocation: 0 };
+const counts: Record<string, number> = { macroLines: 0, holes: 0, probeFailed: 0, mixedParsed: 0, mixedUnmappedHoles: 0, failedUnsupportedParser: 0, failedUnknownLiteral: 0, failedIncomplete: 0, failedInvalidArgument: 0, failedOther: 0, idHoles: 0, differingHoleTypes: 0, noStorageCall: 0, noMatchingWrite: 0, matchingWrite: 0, literalCandidate: 0, mergeCandidate: 0, compoundSetCandidate: 0, candidateAny: 0, unresolvedNoCall: 0, unresolvedNoWrites: 0, unresolvedWrites: 0, storageHasMerge: 0, storageHasSetValue: 0, storageHasOtherWrite: 0, storageHasSetFrom: 0, storageHasSetString: 0, storageHasRemove: 0, noDirectInvocation: 0, otherInvocation: 0, inlineInvocation: 0, withStorageInvocation: 0, withEntityInvocation: 0, withBlockInvocation: 0, withUnknownInvocation: 0, bareOrOtherInvocation: 0 };
 for (const row of rows) {
   const cmd = row.cmd.trim();
   if (!cmd.startsWith('$')) continue;
@@ -77,7 +91,12 @@ for (const row of rows) {
   const results = ['minecraft:stone', 'x', '0', '@s', '0 0 0', '{}'].map(v => probeMacroTemplate(parser, cmd, v)).filter(r => r !== undefined);
   if (!results.length) {
     const mixed = mixedProbe(cmd);
-    if (!mixed.parsed) { counts.probeFailed!++; continue; }
+    if (!mixed.parsed) {
+      counts.probeFailed!++;
+      const key = `failed${mixed.failure[0]!.toUpperCase()}${mixed.failure.slice(1)}`;
+      counts[key]!++;
+      continue;
+    }
     counts.mixedParsed!++;
     counts.mixedUnmappedHoles! += [...cmd.matchAll(/\$\(([^()]+)\)/g)].length - new Set(mixed.holes.map(h => h.start)).size;
     results.push({ nodes: [], holes: mixed.holes });
@@ -114,6 +133,10 @@ for (const row of rows) {
       const [storage] = source.split('\0');
       return writes.get(`${row.scope}\0${storage}`) ?? [];
     });
+    const kinds = new Set(sources.flatMap(source => [...(writeKinds.get(`${row.scope}\0${source.split('\0')[0]}`) ?? [])]));
+    if (kinds.has('set-from')) counts.storageHasSetFrom!++;
+    if (kinds.has('set-string')) counts.storageHasSetString!++;
+    if (kinds.has('remove')) counts.storageHasRemove!++;
     if (allWrites.some(write => write.startsWith('{'))) counts.storageHasMerge!++;
     if (allWrites.some(write => /\bset value\b/.test(write))) counts.storageHasSetValue!++;
     if (allWrites.some(write => !write.startsWith('{') && !/\bset value\b/.test(write))) counts.storageHasOtherWrite!++;
