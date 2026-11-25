@@ -2,9 +2,9 @@ import type { CommandIR } from "../command/parser.ts";
 import type { ExecutionResult } from "./index.ts";
 import { setNbtPath } from "./nbt-mutation.ts";
 import { getNbtPath } from "./nbt-path.ts";
-import { executeScoreCommand } from "./score-command.ts";
+import { executeScoreCommand } from "../features/score/runtime.ts";
 import { Scoreboard } from "./scores.ts";
-import { executeStorageCommand, StorageState } from "./storage-command.ts";
+import { executeStorageCommand, StorageState } from "../features/storage/runtime.ts";
 
 /** Runtime state shared across commands. */
 export class RuntimeState {
