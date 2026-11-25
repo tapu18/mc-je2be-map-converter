@@ -24,6 +24,7 @@ interface Config {
   autoMerge: boolean;
   agentArgs: string[];
   manager: ManagerConfig;
+  workerOverrides: Record<string, { agent?: 'codex' | 'claude'; agentArgs?: string[] }>;
 }
 interface Task {
   issue: number;
@@ -33,6 +34,7 @@ interface Task {
   attempts: number;
   phase: 'claiming' | 'working' | 'review' | 'blocked' | 'done';
   error?: string;
+  launches?: { agent: string; args: string[]; startedAt: number; finishedAt?: number; counted: boolean }[];
 }
 interface State {
   version: 1;
@@ -50,6 +52,7 @@ const { values } = parseArgs({ options: {
   once: { type: 'boolean', default: false },
   'dry-run': { type: 'boolean', default: false },
   help: { type: 'boolean', default: false },
+  report: { type: 'boolean', default: false },
 } });
 if (values.help) {
   console.log('npm run agents -- --config agent-runner.json [--once] [--dry-run]\nLinux/macOS, Node >=24, git, gh and an authenticated codex or claude CLI required.');
@@ -64,7 +67,12 @@ async function main() {
   const input: unknown = JSON.parse(await readFile(resolve(values.config!), 'utf8'));
   const config = validateConfig(input);
   validateWorkerArgs(config.agentArgs);
-  const agentArgs = agentArguments(config.agent, config.agentArgs);
+  agentArguments(config.agent, config.agentArgs);
+  for (const override of Object.values(config.workerOverrides)) {
+    const args = override.agentArgs ?? config.agentArgs;
+    validateWorkerArgs(args);
+    agentArguments(override.agent ?? config.agent, args);
+  }
   const managerArgs = config.manager.enabled ? agentArguments(config.manager.agent, config.manager.agentArgs) : [];
   const root = (await command('git', ['rev-parse', '--show-toplevel'], { cwd: process.cwd() })).trim();
   const codeAt = async (ref: string) => (await command('git', ['rev-parse', `${ref}:tools/agent-runner.ts`, `${ref}:tools/agent-runner`], { cwd: root, signal: abort.signal })).trim().split('\n');
@@ -130,6 +138,17 @@ async function main() {
     for (const number of dependencies(item.body)) if ((await issue(number)).state !== 'CLOSED') return false;
     return true;
   };
+
+  if (values.report) {
+    const state = JSON.parse(await readFile(join(stateDir, 'state.json'), 'utf8')) as State;
+    if (state.version !== 1 || state.repo !== config.repo || !Array.isArray(state.tasks)) throw new Error('State version/repository mismatch');
+    for (const task of state.tasks) {
+      const pulls = await prs(task);
+      const launches = task.launches ?? [];
+      console.log(JSON.stringify({ issue: task.issue, launches: launches.length, legacyAttempts: task.launches ? undefined : task.attempts, merged: pulls.some(pr => pr.state === 'MERGED'), runs: launches.map(run => ({ ...run, durationMs: run.finishedAt === undefined ? null : run.finishedAt - run.startedAt })) }));
+    }
+    return;
+  }
 
   // Dry-run neither takes the lock nor creates state, claims, worktrees or CLI sessions.
   if (values['dry-run']) {
@@ -228,16 +247,24 @@ async function main() {
       if (task.attempts >= config.maxAttempts) { await stopTask(task, `実行回数の上限 ${config.maxAttempts} 回に到達`); return; }
       if (state.runs >= config.maxRunsPerDay) { log('Daily run limit reached; waiting.'); return; }
       await prepare(task);
+      const matching = Object.entries(config.workerOverrides).filter(([label]) => hasLabel(item, label));
+      if (matching.length > 1) throw new AgentLaunchError(`Multiple worker overrides match issue #${task.issue}: ${matching.map(([label]) => label).join(', ')}`);
+      const override = matching[0]?.[1];
+      const agent = override?.agent ?? config.agent;
+      const args = agentArguments(agent, override?.agentArgs ?? config.agentArgs);
+      const launch: NonNullable<Task['launches']>[number] = { agent, args, startedAt: Date.now(), counted: true };
+      (task.launches ??= []).push(launch);
       task.attempts++;
       state.runs++;
       task.phase = 'working';
       await save();
-      const logfile = join(stateDir, `${task.issue}-${Date.now()}.log`);
+      const logfile = join(stateDir, `${task.issue}-${launch.startedAt}.log`);
       const prompt = workerPrompt({ task, item, repo: config.repo, root, base: config.base, pr });
-      log(`Running ${config.agent} for #${task.issue}, attempt ${task.attempts}; log=${logfile}`);
+      await writeFile(logfile, `agent-runner launch: ${JSON.stringify(launch)}\n`, { mode: 0o600 });
+      log(`Running ${agent} ${JSON.stringify(args)} for #${task.issue}, attempt ${task.attempts}; log=${logfile}`);
       const progress = await followProgress(logfile, message => log(`#${task.issue} ${message}`));
       try {
-        await command(config.agent, agentArgs,
+        await command(agent, args,
         { cwd: task.worktree, timeoutMs: config.timeoutSeconds * 1000, signal: abort.signal, log: logfile, input: prompt });
         delete task.error;
       } catch (error) {
@@ -249,10 +276,11 @@ async function main() {
           // Invalid invocation / missing executable is infrastructure failure, not work.
           task.attempts--;
           state.runs--;
+          launch.counted = false;
           await save();
           throw new AgentLaunchError(`AI CLI could not start. Fix the configuration and restart.\n${task.error}`);
         }
-      } finally { await progress.close(); }
+      } finally { launch.finishedAt = Date.now(); await progress.close(); await save(); }
       // CLI exit is not evidence of completion. Reconcile with GitHub next tick.
       await save();
     };
@@ -396,10 +424,16 @@ async function main() {
 function validateConfig(input: unknown): Config {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Config must be an object');
   const raw = input as Record<string, unknown>;
-  const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxRunsPerDay: 12, autoMerge: true, agentArgs: [] };
+  const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxRunsPerDay: 12, autoMerge: true, agentArgs: [], workerOverrides: {} };
   const config = { ...defaults, ...raw } as unknown as Config;
   for (const key of Object.keys(raw)) if (![...Object.keys(defaults), 'repo', 'milestone', 'manager'].includes(key)) throw new Error(`Unknown config key: ${key}`);
   config.manager = managerConfig(raw.manager);
+  if (!config.workerOverrides || typeof config.workerOverrides !== 'object' || Array.isArray(config.workerOverrides)) throw new Error('Invalid workerOverrides');
+  for (const [label, override] of Object.entries(config.workerOverrides)) {
+    if (!label || !override || typeof override !== 'object' || Array.isArray(override) || Object.keys(override).some(key => !['agent', 'agentArgs'].includes(key)) ||
+      (override.agent !== undefined && !['codex', 'claude'].includes(override.agent)) ||
+      (override.agentArgs !== undefined && (!Array.isArray(override.agentArgs) || !override.agentArgs.every(arg => typeof arg === 'string')))) throw new Error(`Invalid worker override: ${label}`);
+  }
   if (typeof config.repo !== 'string' || !/^[\w.-]+\/[\w.-]+$/.test(config.repo)) throw new Error('repo must be owner/repository');
   if (!['codex', 'claude'].includes(config.agent)) throw new Error('agent must be codex or claude');
   if (typeof config.base !== 'string' || !/^[\w][\w./-]*$/.test(config.base)) throw new Error('Invalid base branch');

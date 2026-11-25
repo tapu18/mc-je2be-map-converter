@@ -419,3 +419,26 @@ it('reports PM configuration during dry-run without starting either role', async
   await expect(access(join(f.root, '.git'))).rejects.toThrow();
   expect((await f.load()).calls.some(call => ['codex', 'claude'].includes(call[0]!))).toBe(false);
 });
+
+it.each([false, true])('selects worker override only when label is present: %s', async (labeled) => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', workerOverrides: { 'model:strong': { agent: 'claude', agentArgs: ['--model', 'example'] } } }));
+  if (labeled) await f.update(d => { d.issues[0]!.labels.push({ name: 'model:strong' }); });
+  await f.run();
+  await f.run();
+  const calls = (await f.load()).calls;
+  expect(calls.some(call => call[0] === (labeled ? 'claude' : 'codex') && (labeled ? call.includes('example') : call.includes('exec')))).toBe(true);
+  const launch = (await f.state()).tasks[0].launches[0];
+  expect(launch.agent).toBe(labeled ? 'claude' : 'codex');
+  expect(launch.finishedAt).toBeGreaterThanOrEqual(launch.startedAt);
+  const report = await f.run('--report');
+  expect(report.stdout).toContain('"issue":7');
+  expect(report.stdout).toContain('"merged":false');
+  expect(report.stdout).toContain('"durationMs":');
+});
+
+it('retains default worker invocation without overrides', async () => {
+  const f = await fixture();
+  await f.run(); await f.run();
+  expect((await f.load()).calls.some(call => call[0] === 'codex' && call.includes('exec'))).toBe(true);
+});
