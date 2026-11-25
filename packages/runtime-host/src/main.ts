@@ -12,7 +12,7 @@ world.afterEvents.worldLoad.subscribe(() => {
     const properties = {get: (key: string) => world.getDynamicProperty(key), set: (key: string, value?: string) => world.setDynamicProperty(key, value)};
     const interval = system.runInterval(() => {
       if (!session?.isConsistent) { system.clearRun(interval); console.warn("[je2be] persistence stopped: inconsistent session"); return; }
-      try { commitState(properties, state); }
+      try { session.syncScores(); commitState(properties, state); }
       catch (error) { session?.halt(); system.clearRun(interval); console.warn("[je2be] persistence failed: " + error); }
     }, 1);
   }).catch((error: unknown) => console.warn("[je2be] initialization failed: " + error));

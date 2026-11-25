@@ -1,4 +1,4 @@
-import { BlockPermutation, world, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, ScoreboardIdentityType, world, type Vector3 } from "@minecraft/server";
 import { executeCommand, RuntimeState } from "../../core/src/runtime/command.ts";
 import type { CommandIR } from "../../core/src/command/parser.ts";
 
@@ -91,6 +91,23 @@ export class RuntimeSession {
   private unknownNative = false;
   constructor(state = new RuntimeState()) { this.state = state; }
   get isConsistent(): boolean { return this.consistent; }
+  /** Capture changes made by native commands to managed fake-player scores. */
+  syncScores(): void {
+    if (!this.consistent) throw Error("inconsistent session");
+    try {
+      for (const [id, scores] of this.state.scores.objectives) {
+        const objective = world.scoreboard.getObjective(id);
+        if (!objective) throw Error(`managed objective missing: ${id}`);
+        const current = new Map<string, number>();
+        for (const participant of objective.getParticipants()) if (participant.type === ScoreboardIdentityType.FakePlayer) {
+          const value = objective.getScore(participant);
+          if (value !== undefined) current.set(participant.displayName, value);
+        }
+        scores.clear();
+        for (const [holder, value] of current) scores.set(holder, value);
+      }
+    } catch (error) { this.consistent = false; throw error; }
+  }
   halt(): void { this.consistent = false; }
   runNative(dimension: string, command: string, completion: "synchronous" | "deferred") {
     if (!this.consistent) return { status: "inconsistent" as const };
@@ -102,6 +119,7 @@ export class RuntimeSession {
   execute(ir: CommandIR) {
     if (!this.consistent) return { status: "inconsistent" as const };
     if (this.unknownNative) return { status: "unknown-native" as const };
+    try { this.syncScores(); } catch (error) { return { status: "inconsistent" as const, error: String(error) }; }
     const before = snapshot(this.state);
     const core = executeCommand(this.state, ir);
     const projection = project(before, snapshot(this.state));
