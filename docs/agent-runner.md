@@ -36,7 +36,8 @@ Ctrl+C / SIGTERM で停止する。実行中の CLI とその子プロセスを�
 | `milestone` | 省略時は全マイルストーン。指定時はその名前の ready Issue のみ新規着手する |
 | `pollSeconds` | `60`。巡回終了から次の巡回までの秒数 |
 | `timeoutSeconds` | `3600`。1回の AI 実行の上限秒数 |
-| `maxAttempts` | `3`。Issue ごとの AI 起動回数上限。CI 修正も数える |
+| `maxAttempts` | `3`。Issue ごとの進捗のない AI 起動回数の上限。CI 修正も数える |
+| `maxTotalAttempts` | `10`。進捗の有無を問わない Issue ごとの AI 起動回数上限 |
 | `maxRunsPerDay` | `12`。UTC の1日あたり AI 起動回数上限。日付が変われば再開 |
 | `autoMerge` | `true`。`false` なら PR 作成・修正まで進め、マージは手動 |
 | `agentArgs` | `[]`。AI CLI に渡す追加引数の配列。シェルは介さない |
@@ -160,7 +161,11 @@ worker が途中で終了するときは `status:paused` を付けず、進捗�
 
 worker が依存や判断を待つ場合、待つ Issue を本文に `Depends on: #番号` で明示し、理由と再開手順をコメントして `status:blocked` にする。判断は判断 Issue に記録し、その `needs-approval` を外してから閉じる。管理対象で claim が有効な worker 待機は、明示された依存が1件以上あり全件 closed、本人・依存先・開いている PR に `needs-approval` がなく、他の status がない場合に限り ready を経て同じ worktree で再開する。依存がない場合や取得できない場合は自動再開しない。実行回数上限など管理プログラム自身の停止は従来どおり人が原因を解消し ready に戻す。`status:paused` は人の明示的な中断であり自動解除しない。
 
-上限到達や PR の未マージクローズは `status:blocked` にして、再開情報を Issue に記録する。原因を直して `status:ready` に戻すと、同じ worktree で実行回数をリセットして再開する。Issue のクローズは完了として扱う。管理対象外の既存作業を勝手に引き継がず、状態ファイルにある Issue だけを再開する。
+起動前後のリモートブランチを比較し、前の先端を含む新しいコミットが push されていれば `maxAttempts` の回数を戻す。ブランチの新規作成だけでは、base から新しいコミットがない限り進捗に数えない。確認に失敗した場合や push がない場合は回数を消費する。`maxTotalAttempts` と日次上限は push があっても消費する。CLI の起動前エラーはどちらの Issue 上限にも数えない。旧状態の合計は保存済みの試行回数から始まる。
+
+上限到達や PR の未マージクローズは `status:blocked` にして、再開情報を Issue に記録する。原因を直して `status:ready` に戻すと、同じ worktree で両方の Issue 上限をリセットして再開する。Issue のクローズは完了として扱う。管理対象外の既存作業を勝手に引き継がず、状態ファイルにある Issue だけを再開する。
+
+別案として Codex CLI の `codex exec resume <SESSION_ID> <PROMPT>` は既存セッションへ追加指示を送れる（ローカルの `--help` で確認）。同じ文脈を保てる一方、セッション ID の保存・再開失敗・時間と回数の制御が別途必要になる。今回の方式は既存の起動と worktree の再開を維持し、push を検証して上限だけを調整する。
 
 ## 状態・ログ・排他制御
 
