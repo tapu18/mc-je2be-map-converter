@@ -40,6 +40,27 @@
 
 最後の区間には bool、数値、string、message、時間、UUID、固定語彙などの処理と、上の区間への振り分けが混在する。SNBT・基本読み取り・書換は前述の別ファイルにあり、動的 ID 変換の必要量も含まれない。再現例（`a` と `b` は表の行番号）: `node -e 'const s=require("fs").readFileSync("packages/core/src/command/arguments.ts","utf8").split(/(?<=\n)/); const [a,b]=process.argv.slice(1).map(Number); console.log(Buffer.byteLength(s.slice(a-1,b).join("")))' 164 299`。末尾は `wc -l packages/core/src/command/arguments.ts` で確認する。
 
+### 共有依存を含む既存コードのバンドル
+
+比較用に esbuild 0.28.2 で各公開入口を別々に bundle・minify した UTF-8 出力は、resource ID 484、selector 7,807、NBT path 5,602、全型の `ARGUMENT_PARSERS` 22,527 bytes。各値にはその入口から到達する共有コードが含まれるので合算できない。全型レジストリは型を実行時に選ぶため、特定の型だけを取り出した完成型紙処理の増分ではない。変換・表・型紙の展開と境界検証は含まれず、実行可能性・網羅性の検証でもない。
+
+再現（`npm ci` 後、リポジトリルート）:
+
+```sh
+node --input-type=module - <<'NODE'
+import { build } from 'esbuild';
+for (const name of ['readResourceLocation', 'readSelector', 'readNbtPath', 'ARGUMENT_PARSERS']) {
+  const result = await build({
+    stdin: { contents: `export { ${name} } from './packages/core/src/command/arguments.ts'`, resolveDir: process.cwd(), loader: 'ts' },
+    bundle: true, minify: true, format: 'esm', platform: 'neutral', write: false,
+  });
+  console.log(name, result.outputFiles[0].contents.byteLength);
+}
+NODE
+```
+
+#239 の 2026-11-25 時点の限定試探は成功例で ID 穴 2 件を検出したが、未解析行と動的書き込みが残る。表を定数だけに絞れる根拠にはできない。
+
 ## 全文法案との比較と測定方法
 
 | 対象 | 観測値 | 限界 |
