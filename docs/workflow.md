@@ -73,6 +73,8 @@
 
 管理プログラムが起動した worker は、途中で終了するとき `status:paused` を付けず、claim も変更しない。進捗と再開手順を Issue に書き、可能な変更を push する。管理プログラムは次の巡回で同じ worktree から再実行し、起動回数を数える。依存や人の判断待ちは別途 `status:blocked` または `needs-approval` にする。
 
+claim があり、worker が `status:blocked` にした Issue に限り、PM は本文の `Depends on:` の行だけを付け替えてよい。付け替えた理由をその Issue にコメントする。再開の判定は管理プログラムが行う。
+
 管理プログラムを使わない場合：
 
 1. 作業中のブランチを push する。
