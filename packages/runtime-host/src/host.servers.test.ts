@@ -13,6 +13,8 @@ it("projects core scores and exercises the Script API host on BDS three times", 
     mkdirSync(join(pack, "scripts"));
     cpSync(new URL("../pack/scripts/main.js", import.meta.url), join(pack, "scripts/main.js"));
     writeFileSync(join(pack, "scripts/data.js"), "export const objectives = []; export const entities = [];\n");
+    writeFileSync(join(pack, "scripts/datapacks.js"), 'export const datapacks = {schemaVersion: 1, packs: []};\n');
+    writeFileSync(join(pack, "scripts/storage.js"), 'export const storage = [];\n');
     writeFileSync(join(pack, "scripts/probe.js"), `
 import { world } from "@minecraft/server";
 import { RuntimeSession, candidates, entity, readBlock, writeBlock, nativeCommand, readProperty, writeProperty } from "./main.js";

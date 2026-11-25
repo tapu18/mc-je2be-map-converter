@@ -76,7 +76,7 @@ function stableUuid(seed: string): string {
 }
 
 /** 初期化パックを BE ワールドの behavior_packs/ に置き、world_behavior_packs.json に足す */
-export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = [], datapackData = "", storageData = "[]"): void {
+export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = [], datapackData = '{"schemaVersion":1,"packs":[]}', storageData = "[]"): void {
   const chunk = (n: number) => Math.floor(n / 16);
   const sorted = [...entities].sort((a, b) => a.dimension.localeCompare(b.dimension) || chunk(a.pos.x) - chunk(b.pos.x) || chunk(a.pos.z) - chunk(b.pos.z));
   const data = `export const objectives = ${JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]))};\nexport const entities = ${JSON.stringify(sorted)};\n`;
@@ -102,6 +102,7 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], e
   );
   for (const file of files) cpSync(join(scriptsDir, file), join(dir, "scripts", file));
   writeFileSync(join(dir, "scripts", "data.js"), data);
+  writeFileSync(join(dir, "scripts", "datapacks.js"), `export const datapacks = ${datapackData};\n`);
   writeFileSync(join(dir, "scripts", "storage.js"), `export const storage = ${storageData};\n`);
   const refsPath = join(worldDir, "world_behavior_packs.json");
   const refs = existsSync(refsPath) ? (JSON.parse(readFileSync(refsPath, "utf8")) as { pack_id: string; version: number[] }[]) : [];

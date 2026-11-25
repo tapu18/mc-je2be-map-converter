@@ -393,3 +393,5 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 ### Script API ホスト接続（#234）
 
 `packages/runtime-host/src/host.servers.test.ts`（BDS 1.26.66.1）では、現行 `executeCommand` の objective 追加、`scoreboard players set alice test 42`、保持者と objective の削除を Script API へ投影し、3回連続で値と結果を確認した。同テストで既存 objective との衝突による投影失敗と以降の実行停止、ブロックの読み書き・未ロード・範囲外・不正 ID、候補とエンティティ取得、ネイティブ命令、動的プロパティを確認した。削除済みの文字列保持者を `getScore` で読むと例外となったため、削除は参加者一覧で検証した。候補の完全性は検証しておらず、ホストは常に不完全と返す。
+
+- BDS 1.26.66.1 で、変換データ相当の関数 IR を起動時に読み込む試作は、`minecraft:load` のスコア設定と `minecraft:tick` の加算を投影し、再起動時には未実装の状態復元を理由に起動を拒否した。`packages/runtime-host/src/startup.servers.test.ts` を3回実行して確認。これはキュー・schedule や `scenarios/datapack/load-tick.json` の一致を確認したものではない（#235）。
