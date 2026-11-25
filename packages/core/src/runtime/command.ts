@@ -4,6 +4,8 @@ import { scoreRuntime } from "../features/score/registration.ts";
 import { Scoreboard } from "./scores.ts";
 import { StorageState } from "../features/storage/runtime.ts";
 import { storageRuntime } from "../features/storage/registration.ts";
+import { scheduleRuntime } from "../features/schedule/registration.ts";
+import { ScheduleState } from "../features/schedule/runtime.ts";
 
 import { defaultExecutionContext, dimensionId, type ExecutionContext, type ExecutionHost } from "./context.ts";
 import { applyStores, compileModifier, type ExecuteBranch } from "./execute-steps.ts";
@@ -12,12 +14,13 @@ import { executeWorldCommand } from "./world.ts";
 export type { ExecutionContext } from "./context.ts";
 export { defaultExecutionContext } from "./context.ts";
 
-export const runtimeFamilies = [scoreRuntime, storageRuntime] as const;
+export const runtimeFamilies = [scoreRuntime, storageRuntime, scheduleRuntime] as const;
 
 /** Runtime state shared across commands. */
 export class RuntimeState {
   readonly scores = new Scoreboard();
   readonly storage = new StorageState();
+  readonly schedule = new ScheduleState();
   readonly functions = new Map<string, CommandIR[]>();
   readonly functionTags = new Map<string, string[]>();
   readonly host: ExecutionHost | undefined;
@@ -25,6 +28,22 @@ export class RuntimeState {
   constructor(host?: ExecutionHost) {
     this.host = host;
   }
+}
+
+/** Run one tick's callbacks in their registration order using the game loop's execution source. */
+export function advanceScheduledTick(state: RuntimeState, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext()): {id: string; result: ExecutionResult}[] {
+  const outcomes: {id: string; result: ExecutionResult}[] = [];
+  for (const target of state.schedule.advanceTick()) {
+    const names = target.tag ? state.functionTags.get(target.id) ?? [] : [target.id];
+    for (const id of names) {
+      if (!state.functions.has(id)) continue;
+      const ir: CommandIR = {source: `function ${id}`, context: [], command: {name: "function", nodes: [
+        {kind: "argument", name: "name", start: 9, end: 9 + id.length, value: {kind: "resource", id, tag: false}},
+      ]}};
+      outcomes.push({id, result: executeCommand(state, ir, budget, context)});
+    }
+  }
+  return outcomes;
 }
 
 /** Per-invocation safety limits, independent of Java's unmeasured limits. */
