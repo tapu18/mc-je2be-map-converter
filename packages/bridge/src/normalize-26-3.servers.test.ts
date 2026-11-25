@@ -1,6 +1,6 @@
 // 実際に生成した 26.2 / 26.3 の文法で正規化を比較する。
 import { expect, it } from "vitest";
-import { CommandParser, normalize1_21_2Arguments, normalize26_3DataArgumentNames, toCommandIR } from "@je2be/core";
+import { CommandParser, normalize1_21_2Arguments, normalize26_2TeamColor, normalize26_3DataArgumentNames, toCommandIR } from "@je2be/core";
 import { javaGrammarSources, loadGrammarTree, setupJavaGrammar } from "@je2be/converter";
 
 it("normalizes the 26.2 data and function coordinate paths parsed with generated grammars", async () => {
@@ -20,6 +20,21 @@ it("normalizes the 26.2 data and function coordinate paths parsed with generated
     const old = parsers[0]!.parse(command), current = parsers[1]!.parse(command);
     if (!old.ok || !current.ok) throw new Error(`Could not parse ${command}: ${JSON.stringify({ old, current })}`);
     expect(normalize26_3DataArgumentNames(toCommandIR(command, old.nodes))).toEqual(toCommandIR(command, current.nodes));
+  }
+});
+
+it("normalizes team and waypoint colors using generated 26.1 and 26.2 grammars", async () => {
+  const sources = javaGrammarSources();
+  const grammars = await Promise.all(["26.1", "26.2"].map(version => {
+    const source = sources.find(s => s.version === version);
+    if (!source) throw new Error(`Missing grammar ${version}`);
+    return setupJavaGrammar(source);
+  }));
+  const parsers = grammars.map(g => new CommandParser(loadGrammarTree(g), { textFormat: g.textFormat }));
+  for (const command of ["team modify test color red", "waypoint modify @s color red", "return run team modify test color red"]) {
+    const old = parsers[0]!.parse(command), current = parsers[1]!.parse(command);
+    if (!old.ok || !current.ok) throw new Error(`Could not parse ${command}: ${JSON.stringify({ old, current })}`);
+    expect(normalize26_2TeamColor(toCommandIR(command, old.nodes))).toEqual(toCommandIR(command, current.nodes));
   }
 });
 
