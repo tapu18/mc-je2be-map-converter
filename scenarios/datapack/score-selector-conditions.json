@@ -1,0 +1,65 @@
+{
+  "description": "scores セレクタの範囲・未設定・複数目的、unless 条件、remove、team と gamemode。実プレイヤーを接続しないため @a と gamemode は空集合で検証する。",
+  "setup": [
+    "scoreboard objectives add value dummy",
+    "scoreboard objectives add other dummy",
+    "scoreboard objectives add result dummy",
+    "team add red",
+    "summon marker 8 -60 8 {Tags:[\"low\",\"probe\"]}",
+    "summon marker 9 -60 8 {Tags:[\"mid\",\"probe\"]}",
+    "summon marker 10 -60 8 {Tags:[\"high\",\"probe\"]}",
+    "summon marker 11 -60 8 {Tags:[\"unset\",\"probe\"]}",
+    "scoreboard players set @e[tag=low] value 1",
+    "scoreboard players set @e[tag=mid] value 3",
+    "scoreboard players set @e[tag=high] value 5",
+    "scoreboard players set @e[tag=mid] other 7",
+    "scoreboard players set @e[tag=high] other 8",
+    "team join red @e[tag=mid]"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:selector/probe": [
+        "execute store result score #upper result if entity @e[tag=probe,scores={value=..3}]",
+        "execute store result score #lower result if entity @e[tag=probe,scores={value=5..}]",
+        "execute store result score #range result if entity @e[tag=probe,scores={value=2..4}]",
+        "execute store result score #exact result if entity @e[tag=probe,scores={value=3}]",
+        "execute store result score #multiple result if entity @e[tag=probe,scores={value=2..,other=7}]",
+        "execute as @e[tag=probe] if entity @s[scores={value=-2147483648..2147483647}] run scoreboard players add #self result 1",
+        "execute store result score #players result if entity @a[scores={value=-2147483648..2147483647}]",
+        "execute store result score #team result if entity @e[tag=probe,team=red]",
+        "execute store result score #no_team result if entity @e[tag=probe,team=!red]",
+        "execute store result score #gamemode result if entity @a[gamemode=creative]",
+        "scoreboard players set #a value 3",
+        "scoreboard players set #b value 5",
+        "execute unless score #a value matches 4.. run scoreboard players set #unless_matches result 1",
+        "execute unless score #a value matches ..3 run scoreboard players set #unless_matches_false result 1",
+        "execute unless score #a value >= #b value run scoreboard players set #unless_compare result 1",
+        "execute unless score #a value < #b value run scoreboard players set #unless_compare_false result 1",
+        "execute unless entity @e[tag=missing] run scoreboard players set #unless_entity result 1",
+        "execute unless entity @e[tag=probe] run scoreboard players set #unless_entity_false result 1",
+        "scoreboard players set #negative value 1",
+        "scoreboard players remove #negative value 3",
+        "scoreboard players set #overflow value -2147483648",
+        "scoreboard players remove #overflow value 1",
+        "scoreboard players operation #negative result = #negative value",
+        "scoreboard players operation #overflow result = #overflow value",
+        "scoreboard players remove @e[tag=probe,scores={value=-2147483648..2147483647}] value 2",
+        "execute as @e[tag=low] run scoreboard players operation #low result = @s value",
+        "execute as @e[tag=mid] run scoreboard players operation #mid result = @s value",
+        "execute as @e[tag=high] run scoreboard players operation #high result = @s value",
+        "execute store result score #unset result if entity @e[tag=unset,scores={value=-2147483648..2147483647}]"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "run": "function m2:selector/probe"
+    }
+  ],
+  "observe": {
+    "scores": [
+      "result"
+    ]
+  },
+  "bedrockPending": "M2 のデータパック実行とセレクタ評価が未実装"
+}
