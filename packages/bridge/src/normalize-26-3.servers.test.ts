@@ -74,7 +74,9 @@ it("normalizes worldborder seconds to the 1.21.11 time value", async () => {
   for (const prefix of ["worldborder add 1", "worldborder set 20", "worldborder warning time"]) {
     const old = parsers[0]!.parse(`${prefix} 7`), current = parsers[1]!.parse(`${prefix} 7s`);
     if (!old.ok || !current.ok) throw new Error(`Could not parse ${prefix}: ${JSON.stringify({ old, current })}`);
-    const before = normalize1_21_11Worldborder(toCommandIR(`${prefix} 7`, old.nodes)).command!.nodes.at(-1)!;
+    const normalized = normalize1_21_11Worldborder(toCommandIR(`${prefix} 7`, old.nodes));
+    if (!normalized.ok) throw new Error(normalized.reason);
+    const before = normalized.ir.command!.nodes.at(-1)!;
     const after = toCommandIR(`${prefix} 7s`, current.nodes).command!.nodes.at(-1)!;
     expect({ name: before.name, parser: before.parser, value: before.value }).toEqual({ name: after.name, parser: after.parser, value: after.value });
   }

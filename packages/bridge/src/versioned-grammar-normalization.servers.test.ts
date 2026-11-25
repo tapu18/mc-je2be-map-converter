@@ -12,7 +12,11 @@ const NORMALIZERS = new Map<string, (ir: CommandIR) => CommandIR>([
   ["1.20.6→1.21", normalize1_21Attribute],
   ["1.21.1→1.21.2", normalize1_21_2Arguments],
   ["1.21.8→1.21.9", normalize1_21_9SpawnRotation],
-  ["1.21.10→1.21.11", normalize1_21_11Worldborder],
+  ["1.21.10→1.21.11", ir => {
+    const result = normalize1_21_11Worldborder(ir);
+    if (!result.ok) throw new Error(result.reason);
+    return result.ir;
+  }],
   ["1.21.11→26.1", normalize26_1Time],
   ["26.1→26.2", normalize26_2TeamColor],
   ["26.2→26.3", ir => {

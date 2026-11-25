@@ -11,12 +11,15 @@ import type { MappingLookup } from "../mappings/mappings.ts";
 import type { ArgumentValue, EntitySelector, Range } from "./arguments.ts";
 import { readSelector } from "./arguments.ts";
 import { bedrockEffect, bedrockEntityType } from "./bedrock-command-ids.ts";
+import { isEarlierJavaRelease, normalizeCommandIR } from "./normalize-command.ts";
 import { toCommandIR, type CommandParser, type ParsedNode } from "./parser.ts";
 import { formatRawText, plainText, toRawText } from "./rawtext.ts";
 import { CommandSyntaxError, StringReader } from "./reader.ts";
 
 export interface RewriteContext {
   parser: CommandParser;
+  /** parser が使う Java の版。指定すると書き換えの前に IR を正規化する。 */
+  sourceVersion?: string;
   mappings: MappingLookup;
   /** Java のブロックの既定の状態（データ生成の blocks.json）。`setblock ... oak_stairs[facing=east]` の省いた状態を補う */
   blockDefaults: BlockDefaults;
@@ -422,18 +425,25 @@ const COMMANDS: Record<string, CommandHandler> = {
     }
   },
   gamemode: ok,
-  time: (nodes, _head, _ctx, ed) => {
+  time: (nodes, _head, ctx, ed) => {
     const [sub, option] = literals(nodes);
     if (sub === "add" || (sub === "query" && ["time", "gametime", "day", "daytime"].includes(option ?? ""))) return;
     if (sub === "set") {
       if (arg(nodes, "time")) return;
-      const marker = arg(nodes, "timemarker")?.value;
-      if (marker?.kind === "resource" && marker.id.startsWith("minecraft:") && DAY_MARKERS.has(marker.id.slice("minecraft:".length))) return;
+      const timemarker = arg(nodes, "timemarker");
+      const marker = timemarker?.value;
       // 旧 Java の day などは絶対時刻。BE のマーカーは次に来る該当時刻へ進める。
-      const ticks = DAY_MARKERS.get(option ?? "");
-      if (ticks !== undefined) {
+      if (timemarker && marker?.kind === "resource" && marker.id.startsWith("minecraft:")) {
+        const ticks = DAY_MARKERS.get(marker.id.slice("minecraft:".length));
+        if (ticks !== undefined) {
+          if (ctx.sourceVersion && isEarlierJavaRelease(ctx.sourceVersion, "26.1")) ed.replace(timemarker.start, timemarker.end, String(ticks));
+          return;
+        }
+      }
+      const legacyTicks = DAY_MARKERS.get(option ?? "");
+      if (legacyTicks !== undefined) {
         const literal = nodes[1]!;
-        return ed.replace(literal.start, literal.end, String(ticks));
+        return ed.replace(literal.start, literal.end, String(legacyTicks));
       }
     }
     ed.unsupported("BE に直接対応する時刻の操作がない");
@@ -529,8 +539,16 @@ function checkExecuteStep(kind: string, nodes: ParsedNode[], ed: Editor): void {
 export function rewriteCommand(source: string, ctx: RewriteContext): RewriteResult {
   const parsed = ctx.parser.parse(source);
   if (!parsed.ok) return { status: "invalid", message: parsed.error.message, position: parsed.error.position };
+  let ir = toCommandIR(source, parsed.nodes);
+  if (ctx.sourceVersion) {
+    const normalized = normalizeCommandIR(ir, ctx.sourceVersion);
+    if (!normalized.ok) {
+      const { reason, start, end } = normalized;
+      return { status: "unsupported", issues: [{ severity: "unsupported", message: `${reason}（${start}–${end}文字目）` }] };
+    }
+    ir = normalized.ir;
+  }
   const ed = new Editor(source);
-  const ir = toCommandIR(source, parsed.nodes);
   for (const step of ir.context) checkExecuteStep(step.kind, step.nodes, ed);
   if (ir.command) {
     const handler = COMMANDS[ir.command.name];
@@ -542,7 +560,8 @@ export function rewriteCommand(source: string, ctx: RewriteContext): RewriteResu
     }
   }
   if (ed.failed) return { status: "unsupported", issues: ed.issues };
-  for (const n of parsed.nodes) rewriteNode(n, ctx, ed);
+  for (const step of ir.context) for (const node of step.nodes) rewriteNode(node, ctx, ed);
+  for (const node of ir.command?.nodes ?? []) rewriteNode(node, ctx, ed);
   if (ed.failed) return { status: "unsupported", issues: ed.issues };
   let command = ed.result();
   if (command.startsWith("/")) command = command.slice(1);
