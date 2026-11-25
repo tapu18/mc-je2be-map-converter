@@ -86,6 +86,7 @@ export function commitState(properties: Properties, state: RuntimeState): void {
       chunks.forEach((chunk, i) => properties.set(key(generation, entry.slot, i), chunk));
       entries.push(entry);
     }
+    if (previous && entries.length === previous.entries.length && entries.every((entry, i) => entry === previous.entries[i])) return;
     const index: Index = {version: 1, generation, entries};
     const encoded = JSON.stringify(index);
     if (splitUtf8(encoded).length !== 1) throw Error("state index exceeds dynamic property capacity");

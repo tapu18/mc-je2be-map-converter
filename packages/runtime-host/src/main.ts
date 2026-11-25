@@ -10,3 +10,4 @@ world.afterEvents.worldLoad.subscribe(() => {
 export { executeInstruction } from "@je2be/core/runtime";
 export { RuntimeSession, candidates, entity, readBlock, writeBlock, nativeCommand, readProperty, writeProperty } from "./host.ts";
 export { RuntimeState } from "../../core/src/runtime/command.ts";
+export { commitState, restoreState, restoreOrInitialize } from "./persistence.ts";
