@@ -14,3 +14,4 @@ export * from "./macro-template.ts";
 export * from "./ir-codec.ts";
 
 export * from "./normalize-26-3.ts";
+export * from "./normalize-1-21-2.ts";
