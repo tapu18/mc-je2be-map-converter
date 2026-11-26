@@ -496,3 +496,9 @@ BDS の照合には `BedrockServer.start({ world: "<scratch>/run/bedrock", ticki
 ### マクロの引数を渡す経路（#316）
 
 Java 26.3 の実サーバーで `macro-arguments`・`storage-macro` の記録を再現した（`scenarios.servers.test.ts`）。直接渡した double は型接尾辞なしの文字列に展開され、空白を含む文字列は引用符内の値として保持された。entity のパスから取得した値と block entity のルートから取得した座標が展開され、キーが欠けた呼び出しの成功値は 0 だった。storage から渡した2つの複合値によるスコア・storage の更新も正解 JSON に一致した。`macro.data.test.ts` では同じ観測項目を Node のフェイクホストで突き合わせた。
+
+### ランタイムのカスタムコマンド起動口（#317）
+
+BDS 1.26.66.1 の `packages/runtime-host/src/launcher.servers.test.ts` で、オーバーワールドのコマンドブロックから渡した実行者・位置・向きを中核が使い、ネザーの指定位置にある対象を選んだ。成功した関数は `return 0` でも後続の条件付きブロックを動かし、比較器を点灯させた。`return fail` の行では、失敗前に設定したスコアは反映され、条件付きブロックは動かず、比較器は消灯したままだった。成否の伝わり方は M0 の `poc/launcher/launcher.servers.test.ts` と一致した。
+
+続く条件付きブロックから起動口を呼ぶと、同じチェーンの先頭で設定したスコアを中核が読めた。ハンドラで同期実行できない委譲に達したケースでは診断が出て、委譲先のコマンドによるスコア変更は発生しなかった。
