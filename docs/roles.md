@@ -36,6 +36,7 @@
 
 **担うこと**
 - 計画：マイルストーンと Issue の分割、依存（`Depends on:`）、優先順位、`status:*` の付け外し
+- worker のモデルの選択：`status:ready` にするとき、判断の少ない Issue に `model:light`、難しい Issue や前回の起動で終わらなかった Issue に `model:strong` を付ける（基準と設定は [agent-runner.md](agent-runner.md#worker-のモデルと-cli-の使い分け)）。どちらでもなければ付けない。1つの Issue に両方は付けない
 - worker の Issue の完了条件に時間の経過を待つ観測（定期実行の結果や数日分の記録など）を入れない。観測が必要なら、仕組みを入れる Issue と観測する Issue に分け、後者を `status:blocked` にして解除条件に日時を書く。PM 巡回でその条件を確認する
 - 停滞の解消：止まった Issue・PR の原因を調べ、解除条件を書く。必要なら下の「役割を兼ねるとき」に従って自分で解く
 - 所有者に回す範囲以外の判断：コードの構成、Issue の切り方、管理プログラムの運用、版追加の設計の細部などは、根拠と推奨を Issue に書いて PM が決め、必要な設計を `docs/design.md` に反映し、所有者に報告する
