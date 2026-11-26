@@ -52,6 +52,8 @@ const newText = 'tellraw @a ["Example",{"text":"item","hoverEvent":{"action":"sh
 
 it.each([
   ['give @s stick{foo:"test",num:1b}', 'give @s stick[custom_data={foo:"test",num:1b}]'],
+  ["give @s stick{CustomModelData:37}", "give @s stick[custom_model_data=37]"],
+  ["clear @s stick{CustomModelData:37,foo:1b}", "clear @s stick[custom_model_data=37,custom_data~{foo:1b}]"],
   ["clear @s #minecraft:logs{foo:1b}", "clear @s #minecraft:logs[custom_data~{foo:1b}]"],
   ["data get entity @s SelectedItem.tag.foo", 'data get entity @s SelectedItem.components."minecraft:custom_data".foo'],
   ["data get block 0 0 0 Items[{Slot:0b}].tag.foo", 'data get block 0 0 0 Items[{Slot:0b}].components."minecraft:custom_data".foo'],
@@ -99,4 +101,24 @@ it("keeps storage keys and ordinary JSON unchanged and reads item syntax in its 
   expect(old.parse("give @s stone[custom_data={foo:1b}]").ok).toBe(false);
   expect(old.parse("clear @s *").ok).toBe(false);
   expect(next.parse("clear @s *").ok).toBe(true);
+});
+
+it("preserves scalar model data through the newer float-list boundary", () => {
+  const source = "return run clear @s stone{CustomModelData:37}";
+  const current = new CommandParser(tree, { version: "26.3", textFormat: "snbt" });
+  const result = normalizeCommandIR(parse(old, source), "1.20.4");
+  const expected = parse(current, "return run clear @s stone[custom_model_data={floats:[37f]}]");
+  expect(result.ok).toBe(true);
+  if (result.ok) expect(withoutSourcePositions(result.ir)).toEqual(withoutSourcePositions(expected));
+});
+
+it.each([
+  ["give @s stone{CustomModelData:16777217}", "正確に変換できない"],
+  ["clear @s stone{CustomModelData:16777216}", "隣接する整数"],
+])("diagnoses lossy model data in %s", (source, reason) => {
+  expect(normalize1_20_5ItemsAndText(parse(old, source)).ok).toBe(true);
+  expect(normalizeCommandIR(parse(old, source), "1.20.4")).toMatchObject({
+    ok: false, reason: expect.stringContaining(`1.21.3 → 1.21.4: custom_model_data `), start: source.indexOf("stone"), end: source.length,
+  });
+  expect(normalizeCommandIR(parse(old, source), "1.20.4")).toMatchObject({ reason: expect.stringContaining(reason) });
 });

@@ -30,6 +30,7 @@ it.skipIf(!existsSync(join(oldDir, "server.jar")))("observes a 1.20.4 world open
     expect(block).toContain(command.replaceAll('"', '\\"'));
     expect(chest).toContain("minecraft:custom_model_data");
     expect(chest).toContain("123");
+    expect(await newer.exec("execute if items block 2 -60 1 container.0 stone[custom_model_data={floats:[123f]}]")).toMatch(/Test passed/);
     expect(entity).toContain("probe");
     expect(readFileSync(join(newer.worldDirectory, "datapacks/probe/data/probe/functions/test.mcfunction"), "utf8")).toBe(command + "\n");
   } finally {

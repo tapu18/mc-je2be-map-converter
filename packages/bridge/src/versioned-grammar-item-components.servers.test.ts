@@ -8,14 +8,14 @@ describe("the Java 1.20.5 item component boundary", () => {
     it(`reads the same custom item field and retains it in a hover on Java ${version}`, async () => {
       const grammar = await setupJavaGrammar(javaGrammarSources().find(source => source.version === version)!);
       const legacy = version === "1.20.4";
-      const item = legacy ? "stone{foo:1b,other:2b}" : "stone[custom_data={foo:1b,other:2b}]";
+      const item = legacy ? "stone{CustomModelData:37,foo:1b,other:2b}" : "stone[custom_model_data=37,custom_data={foo:1b,other:2b}]";
       const path = legacy ? "Items[{Slot:0b}].tag.foo" : 'Items[{Slot:0b}].components."minecraft:custom_data".foo';
       const write = `item replace block 2 -60 2 container.0 with ${item}`;
       const read = `data get block 2 -60 2 ${path}`;
       const contents = legacy ? { id: "stone", tag: "{foo:1b}" } : { id: "stone", components: { "minecraft:custom_data": { foo: true } } };
       const hover = JSON.stringify({ text: "item", hoverEvent: { action: "show_item", contents } });
       const parser = new CommandParser(loadGrammarTree(grammar), grammar);
-      const predicate = legacy ? "stone{foo:1b}" : "stone[custom_data~{foo:1b}]";
+      const predicate = legacy ? "stone{CustomModelData:37,foo:1b}" : "stone[custom_model_data=37,custom_data~{foo:1b}]";
       for (const command of [write, read, `clear @a ${predicate}`, `tellraw @a ${hover}`]) {
         expect(parser.parse(command).ok).toBe(true);
       }

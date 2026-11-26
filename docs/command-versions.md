@@ -66,13 +66,16 @@ DataVersion とパック形式の両方がある場合はワールドの DataVer
 ## 1.20.4 → 1.20.5 の正規化（#308）
 
 1.20.4 の文法では `id{NBT}` を読み、カスタム NBT をアイテム引数では `custom_data={...}`、
-アイテム述語では部分一致の `custom_data~{...}` に変える。ブロック・エンティティの既知の
+アイテム述語では部分一致の `custom_data~{...}` に変える。整数の `CustomModelData` は
+`minecraft:custom_model_data` に移し、述語は整数の一致を照合する。1.21.4 の境界では
+この整数を `floats` の先頭の値に変える。精度を失う整数や、述語が別の整数にも一致する
+丸めは診断する。ブロック・エンティティの既知の
 アイテム位置からカスタムフィールドを読む NBT パスは、`tag.<field>` から
 `components."minecraft:custom_data".<field>` に変わる。コマンド storage のパスはそのまま使う。
 JSON テキストの `show_item` は、文字列と真偽値の型を保持できるカスタムデータを
 `contents.tag` から `contents.components` に移す。
 
-`CustomModelData` や `HideFlags` など専用コンポーネントに移行するキー、`tag` 全体の参照・書き込み、
+`HideFlags` など個別の変換を要するキー、`tag` 全体の参照・書き込み、
 変換できないフィルタ、型を保持できないホバーは、元の引数位置を付けて診断する。
 旧 particle と effect はそれぞれ #135・#147 と #181 で扱う。
 

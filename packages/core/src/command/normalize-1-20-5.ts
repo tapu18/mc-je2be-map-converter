@@ -1,11 +1,13 @@
 import type { NbtCompound, NbtTag } from "../nbt/nbt.ts";
-import { readNbtPath, type ArgumentValue, type NbtPathNode } from "./arguments.ts";
+import { readNbtPath, type ArgumentValue, type ItemComponent, type NbtPathNode } from "./arguments.ts";
+import { normalizeArguments } from "./normalize-arguments.ts";
 import type { CommandNormalization } from "./normalize-command.ts";
 import type { CommandIR, ParsedNode } from "./parser.ts";
 import { CommandSyntaxError, StringReader } from "./reader.ts";
 import { parseSnbt } from "./snbt.ts";
 
 const CUSTOM_DATA = "minecraft:custom_data";
+const CUSTOM_MODEL_DATA = "minecraft:custom_model_data";
 
 // ItemStackComponentizationFix in Java 1.20.5 also consumes item-specific keys.
 // Reserve them even when the item ID is a tag or the path does not constrain the ID.
@@ -25,6 +27,25 @@ function customDataProblem(tag: NbtCompound): string | undefined {
     if (VANILLA_ITEM_KEYS.has(key)) return `旧アイテム NBT の '${key}' は専用コンポーネントへの変換が必要`;
   }
   return undefined;
+}
+
+function normalizeItemTag(tag: NbtCompound): (ItemComponent & { value: NbtTag })[] | string {
+  const model = tag.value.get("CustomModelData");
+  const customData: NbtCompound = { type: "compound", value: new Map(tag.value) };
+  customData.value.delete("CustomModelData");
+  const components: (ItemComponent & { value: NbtTag })[] = [];
+  if (model) {
+    if (model.type !== "int" || !Number.isInteger(model.value) || model.value < -2147483648 || model.value > 2147483647) {
+      return "旧アイテム NBT の CustomModelData を 32 ビット整数として保持できない";
+    }
+    components.push({ key: CUSTOM_MODEL_DATA, removed: false, value: model });
+  }
+  if (customData.value.size || !model) {
+    const problem = customDataProblem(customData);
+    if (problem) return problem;
+    components.push({ key: CUSTOM_DATA, removed: false, value: customData });
+  }
+  return components;
 }
 
 const ENTITY_ITEMS = new Set(["Item", "SelectedItem", "item"]);
@@ -143,11 +164,12 @@ function normalizeValue(nodes: ParsedNode[], index: number, owner: string): Argu
   const value = node.value;
   if ((value?.kind === "item" || value?.kind === "itemPredicate") && value.legacyTag) {
     const { kind, id, tag, legacyTag } = value;
-    const problem = customDataProblem(legacyTag);
-    if (problem) return problem;
+    const components = normalizeItemTag(legacyTag);
+    if (typeof components === "string") return components;
     return kind === "item"
-      ? { kind, id, tag, components: [{ key: CUSTOM_DATA, removed: false, value: legacyTag }] }
-      : { kind, id, tag, alternatives: [[{ key: CUSTOM_DATA, negated: false, op: "~", value: legacyTag }]] };
+      ? { kind, id, tag, components }
+      : { kind, id, tag, alternatives: [components.map(({ key, value }) =>
+        ({ key, value, negated: false, op: key === CUSTOM_DATA ? "~" : "=" }))] };
   }
   if (value?.kind === "nbtPath") {
     // The source literal precedes the single block position, entity or storage ID argument.
@@ -168,30 +190,7 @@ function normalizeValue(nodes: ParsedNode[], index: number, owner: string): Argu
   return undefined;
 }
 
-type Failure = Extract<CommandNormalization, { ok: false }>;
-
-function normalizeNodes(nodes: ParsedNode[], owner: string): ParsedNode[] | Failure {
-  const out: ParsedNode[] = [];
-  for (const [index, node] of nodes.entries()) {
-    const result = normalizeValue(nodes, index, owner);
-    if (typeof result === "string") return { ok: false, reason: result, start: node.start, end: node.end };
-    out.push(result ? { ...node, value: result } : node);
-  }
-  return out;
-}
-
 /** Java 1.20.4 → 1.20.5. 元のコマンド文字列と診断位置を保持する。 */
 export function normalize1_20_5ItemsAndText(ir: CommandIR): CommandNormalization {
-  const context: CommandIR["context"] = [];
-  for (const step of ir.context) {
-    const nodes = normalizeNodes(step.nodes, step.kind);
-    if (!Array.isArray(nodes)) return nodes;
-    context.push({ ...step, nodes });
-  }
-  if (!ir.command) return { ok: true, ir: { ...ir, context } };
-  const nodes = normalizeNodes(ir.command.nodes, ir.command.name);
-  if (!Array.isArray(nodes)) return nodes;
-  const run = ir.command.run ? normalize1_20_5ItemsAndText(ir.command.run) : undefined;
-  if (run && !run.ok) return run;
-  return { ok: true, ir: { ...ir, context, command: { ...ir.command, nodes, ...(run ? { run: run.ir } : {}) } } };
+  return normalizeArguments(ir, normalizeValue);
 }

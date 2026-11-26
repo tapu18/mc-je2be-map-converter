@@ -1,6 +1,7 @@
 import { normalize1_20_5ItemsAndText } from "./normalize-1-20-5.ts";
 import { normalize1_21Attribute } from "./normalize-1-21.ts";
 import { normalize1_21_2Arguments } from "./normalize-1-21-2.ts";
+import { normalize1_21_4CustomModelData } from "./normalize-1-21-4.ts";
 import { normalize1_21_9SpawnRotation } from "./normalize-1-21-9.ts";
 import { normalize1_21_11Worldborder } from "./normalize-1-21-11.ts";
 import { normalize26_1Time } from "./normalize-26-1.ts";
@@ -20,6 +21,7 @@ const boundaries: readonly {
   { from: "1.20.4", to: "1.20.5", apply: normalize1_20_5ItemsAndText },
   { from: "1.20.6", to: "1.21", apply: normalize1_21Attribute },
   { from: "1.21.1", to: "1.21.2", apply: normalize1_21_2Arguments },
+  { from: "1.21.3", to: "1.21.4", apply: normalize1_21_4CustomModelData },
   { from: "1.21.8", to: "1.21.9", apply: normalize1_21_9SpawnRotation },
   { from: "1.21.10", to: "1.21.11", apply: normalize1_21_11Worldborder },
   { from: "1.21.11", to: "26.1", apply: normalize26_1Time },
