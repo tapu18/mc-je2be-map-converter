@@ -33,9 +33,8 @@ export class RuntimeState {
   }
 }
 
-/** Run one tick's callbacks in their registration order using the game loop's execution source. */
-export function advanceScheduledTick(state: RuntimeState, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext()): {id: string; result: CommandResult}[] {
-  const outcomes: {id: string; result: CommandResult}[] = [];
+/** Advance one tick and yield its callbacks in registration order. */
+export function* scheduledFunctionCalls(state: RuntimeState): IterableIterator<{id: string; ir: CommandIR}> {
   for (const target of state.schedule.advanceTick()) {
     const names = target.tag ? state.functionTags.get(target.id) ?? [] : [target.id];
     for (const id of names) {
@@ -43,9 +42,15 @@ export function advanceScheduledTick(state: RuntimeState, budget: ExecutionBudge
       const ir: CommandIR = {source: `function ${id}`, context: [], command: {name: "function", nodes: [
         {kind: "argument", name: "name", start: 9, end: 9 + id.length, value: {kind: "resource", id, tag: false}},
       ]}};
-      outcomes.push({id, result: executeCommand(state, ir, budget, context)});
+      yield {id, ir};
     }
   }
+}
+
+/** Run one tick's callbacks using the game loop's execution source. */
+export function advanceScheduledTick(state: RuntimeState, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext()): {id: string; result: CommandResult}[] {
+  const outcomes: {id: string; result: CommandResult}[] = [];
+  for (const {id, ir} of scheduledFunctionCalls(state)) outcomes.push({id, result: executeCommand(state, ir, budget, context)});
   return outcomes;
 }
 

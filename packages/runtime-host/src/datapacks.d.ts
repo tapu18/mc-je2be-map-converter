@@ -1,1 +1,2 @@
-export const datapacks: {schemaVersion: 1; packs: {functions: Record<string, string[]>}[]};
+import type { Datapacks } from "./load-datapacks.ts";
+export const datapacks: Datapacks;

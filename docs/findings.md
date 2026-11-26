@@ -538,3 +538,9 @@ Java 26.3 の `data get entity … active_effects` と BDS 1.26.66.1 の `Entity
 `clear <対象> <効果>` は指定した効果だけを解除し、`clear <対象>` と `execute as … run effect clear` は対象の両方の効果を解除した。比較用の別個体には両方の効果が残った。Java では実行者を設定せずにコンソールから `effect clear` を実行するとエンティティを要求された。`hideParticles` の真偽値を渡した変換コマンドで効果が付与され、Java の `true` では NBT の `show_particles` と `show_icon` がともに `0b` になった。
 
 [ID 照合テスト](../packages/bridge/src/rewrite.servers.test.ts) では36種の変換先が BDS の効果レジストリにあり、ブタを対象にした付与で成功件数1が返った。`hero_of_the_village` の変換先は `village_hero`。残る `dolphins_grace`・`glowing`・`luck`・`unluck` は Java では付与され、BDS の効果レジストリに相当する項目がなく、同名の付与コマンドは BDS で構文エラーになった。
+
+### ランタイムの load・tick 起動（#235）
+
+BDS 1.26.66.1 で `scenarios/datapack/load-tick.json` の変換済みワールドを起動し、ランタイムの第 4 tick の確定世代と BE の投影を観測した。Java 26.3 の正解と、`clock/#tick = 4`、空の `after_reload`、`load` の後に tick 1〜4 を記録した順序が一致した。反復コマンドブロックの 4 行が欠けた。変換済みブロックからランタイム関数を起動する経路は #236、コマンドブロック起点との相対順序は #19 で扱う。根拠は `packages/bridge/src/scenario/scenarios.servers.test.ts`。
+
+`packages/runtime-host/src/startup.servers.test.ts` では、BDS の初回起動と同じワールドの再起動で、各起動の最初の `tick` が同じ tick の `schedule` によるスコア変更を読み取った。再起動の `load` は前セッションで確定したスコアと storage を読み取った。

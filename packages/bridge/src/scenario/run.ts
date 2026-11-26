@@ -120,18 +120,19 @@ const chunkerJar = (): string => {
  * 呼び出し側で work を消すこと
  */
 export async function buildConvertedWorld(s: Scenario, log: string[]): Promise<{ work: string; world: string; report: ConvertReport }> {
-  const java = await JavaServer.start();
+  const java = await startScenarioJava(s.datapack);
   const work = mkdtempSync(join(tmpdir(), "je2be-scenario-convert-"));
   try {
     try {
       await java.exec("tick freeze");
       for (const c of s.setup) await javaAction(java, { run: c }, log);
+      if (s.datapack) await loadScenarioDatapack(java, s.datapack, log);
       for (const a of s.actions) await javaAction(java, a, log);
       await java.dump({});
     } finally {
       await java.stop();
     }
-    cpSync(join(paths.javaServer, "je2be-test"), join(work, "java"), { recursive: true });
+    cpSync(java.worldDirectory, join(work, "java"), { recursive: true });
     const world = join(work, "bedrock");
     const report = convertWorld(join(work, "java"), world, { java: paths.java, chunkerJar: chunkerJar(), rewrite: await rewriteResources() });
     log.push(`convert: ${JSON.stringify(report)}`);

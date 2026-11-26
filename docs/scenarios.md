@@ -63,7 +63,8 @@ Java版サーバーで実行した結果を正解として記録し、BE で実�
 - `datapack.functionTags` は、名前空間付きのタグ ID から Java のタグ JSON への対応。入れ子のタグは `"#example:other"` で参照する。`minecraft:load` と `minecraft:tick` も同じ形式で書く。
 - Java は有効な空パックで起動する。tick を止めて `setup` を実行し、関数とタグを書き込んで `reload` を行う。関数が読み込まれてから `actions` へ進む。load・tick 関数を動かすには `ticks` で明示的に進める。
 - `observe.storage` では ID ごとに Java の保存 NBT を JSON に変換した値を記録する。リストの並びは保存する。long は文字列になり、そのほかの数値型の区別は省く。
-- `bedrockPending` は BE を実行できない理由。Java の記録と照合は通常どおり行い、BE のテストは理由付きでスキップする。`datapack` または `observe.storage` を使う場合は必須。`bedrock`、`play`、`knownDiffs` とは併用できない。
+- `bedrockPending` は BE を実行できない理由。Java の記録と照合は通常どおり行い、BE のテストは理由付きでスキップする。`bedrock`、`play`、`knownDiffs` とは併用できない。
+- `bedrockRuntime: "load-tick"` は起動順序の検証に使う。Java の準備と最後の tick 操作の直前までを保存して変換し、BE の指定 tick でスコア投影と確定済み storage を観測する。実行モードのない `datapack` と `observe.storage` には `bedrockPending` が必要。
 
 ## 比較の決まり
 

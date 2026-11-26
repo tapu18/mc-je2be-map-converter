@@ -3,9 +3,7 @@ import {
   type Entity, type Vector3,
 } from "@minecraft/server";
 import type { CommandIR } from "../../core/src/command/parser.ts";
-import { deserializeCommandIR } from "../../core/src/command/ir-codec.ts";
 import { dimensionId, facingRotation, type Position } from "../../core/src/runtime/context.ts";
-import { datapacks } from "./datapacks.js";
 import type { RuntimeSession } from "./host.ts";
 
 const positionOf = ({x, y, z}: Vector3): Position => [x, y, z];
@@ -18,23 +16,7 @@ function functionCall(id: string): CommandIR {
   ]}};
 }
 
-function loadFunctions(session: RuntimeSession): void {
-  if (datapacks.schemaVersion !== 1) throw Error("unsupported datapack schema");
-  for (const pack of datapacks.packs) {
-    for (const [id, lines] of Object.entries(pack.functions)) {
-      const commands = lines.map(line => deserializeCommandIR(line));
-      if (commands.every(command => command.ok)) {
-        session.state.functions.set(id, commands.map(command => command.document.ir));
-      } else {
-        session.state.functions.delete(id);
-        console.warn(`[je2be] invalid function IR: ${id}`);
-      }
-    }
-  }
-}
-
 export function registerLauncher(getSession: () => RuntimeSession | undefined): void {
-  let loadedSession: RuntimeSession | undefined;
   system.beforeEvents.startup.subscribe(({customCommandRegistry}) => {
     customCommandRegistry.registerCommand({
       name: "je2be:run",
@@ -58,10 +40,6 @@ export function registerLauncher(getSession: () => RuntimeSession | undefined): 
         if (!dimensions.has(dim)) return failure(`unknown dimension: ${dimension}`);
         const from = positionOf(position), to = positionOf(forward);
         if (from.every((value, axis) => value === to[axis])) return failure("forward must differ from position");
-        if (loadedSession !== session) {
-          loadFunctions(session);
-          loadedSession = session;
-        }
         const result = session.executeRestricted(functionCall(id), {
           ...(executor && {executor: executor.id}), position: from, rotation: facingRotation(from, to),
           anchor: "feet", dimension: dim,

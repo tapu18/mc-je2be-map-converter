@@ -73,6 +73,8 @@ export interface Scenario {
   play?: Action[];
   /** BE で実行する内容を変える場合（変換器ができるまでの手書きの対応）。省略時は同じものを実行する */
   bedrock?: EditionSteps;
+  /** 変換済みランタイムを起動し、指定 tick の確定世代を観測する */
+  bedrockRuntime?: "load-tick";
   /** BE の比較を実行できない理由。テストではスキップになる */
   bedrockPending?: string;
   /** 既知の差分（調査済みのもの）。パスごとに理由を書く。ここにない差分はテストの失敗になる */
