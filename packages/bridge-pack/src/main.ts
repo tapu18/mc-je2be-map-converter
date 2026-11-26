@@ -70,6 +70,8 @@ const handlers: Record<string, Handler> = {
 
   effectTypes: () => EffectTypes.getAll().map((type) => type.getName()).sort(),
 
+  blockWaterlogged: (req) => dim(req).getBlock(vec(req.pos))?.isWaterlogged,
+
   entityEffects: (req) => {
     const probes = req.probes as Record<string, Record<string, string>>;
     const dimension = dim(req);

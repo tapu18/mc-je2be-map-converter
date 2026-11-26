@@ -504,6 +504,23 @@ python3 -I tools/block-state-audit/corpus.py /path/to/sample-map "$scratch/run/c
 
 BDS の照合には `BedrockServer.start({ world: "<scratch>/run/bedrock", tickingArea: [48, 0, 63, 15] })` を使い、上記の 2 コマンドを `exec` で実行した。関連する `playtest.servers.test.ts` と `rewrite.servers.test.ts` は計 11 件成功。対応策の検証は #323。
 
+### 地形とコマンドのブロック状態を揃える（#323）
+
+対象は #111 と同じ Java 26.3 の状態表、Chunker 1.21.0 の `BEDROCK_R26_60` 出力、Geyser 表 `e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`。出典は [#111 の差分一覧](research/block-state-differences.tsv)。集計は保存セル数で、コマンド内の参照回数を表さない。
+
+| 採用した Java ID | 主層差のある状態数 | 出現した保存セル数 | 採用理由 |
+| --- | ---: | ---: | --- |
+| `beetroots` | 1 | 1 | BDS で条件照合の失敗を再現した |
+| `brown_mushroom_block` | 28 | 450,290 | コーパスの主層差で最多。多対一の検証に使った |
+
+補正後、ビートルートの 4 状態は 4 つの主層の状態に対応する。茶色のキノコブロックの 64 状態は 11 の主層の状態に集約され、`huge_mushroom_bits=14` には 26 状態が対応する。#111 の Chunker 主層全件を逆引きすると、この 2 種の BE ID に落ちる別の Java ID はなかった。
+
+補正した主層はワールド変換時の配置と条件で共有する。条件を満たす状態と満たさない状態を BE の条件 1 個で区別できないときは、`if` と `unless` のどちらも理由付きで未対応になる。水没を指定して配置する場合は、副層に水が入らない旨が警告される。表の適用は JAR、出力形式、対応表のリビジョンと入力のハッシュがこの計測条件に一致する場合に限る。版の更新時は #111 の手順で再計測し、BDS で再検証する。残りの主層差 906 状態には従来の表を使う。水・溶岩の 64,451 セルは #340 で追跡する。
+
+[実サーバーテスト](../packages/bridge/src/chunker-block-mappings.servers.test.ts) では、Java が保存したワールドを Chunker で変換し、書き換えレポートのコマンドを BDS 1.26.66.1 で実行した。地形と `setblock`・`fill` の全配置セルで `beetroots[age=1]` の条件が成立し、`age=2` の対照セルでは `unless` の側だけが実行された。状態指定を省くと両方の齢が一致した。後続のスコア加算回数も条件ごとの成功件数と一致した。茶色のキノコブロックの Java 2 状態は、地形とコマンド配置の両方で `huge_mushroom_bits=14` に一致した。ID のみの条件は使え、同じ主層になる状態を区別しようとする条件は診断された。
+
+同じテストで、Chunker が変換した上付きオークハーフブロックの乾いたセルと水没したセルは、向きだけを指定した条件では両方とも一致した。検証パックの `Block.isWaterlogged` では両セルを区別できた。どちらのセルでも `execute if block … minecraft:water` は成立しなかった。水没を指定した書き換え後の `setblock` で置いたブロックを同じ API で見ると乾いていた。
+
 ### マクロの引数を渡す経路（#316）
 
 Java 26.3 の実サーバーで `macro-arguments`・`storage-macro` の記録を再現した（`scenarios.servers.test.ts`）。直接渡した double は型接尾辞なしの文字列に展開され、空白を含む文字列は引用符内の値として保持された。entity のパスから取得した値と block entity のルートから取得した座標が展開され、キーが欠けた呼び出しの成功値は 0 だった。storage から渡した2つの複合値によるスコア・storage の更新も正解 JSON に一致した。`macro.data.test.ts` では同じ観測項目を Node のフェイクホストで突き合わせた。
