@@ -82,13 +82,14 @@ function* execute(state: RuntimeState, ir: CommandIR, depth: number, context: Ex
   if (modifiers.some(modifier => !modifier)) return fail("unsupported execute step");
   let branches: ExecuteBranch[] = [{context, stores: []}];
   let failure: Outcome = fail("no execution targets");
-  for (const modifier of modifiers) {
+  for (const [index, modifier] of modifiers.entries()) {
     const next: ExecuteBranch[] = [];
+    const terminal = !ir.command && index === modifiers.length - 1;
     for (const branch of branches) {
-      const result = yield* modifier!(state, branch, depth, ir.source);
+      const result = yield* modifier!(state, branch, depth, ir.source, terminal);
       if ("success" in result) {
         if (result.error !== "condition failed") return result;
-        applyStores(branch, result);
+        if (!result.skipStores) applyStores(branch, result);
         failure = result;
       } else {
         for (const child of result) next.push(child);
@@ -97,12 +98,14 @@ function* execute(state: RuntimeState, ir: CommandIR, depth: number, context: Ex
     branches = next;
   }
 
-  if (branches.length && !ir.command) return fail("missing command");
+  if (!ir.command && branches.some(branch => branch.conditionResult === undefined)) return fail("missing command");
   let total = 0;
   let succeeded = false;
   let last: Outcome = failure;
   for (const branch of branches) {
-    const outcome = yield* executeTerminal(state, ir, depth, branch.context);
+    const outcome: Outcome = branch.conditionResult === undefined
+      ? yield* executeTerminal(state, ir, depth, branch.context)
+      : {success: true, result: branch.conditionResult};
     if (!outcome.success && outcome.error.startsWith("unsupported")) return outcome;
     applyStores(branch, outcome);
     if (outcome.returned) return outcome;

@@ -27,13 +27,19 @@ export interface RuntimeEntity {
 }
 
 export type Block = Extract<ArgumentValue, {kind: "block"}>;
+export type Heightmap = "world_surface" | "motion_blocking" | "motion_blocking_no_leaves" | "ocean_floor";
 
 /** Host IDs are namespaced Java IDs. The Bedrock boundary maps the_nether to nether. */
 export interface ExecutionHost {
   /** Enumerate entities in the world's current selector traversal order (e.g. @e[sort=arbitrary]). */
   entities(): readonly RuntimeEntity[];
+  /** Return the full block state, including air in loaded positions and block entity data without coordinates. */
   readBlock(dimension: string, position: Position): Block | undefined;
   writeBlock(dimension: string, position: Position, block: Block): ExecutionResult;
+  /** Report whether the chunk has reached the loaded state required by Java's execute if loaded. */
+  isLoaded?(dimension: string, position: Position): boolean;
+  /** Return the first Y above the heightmap surface, or undefined for an unloaded column. */
+  heightmapY?(dimension: string, x: number, z: number, heightmap: Heightmap): number | undefined;
   /** Order a mutable candidate list using the host's random source. */
   shuffle?(entities: RuntimeEntity[]): void;
   runNative?(command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string): ExecutionResult | undefined;

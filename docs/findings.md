@@ -262,6 +262,8 @@ Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観�
 
 石・水・葉を積んだ列で `positioned over` の高さは world_surface と motion_blocking が 73、motion_blocking_no_leaves が 72、ocean_floor が 73 だった。この配置に限る観測である。`if blocks` は一致した2ブロックで all・masked とも結果 2、空気を含む範囲では masked が対応先の非空気を無視した。不一致、読み込み外チャンク、ディメンションの条件も同シナリオに記録した。
 
+#233 の Java 26.3 RCON 確認では、空気同士の1ブロックを比較した `execute if blocks 16 70 16 16 70 16 17 70 16 masked` は成功して結果 0 を返し、`unless blocks` は失敗した。`store result` の後にこの `unless blocks` と `run` を続けると、後続コマンドは実行されずスコアも作られなかった。`if loaded` は同じチャンクの Y=500 と Y=-100 の両方で成功し、未ロードの座標を使った `positioned over` と `unless blocks` は `That position is not loaded` を返した。Node の照合と空気同士の回帰確認は [runtime-context-ir.data.test.ts](../packages/bridge/src/runtime-context-ir.data.test.ts) にある。
+
 ### スコア保持者とゼロ除算（#140）
 
 | 実測 | 根拠 |

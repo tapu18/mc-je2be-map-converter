@@ -2,9 +2,9 @@ import type { ArgumentValue } from "../command/arguments.ts";
 import type { ExecuteStep, ParsedNode } from "../command/parser.ts";
 import {
   anchoredPosition, dimensionId, dimensionScale, entityTarget, facingRotation, inRange, resolvePosition, selectEntities,
-  type ExecutionContext, type ExecutionHost, type Rotation, type RuntimeEntity,
+  type ExecutionContext, type ExecutionHost, type Heightmap, type Position, type Rotation, type RuntimeEntity,
 } from "./context.ts";
-import { blockPosition } from "./world.ts";
+import { blockPosition, compareBlockRegions } from "./world.ts";
 import { getNbtPath } from "./nbt-path.ts";
 import { setNbtPath } from "./nbt-mutation.ts";
 import type { Frame, Outcome, RuntimeState } from "./command.ts";
@@ -14,24 +14,30 @@ type Store = (outcome: ExecutionResult) => void;
 export interface ExecuteBranch {
   context: ExecutionContext;
   stores: readonly Store[];
+  conditionResult?: number;
 }
 
-type StepResult = Iterable<ExecuteBranch> | Extract<ExecutionResult, {success: false}>;
-type Modifier = (state: RuntimeState, branch: ExecuteBranch, depth: number, source: string) => Frame<StepResult>;
+type StepResult = Iterable<ExecuteBranch> | (Extract<ExecutionResult, {success: false}> & {skipStores?: boolean});
+type Modifier = (state: RuntimeState, branch: ExecuteBranch, depth: number, source: string, terminal: boolean) => Frame<StepResult>;
 type Compile = (step: ExecuteStep, host?: ExecutionHost) => Modifier | undefined;
-type Test = (state: RuntimeState, context: ExecutionContext, depth: number, source: string) => Frame<boolean | Extract<Outcome, {success: false}>>;
+type Test = (state: RuntimeState, context: ExecutionContext, depth: number, source: string) => Frame<boolean | number | Extract<Outcome, {success: false}>>;
 
-function condition(step: ExecuteStep, test: Test): Modifier {
-  return function* (state, branch, depth, source) {
+function condition(step: ExecuteStep, test: Test, terminalResult = false): Modifier {
+  return function* (state, branch, depth, source, terminal) {
     yield {kind: "branch"};
     const matched = yield* test(state, branch.context, depth, source);
-    if (typeof matched !== "boolean") return matched;
-    return matched === (step.kind === "if") ? [branch] : {success: false, error: "condition failed"};
+    if (typeof matched === "object") return matched;
+    if ((matched !== false) !== (step.kind === "if")) {
+      // These conditions only call the result consumer when executed as the terminal command.
+      return {success: false, error: "condition failed", skipStores: terminalResult && !terminal};
+    }
+    if (terminal && terminalResult) return [{...branch, conditionResult: typeof matched === "number" ? matched : 1}];
+    return [branch];
   };
 }
 
-function select(step: ExecuteStep, transform: (context: ExecutionContext, entity: RuntimeEntity) => ExecutionContext): Modifier | undefined {
-  const target = entityTarget(step.nodes[0]?.value);
+function select(node: ParsedNode | undefined, transform: (context: ExecutionContext, entity: RuntimeEntity) => ExecutionContext): Modifier | undefined {
+  const target = entityTarget(node?.value);
   if (!target) return;
   return function* (state, branch) {
     const entities = selectEntities(state.host, branch.context, target);
@@ -122,7 +128,24 @@ const conditions = new Map<string, Compile>([
     if (dimension?.kind !== "resource" || dimension.tag) return;
     return condition(step, function* (_state, context) {
       return context.dimension === dimensionId(dimension.id);
-    });
+    }, true);
+  }],
+  ["loaded", (step, host) => {
+    const position = step.nodes[1];
+    if (!host?.isLoaded || !coordinates(position, 3)) return;
+    return condition(step, function* (_state, context, _depth, source) {
+      return host.isLoaded!(context.dimension, blockPosition(position, source, context, host));
+    }, true);
+  }],
+  ["blocks", (step, host) => {
+    const [, start, end, destination, mode] = step.nodes;
+    if (!host || !coordinates(start, 3) || !coordinates(end, 3) || !coordinates(destination, 3)
+      || (mode?.name !== "all" && mode?.name !== "masked")) return;
+    return condition(step, function* (_state, context, _depth, source) {
+      return compareBlockRegions(host, context.dimension,
+        blockPosition(start, source, context, host), blockPosition(end, source, context, host),
+        blockPosition(destination, source, context, host), mode.name === "masked");
+    }, true);
   }],
 ]);
 
@@ -163,28 +186,57 @@ const modifiers = new Map<string, Compile>([
     const [mode, kind] = step.nodes;
     if (mode?.name === "result" || mode?.name === "success") return stores.get(kind?.name ?? "")?.(step);
   }],
-  ["as", (step, host) => host && select(step, (context, entity) => ({...context, executor: entity.id}))],
-  ["at", (step, host) => host && select(step, (context, entity) => ({
+  ["as", (step, host) => host && select(step.nodes[0], (context, entity) => ({...context, executor: entity.id}))],
+  ["at", (step, host) => host && select(step.nodes[0], (context, entity) => ({
     ...context, position: entity.position, rotation: entity.rotation, dimension: dimensionId(entity.dimension),
   }))],
-  ["positioned", step => {
-    const node = step.nodes[0];
+  ["align", step => {
+    const axes = step.nodes[0]?.value;
+    if (axes?.kind !== "word") return;
+    return function* (_state, branch) {
+      const position = branch.context.position.map((value, axis) => axes.value.includes("xyz"[axis]!) ? Math.floor(value) : value) as Position;
+      return [{...branch, context: {...branch.context, position}}];
+    };
+  }],
+  ["positioned", (step, host) => {
+    const [node, argument] = step.nodes;
+    if (node?.name === "as") return host && select(argument, (context, entity) => ({...context, position: entity.position}));
+    if (node?.name === "over") {
+      const heightmap = argument?.value;
+      if (!host?.heightmapY || heightmap?.kind !== "word") return;
+      return function* (_state, branch) {
+        const [x, , z] = branch.context.position;
+        const y = host.heightmapY!(branch.context.dimension, Math.floor(x), Math.floor(z), heightmap.value as Heightmap);
+        if (y === undefined) return {success: false, error: "block position not loaded"};
+        return [{...branch, context: {...branch.context, position: [x, y, z]}}];
+      };
+    }
     if (!coordinates(node, 3)) return;
     return function* (state, branch, _depth, source) {
       const position = resolvePosition(node, source, branch.context, state.host);
       return [{...branch, context: {...branch.context, position, anchor: "feet"}}];
     };
   }],
-  ["rotated", step => {
-    const node = step.nodes[0];
+  ["rotated", (step, host) => {
+    const [node, target] = step.nodes;
+    if (node?.name === "as") return host && select(target, (context, entity) => ({...context, rotation: entity.rotation}));
     if (!coordinates(node, 2)) return;
     return function* (_state, branch) {
       const rotation = node.value.coordinates.map((coordinate, i) => coordinate.value + (coordinate.kind === "relative" ? branch.context.rotation[i]! : 0)) as Rotation;
       return [{...branch, context: {...branch.context, rotation}}];
     };
   }],
-  ["facing", step => {
-    const node = step.nodes[0];
+  ["facing", (step, host) => {
+    const [node, target, anchor] = step.nodes;
+    if (node?.name === "entity") {
+      if (!host || anchor?.value?.kind !== "word" || (anchor.value.value !== "eyes" && anchor.value.value !== "feet")) return;
+      const eyes = anchor.value.value === "eyes";
+      return select(target, (context, entity) => {
+        const [x, y, z] = entity.position;
+        const rotation = facingRotation(anchoredPosition(context, host), [x, eyes ? y + entity.eyeHeight : y, z]);
+        return {...context, rotation};
+      });
+    }
     if (!coordinates(node, 3)) return;
     return function* (state, branch, _depth, source) {
       const context = branch.context;
