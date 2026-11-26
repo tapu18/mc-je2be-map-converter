@@ -243,7 +243,15 @@ function rewriteBlockPredicate(v: Value<"block">, ctx: RewriteContext, ed: Edito
   if (v.tag) return ed.unsupported(`ブロックタグ #${v.id} の展開は未実装`), undefined;
   if (v.nbt) return ed.unsupported(`ブロックの NBT の条件（${v.id}{...}）はランタイムで評価する（未実装）`), undefined;
   const m = ctx.mappings.blockPredicate(v.id, v.states);
-  if (m.status === "inexact") return ed.unsupported(`ブロックの条件 ${v.id}${JSON.stringify(v.states)} を BE では同じ範囲に書けない`), undefined;
+  if (m.status === "inexact") {
+    const reason = {
+      "multiple-ids": "対応先が複数の BE ブロック ID にまたがる",
+      overlap: "共通する BE プロパティでは別の状態にも一致する",
+      "collapsed-states": "条件に一致する状態と一致しない状態が同じ BE 主層の状態になる",
+      waterlogged: "BE 主層の状態では水没の有無を区別できない",
+    }[m.reason];
+    return ed.unsupported(`ブロックの条件 ${v.id}${JSON.stringify(v.states)} を BE では同じ範囲に書けない（${reason}）`), undefined;
+  }
   if (m.status !== "mapped") return ed.unsupported(`ブロックの条件を BE に対応させられない（${v.id}、${m.status}）`), undefined;
   return m.target.id + beStates(m.target.states);
 }

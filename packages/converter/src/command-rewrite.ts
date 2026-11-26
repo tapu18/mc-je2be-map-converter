@@ -36,23 +36,26 @@ export interface RewriteResources {
 }
 
 /** 書き換えに使う文法・対応表を読む。textFormat はワールドの DataVersion から決める */
-export function loadRewriteContext(res: RewriteResources, textFormat: TextFormat): RewriteContext {
+export function loadRewriteContext(res: RewriteResources, textFormat: TextFormat, mappings = loadRewriteMappings(res)): RewriteContext {
   const tree = parseCommandTree(readFileSync(res.commandsJson, "utf8"));
-  return rewriteContext(tree, { textFormat }, res.mappingsJson, res.blocksJson);
+  return rewriteContext(tree, { textFormat }, mappings, res.blocksJson);
 }
 
-function rewriteContext(tree: CommandTreeNode, options: ParseOptions, mappingsJson: string, blocksJson: string): RewriteContext {
-  const tables = JSON.parse(readFileSync(mappingsJson, "utf8")) as MappingTables;
-  return { parser: new CommandParser(tree, options), mappings: new MappingLookup(tables), blockDefaults: loadBlockDefaults(blocksJson) };
+function loadRewriteMappings(res: RewriteResources): MappingLookup {
+  return new MappingLookup(JSON.parse(readFileSync(res.mappingsJson, "utf8")) as MappingTables);
 }
 
-function worldRewriteContext(res: RewriteResources, dataVersion: number | undefined): RewriteContext | undefined {
-  if (dataVersion === fixedJavaDataVersion) return loadRewriteContext(res, textFormatFor(dataVersion));
+function rewriteContext(tree: CommandTreeNode, options: ParseOptions, mappings: MappingLookup, blocksJson: string): RewriteContext {
+  return { parser: new CommandParser(tree, options), mappings, blockDefaults: loadBlockDefaults(blocksJson) };
+}
+
+function worldRewriteContext(res: RewriteResources, dataVersion: number | undefined, mappings?: MappingLookup): RewriteContext | undefined {
+  if (dataVersion === fixedJavaDataVersion) return loadRewriteContext(res, textFormatFor(dataVersion), mappings);
   if (dataVersion === undefined) return undefined;
   const selection = selectCommandGrammar(loadJavaGrammars(), { dataVersion });
   if (!selection.ok) return undefined;
   const grammar = selection.grammar;
-  return rewriteContext(loadGrammarTree(grammar), grammar, res.mappingsJson, join(dirname(grammar.commandsPath), "blocks.json"));
+  return rewriteContext(loadGrammarTree(grammar), grammar, mappings ?? loadRewriteMappings(res), join(dirname(grammar.commandsPath), "blocks.json"));
 }
 
 export interface CommandBlockRewrite {
@@ -81,11 +84,11 @@ const num = (t: ReturnType<typeof child>): number => (t && typeof t.value === "n
  * Java ワールド（ディレクトリ）のコマンドブロックを、その場で書き換える。元のワールドを残したいときはコピーに対して呼ぶ。
  * 空のコマンドは対象にしない
  */
-export function rewriteWorldCommands(javaDir: string, res: RewriteResources): CommandRewriteReport {
+export function rewriteWorldCommands(javaDir: string, res: RewriteResources, mappings?: MappingLookup): CommandRewriteReport {
   const world = new JavaWorld(javaDir);
   const dataVersion = world.dataVersion();
   const textFormat = textFormatFor(dataVersion);
-  const ctx = worldRewriteContext(res, dataVersion);
+  const ctx = worldRewriteContext(res, dataVersion, mappings);
   const unavailable: RewriteResult = {
     status: "unsupported",
     issues: [{ severity: "unsupported", message: `DataVersion ${dataVersion ?? "不明"} の文法がない。npm run setup:grammars で対象版を生成する` }],

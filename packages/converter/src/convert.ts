@@ -7,7 +7,8 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MappingLookup, nbt, serializeStorage, readBedrockLevelDat, writeBedrockLevelDat, type MappingTables, type ObjectiveScores, type NbtTag } from "@je2be/core";
+import { nbt, serializeStorage, readBedrockLevelDat, writeBedrockLevelDat, type MappingTables, type ObjectiveScores, type NbtTag } from "@je2be/core";
+import { terrainCommandMappings } from "./chunker-block-mappings.ts";
 import { rewriteWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
 import { collectDatapacks } from "./datapacks.ts";
 import { JavaWorld } from "./java-world.ts";
@@ -149,8 +150,10 @@ export function collectInitialStorage(source: JavaWorld) {
 
 /** Java ワールド（ディレクトリ）を BE ワールド（ディレクトリ）に変換する */
 export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptions): ConvertReport {
+  const format = opts.format ?? DEFAULT_CHUNKER_FORMAT;
   const tables = opts.rewrite && JSON.parse(readFileSync(opts.rewrite.mappingsJson, "utf8")) as MappingTables;
-  const datapacks = collectDatapacks(javaDir, tables && opts.rewrite ? {mappings: new MappingLookup(tables), blocksJson: opts.rewrite.blocksJson} : undefined);
+  const mappings = tables && terrainCommandMappings(tables, opts.chunkerJar, format);
+  const datapacks = collectDatapacks(javaDir, mappings && opts.rewrite ? {mappings, blocksJson: opts.rewrite.blocksJson} : undefined);
   const source = new JavaWorld(javaDir);
   const { storageEntries, storageErrors } = collectInitialStorage(source);
   const version = source.dataVersion();
@@ -168,9 +171,9 @@ export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptio
       input = join(work, "java");
       cpSync(javaDir, input, { recursive: true, dereference: true });
       if (hasEntities) new JavaWorld(input).removeEntitiesFromChunkerCopy(legacy);
-      if (opts.rewrite) commands = rewriteWorldCommands(input, opts.rewrite);
+      if (opts.rewrite) commands = rewriteWorldCommands(input, opts.rewrite, mappings);
     }
-    execFileSync(opts.java, ["-jar", opts.chunkerJar, "-i", input, "-f", opts.format ?? DEFAULT_CHUNKER_FORMAT, "-o", outDir], {
+    execFileSync(opts.java, ["-jar", opts.chunkerJar, "-i", input, "-f", format, "-o", outDir], {
       stdio: "pipe",
       timeout: 600_000,
     });
