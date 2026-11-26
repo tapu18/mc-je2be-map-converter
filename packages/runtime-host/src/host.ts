@@ -68,6 +68,19 @@ const gameModes: Record<GameMode, NonNullable<RuntimeEntity["gamemode"]>> = {
   [GameMode.Spectator]: "spectator",
 };
 
+/** BE command coordinates use decimal tokens. Integer X/Z tokens can snap to block centers. */
+function nativeNumber(value: number): string {
+  const [coefficient, exponent] = String(value).split("e") as [string, string?];
+  if (exponent === undefined) return Number.isInteger(value) ? coefficient + ".0" : coefficient;
+  const [integer, fraction = ""] = coefficient.replace(/^-/, "").split(".") as [string, string?];
+  const digits = integer + fraction;
+  const point = integer.length + Number(exponent);
+  const sign = value < 0 ? "-" : "";
+  if (point <= 0) return sign + "0." + "0".repeat(-point) + digits;
+  if (point >= digits.length) return sign + digits + "0".repeat(point - digits.length) + ".0";
+  return sign + digits.slice(0, point) + "." + digits.slice(point);
+}
+
 function executeNative(context: ExecutionContext, native: NonNullable<ReturnType<NativeCommandResolver>>): CommandResult {
   const dimension = bedrockDimension(context.dimension);
   const source = () => {
@@ -76,8 +89,9 @@ function executeNative(context: ExecutionContext, native: NonNullable<ReturnType
     if (!executor?.isValid) throw Error(`executor ${context.executor} is unavailable`);
     return executor;
   };
-  const position = context.position.map(coordinate => Number.isInteger(coordinate) ? coordinate.toFixed(1) : String(coordinate)).join(" ");
-  const command = `execute in ${dimension} positioned ${position} rotated ${context.rotation.join(" ")} anchored ${context.anchor} run ${native.command}`;
+  const position = context.position.map(nativeNumber).join(" ");
+  const rotation = context.rotation.map(nativeNumber).join(" ");
+  const command = `execute in ${dimension} positioned ${position} rotated ${rotation} anchored ${context.anchor} run ${native.command}`;
   const result = runNative(source, command, native.completion);
   if (!result.ok) return {success: false, error: result.error.message};
   if (result.value.status === "unknown") return result.value;

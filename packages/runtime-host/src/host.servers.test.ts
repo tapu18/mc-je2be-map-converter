@@ -82,7 +82,7 @@ it("delegates a function's setblock and score-bearing tellraw to BDS three times
     if (result.status !== "rewritten" && result.status !== "unchanged") throw Error(JSON.stringify(result));
     return [source, result.command];
   });
-  const tag = "tag Delegate add prepared_native";
+  const tag = "execute positioned -0.0000001 -59 0 rotated -0.0000001 0 run tag Delegate add prepared_native";
   const tagRewrite = rewriteNativeCommand(tag, rewrite);
   if (tagRewrite.status !== "unchanged" && tagRewrite.status !== "rewritten") throw Error(JSON.stringify(tagRewrite));
   const pack = mkdtempSync(join(paths.servers, "native-test-"));
