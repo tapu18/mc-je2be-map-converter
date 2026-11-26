@@ -5,6 +5,7 @@
 //
 // 確度：出力する BE の書き方は BDS 1.26.63.1 が構文として受理することを実測した（rewrite.servers.test.ts）。
 // 意味が Java と一致することは、変換を通すシナリオ（scenarios/convert/）で確かめたものだけが実測で、残りは未確認。
+import { rewriteGameRule } from "../features/game_rule/rewrite.ts";
 import { rewriteSound } from "../features/sound/rewrite.ts";
 import type { BlockDefaults } from "../java/world.ts";
 import type { MappingLookup } from "../mappings/mappings.ts";
@@ -459,11 +460,7 @@ const COMMANDS: Record<string, CommandHandler> = {
   difficulty: (nodes, _head, _ctx, ed) => {
     if (!nodes.length) ed.unsupported("BE の difficulty は難易度を指定する必要がある");
   },
-  gamerule: (nodes, _head, _ctx, ed) => {
-    const rule = nodes[0]!;
-    if (rule.name === "keep_inventory") ed.replace(rule.start, rule.end, "keepInventory");
-    else if (rule.name !== "keepInventory") ed.unsupported(`gamerule ${rule.name} の書き換えは未対応`);
-  },
+  gamerule: (nodes, _head, _ctx, ed) => rewriteGameRule(nodes, ed),
   scoreboard: (nodes, _head, _ctx, ed) => {
     const [group, sub] = literals(nodes);
     if (group === "objectives") {
