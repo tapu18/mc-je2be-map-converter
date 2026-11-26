@@ -5,16 +5,17 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import { command, CommandError } from './agent-runner/process.ts';
-import { agentArguments, AgentLaunchError, failedBeforeWork, validateWorkerArgs, workerPrompt } from './agent-runner/agent.ts';
+import { agentArguments, AgentLaunchError, failedBeforeWork, limitResetAt, usageLimit, validateWorkerArgs, workerPrompt } from './agent-runner/agent.ts';
 import { followProgress } from './agent-runner/progress.ts';
 import { managerConfig, managerDue, managerPrompt, managerReport } from './agent-runner/manager.ts';
 import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
 import { activeClaims, baseAllowsMerge, canMerge, checksFailed, dependencies, hasLabel, isDependencyBlocked, latestBaseRun } from './agent-runner/policy.ts';
 import type { Issue, PullRequest, WorkflowRun } from './agent-runner/policy.ts';
 
+type Agent = 'codex' | 'claude';
 interface Config {
   repo: string;
-  agent: 'codex' | 'claude';
+  agent: Agent;
   base: string;
   milestone?: string;
   pollSeconds: number;
@@ -22,10 +23,11 @@ interface Config {
   maxAttempts: number;
   maxTotalAttempts: number;
   maxRunsPerDay: number;
+  limitWaitSeconds: number;
   autoMerge: boolean;
   agentArgs: string[];
   manager: ManagerConfig;
-  workerOverrides: Record<string, { agent?: 'codex' | 'claude'; agentArgs?: string[] }>;
+  workerOverrides: Record<string, { agent?: Agent; agentArgs?: string[] }>;
 }
 interface Task {
   issue: number;
@@ -36,7 +38,7 @@ interface Task {
   totalAttempts?: number;
   phase: 'claiming' | 'working' | 'review' | 'blocked' | 'done';
   error?: string;
-  launches?: { agent: string; args: string[]; startedAt: number; finishedAt?: number; counted: boolean }[];
+  launches?: { agent: string; args: string[]; startedAt: number; finishedAt?: number; counted: boolean; limited?: boolean }[];
 }
 interface State {
   version: 1;
@@ -45,6 +47,8 @@ interface State {
   runs: number;
   tasks: Task[];
   manager?: ManagerState;
+  /** Provider quota per CLI: launches of that CLI wait until the reset time. */
+  limits?: Partial<Record<Agent, { until: number; message: string }>>;
   codeWarning?: string;
   startupCode?: string[];
 }
@@ -75,7 +79,15 @@ async function main() {
     validateWorkerArgs(args);
     agentArguments(override.agent ?? config.agent, args);
   }
+  if (config.manager.enabled) validateWorkerArgs(config.manager.agentArgs);
   const managerArgs = config.manager.enabled ? agentArguments(config.manager.agent, config.manager.agentArgs) : [];
+  const workerFor = (item: Issue) => {
+    const matching = Object.entries(config.workerOverrides).filter(([label]) => hasLabel(item, label));
+    if (matching.length > 1) throw new AgentLaunchError(`Multiple worker overrides match issue #${item.number}: ${matching.map(([label]) => label).join(', ')}`);
+    const override = matching[0]?.[1];
+    const agent = override?.agent ?? config.agent;
+    return { agent, args: agentArguments(agent, override?.agentArgs ?? config.agentArgs) };
+  };
   const root = (await command('git', ['rev-parse', '--show-toplevel'], { cwd: process.cwd() })).trim();
   const codeAt = async (ref: string) => (await command('git', ['rev-parse', `${ref}:tools/agent-runner.ts`, `${ref}:tools/agent-runner`], { cwd: root, signal: abort.signal })).trim().split('\n');
   const startupCode = await codeAt('HEAD');
@@ -149,6 +161,9 @@ async function main() {
       const launches = task.launches ?? [];
       console.log(JSON.stringify({ issue: task.issue, launches: launches.length, legacyAttempts: task.launches ? undefined : task.attempts, merged: pulls.some(pr => pr.state === 'MERGED'), runs: launches.map(run => ({ ...run, durationMs: run.finishedAt === undefined ? null : run.finishedAt - run.startedAt })) }));
     }
+    for (const [agent, limit] of Object.entries(state.limits ?? {})) {
+      console.log(JSON.stringify({ limit: agent, until: new Date(limit.until).toISOString(), active: limit.until > Date.now(), message: limit.message }));
+    }
     return;
   }
 
@@ -183,8 +198,28 @@ async function main() {
       await writeFile(`${statePath}.tmp`, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 });
       await rename(`${statePath}.tmp`, statePath);
     };
+    const limited = (agent: Agent) => {
+      const limit = state.limits?.[agent];
+      return limit && limit.until > Date.now() ? limit : undefined;
+    };
+    // A quota is an account condition, not a broken setup or the task's fault: record it,
+    // refund the launch and keep the runner alive for other CLIs and later ticks.
+    const recordLimit = async (agent: Agent, logfile: string, error: unknown) => {
+      if (!(error instanceof CommandError) || error.exitCode === null) return false;
+      const message = await usageLimit(logfile);
+      if (!message) return false;
+      const now = Date.now();
+      const reset = limitResetAt(message, now);
+      // One minute of slack: reset clocks are minute-rounded.
+      const until = reset !== undefined && reset > now ? reset + 60_000 : now + config.limitWaitSeconds * 1000;
+      (state.limits ??= {})[agent] = { until, message: message.slice(0, 500) };
+      await save();
+      log(`${agent} の使用量の上限: ${new Date(until).toISOString()} まで ${agent} の起動を見送ります`);
+      return true;
+    };
     const runManager = async (idle: boolean): Promise<boolean> => {
       if (!managerDue(config.manager, state.manager, Date.now(), idle)) return false;
+      if (limited(config.manager.agent)) { log(`[PM] ${config.manager.agent} は使用量の上限で見送り中`); return false; }
       const previous = state.manager;
       const day = new Date().toISOString().slice(0, 10);
       const manager: ManagerState = {
@@ -210,6 +245,13 @@ async function main() {
       } catch (error) {
         manager.error = String(error);
         log(`[PM] ${manager.error}`);
+        if (await recordLimit(config.manager.agent, logfile, error)) {
+          // Not a PM run: keep the previous schedule so PM runs once the quota resets.
+          if (previous) state.manager = previous;
+          else delete state.manager;
+          await save();
+          return false;
+        }
         if ((error instanceof CommandError && error.exitCode === 2) ||
             ['ENOENT', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) {
           // Keep worker budgets and the previous PM schedule intact on invalid CLI setup.
@@ -274,7 +316,10 @@ async function main() {
       await command('git', ['fetch', 'origin', config.base], { cwd: root, signal: abort.signal });
       await command('git', ['worktree', 'add', '-b', task.branch, task.worktree, `origin/${config.base}`], { cwd: root, signal: abort.signal });
     };
-    const run = async (task: Task, item: Issue, pr?: PullRequest) => {
+    /** Returns 'limited' when the selected CLI is waiting for its quota, so other tasks may run. */
+    const run = async (task: Task, item: Issue, pr?: PullRequest): Promise<'limited' | undefined> => {
+      const { agent, args } = workerFor(item);
+      if (limited(agent)) { log(`#${task.issue} ${agent} は使用量の上限で見送り中（${new Date(limited(agent)!.until).toISOString()} まで）`); return 'limited'; }
       if (task.attempts >= config.maxAttempts) { await stopTask(task, `実行回数の上限 ${config.maxAttempts} 回に到達`); return; }
       if ((task.totalAttempts ?? task.attempts) >= config.maxTotalAttempts) { await stopTask(task, `合計実行回数の上限 ${config.maxTotalAttempts} 回に到達`); return; }
       if (state.runs >= config.maxRunsPerDay) { log('Daily run limit reached; waiting.'); return; }
@@ -283,11 +328,6 @@ async function main() {
       let before: string | undefined;
       try { before = await remoteHead() ?? (await git(['rev-parse', `origin/${config.base}`])).trim(); }
       catch (error) { log(`Could not record remote head: ${String(error)}`); }
-      const matching = Object.entries(config.workerOverrides).filter(([label]) => hasLabel(item, label));
-      if (matching.length > 1) throw new AgentLaunchError(`Multiple worker overrides match issue #${task.issue}: ${matching.map(([label]) => label).join(', ')}`);
-      const override = matching[0]?.[1];
-      const agent = override?.agent ?? config.agent;
-      const args = agentArguments(agent, override?.agentArgs ?? config.agentArgs);
       const launch: NonNullable<Task['launches']>[number] = { agent, args, startedAt: Date.now(), counted: true };
       (task.launches ??= []).push(launch);
       task.totalAttempts = (task.totalAttempts ?? task.attempts) + 1;
@@ -300,6 +340,7 @@ async function main() {
       await writeFile(logfile, `agent-runner launch: ${JSON.stringify(launch)}\n`, { mode: 0o600 });
       log(`Running ${agent} ${JSON.stringify(args)} for #${task.issue}, attempt ${task.attempts}; log=${logfile}`);
       const progress = await followProgress(logfile, message => log(`#${task.issue} ${message}`));
+      let quota = false;
       try {
         await command(agent, args,
         { cwd: task.worktree, timeoutMs: config.timeoutSeconds * 1000, signal: abort.signal, log: logfile, input: prompt });
@@ -307,7 +348,14 @@ async function main() {
       } catch (error) {
         task.error = String(error);
         log(task.error);
-        if ((error instanceof CommandError && (error.exitCode === 2 ||
+        if (await recordLimit(agent, logfile, error)) {
+          quota = true;
+          task.attempts--;
+          task.totalAttempts!--;
+          state.runs--;
+          launch.counted = false;
+          launch.limited = true;
+        } else if ((error instanceof CommandError && (error.exitCode === 2 ||
               (error.exitCode !== null && await failedBeforeWork(logfile)))) ||
             ['ENOENT', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) {
           // Invalid invocation / missing executable is infrastructure failure, not work.
@@ -319,7 +367,7 @@ async function main() {
           throw new AgentLaunchError(`AI CLI could not start. Fix the configuration and restart.\n${task.error}`);
         }
       } finally { launch.finishedAt = Date.now(); await progress.close(); await save(); }
-      if (before) {
+      if (before && !quota) { // A quota failure is already refunded.
         try {
           const after = await remoteHead();
           if (after && after !== before) {
@@ -437,13 +485,15 @@ async function main() {
           await stopTask(task, 'PRがマージされずに閉じられました');
           continue;
         }
-        await run(task, item, pr);
+        if (await run(task, item, pr) === 'limited') continue;
         return; // At most one worker per tick.
       }
       // PM has its own budget; it may run even when worker runs are exhausted.
       if (state.runs >= config.maxRunsPerDay) { log(`日次起動上限 ${state.runs}/${config.maxRunsPerDay}。UTC の日付更新待ち`); return; }
       for (const candidate of (await ready()).sort((a, b) => a.number - b.number)) {
         if (state.tasks.some(task => task.issue === candidate.number) || !await eligible(candidate)) continue;
+        // Do not claim work its CLI cannot start; claims would pile up during a quota wait.
+        if (limited(workerFor(candidate).agent)) continue;
         const id = randomUUID();
         const task: Task = { issue: candidate.number, branch: `${candidate.number}-agent-${id.slice(0, 8)}`,
           worktree: join(stateDir, 'worktrees', String(candidate.number)), claim: `${config.agent}-${id}`, attempts: 0, phase: 'claiming' };
@@ -476,7 +526,7 @@ async function main() {
 function validateConfig(input: unknown): Config {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Config must be an object');
   const raw = input as Record<string, unknown>;
-  const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxTotalAttempts: 10, maxRunsPerDay: 12, autoMerge: true, agentArgs: [], workerOverrides: {} };
+  const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxTotalAttempts: 10, maxRunsPerDay: 12, limitWaitSeconds: 3600, autoMerge: true, agentArgs: [], workerOverrides: {} };
   const config = { ...defaults, ...raw } as unknown as Config;
   for (const key of Object.keys(raw)) if (![...Object.keys(defaults), 'repo', 'milestone', 'manager'].includes(key)) throw new Error(`Unknown config key: ${key}`);
   config.manager = managerConfig(raw.manager);
@@ -490,7 +540,7 @@ function validateConfig(input: unknown): Config {
   if (!['codex', 'claude'].includes(config.agent)) throw new Error('agent must be codex or claude');
   if (typeof config.base !== 'string' || !/^[\w][\w./-]*$/.test(config.base)) throw new Error('Invalid base branch');
   if (config.milestone !== undefined && (typeof config.milestone !== 'string' || !config.milestone)) throw new Error('Invalid milestone');
-  for (const key of ['pollSeconds', 'timeoutSeconds', 'maxAttempts', 'maxTotalAttempts', 'maxRunsPerDay'] as const) {
+  for (const key of ['pollSeconds', 'timeoutSeconds', 'maxAttempts', 'maxTotalAttempts', 'maxRunsPerDay', 'limitWaitSeconds'] as const) {
     if (!Number.isSafeInteger(config[key]) || config[key] < 1) throw new Error(`${key} must be a positive integer`);
   }
   if (typeof config.autoMerge !== 'boolean' || !Array.isArray(config.agentArgs) || !config.agentArgs.every(arg => typeof arg === 'string')) throw new Error('Invalid autoMerge or agentArgs');

@@ -19,7 +19,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; remoteHead?: string; pushHead?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; remoteHead?: string; pushHead?: string; workerFails?: boolean; managerLog?: string[]; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -87,6 +87,7 @@ if (tool === 'git') {
   let prompt = ''; for await (const chunk of process.stdin) prompt += chunk;
   if (prompt.includes('の PM 巡回です')) {
     (d.managerPrompts ??= []).push(prompt);
+    if (d.managerLog) { for (const line of d.managerLog) out(line); save(d); process.exit(1); }
     out({type:'item.completed', item:{type:'agent_message',text:'PM報告: 次は #7。承認待ちを確認しました。'}});
     if (d.managerFails) process.exitCode = 1;
   } else {
@@ -333,7 +334,7 @@ it('respects the daily run limit without discarding the active task', async () =
 
 it('uses claude when configured and rejects an existing lock', async () => {
   const f = await fixture();
-  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agent: 'claude' }));
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agent: 'claude', agentArgs: ['--permission-mode', 'auto'] }));
   await f.run();
   await f.run();
   expect((await f.load()).calls.find(call => call[0] === 'claude')).toContain('-p');
@@ -411,17 +412,78 @@ it('counts a failure after work and refunds an early error event', async () => {
   expect((await f.state()).tasks[0].attempts).toBe(1);
 });
 
-it.each([['--model', ' bad'], ['--model=bad '], ['--model', "'bad'"], ['--model']])('rejects invalid model arguments before starting: %s', async (...args) => {
+it.each([['--model', ' bad'], ['--model=bad '], ['--model', "'bad'"], ['--model'], ['-m', ' bad'], ['-m']])('rejects invalid model arguments before starting: %s', async (...args) => {
   const f = await fixture();
   await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agentArgs: args }));
-  await expect(f.run()).rejects.toThrow('Invalid --model value');
+  await expect(f.run()).rejects.toThrow(`Invalid ${args[0]!.split('=')[0]} value`);
   await expect(access(join(f.root, '.git'))).rejects.toThrow();
+});
+
+const quota = [
+  JSON.stringify({ type: 'item.completed', item: { type: 'command_execution' } }),
+  JSON.stringify({ type: 'turn.failed', error: { message: 'You’ve hit your usage limit. Upgrade to Pro or try again at 2:21 PM.' } }),
+];
+
+it('waits for a worker CLI quota without stopping the runner or counting the launch', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.update(d => { d.workerLog = quota; });
+  const hit = await f.run();
+  expect(hit.stdout).toContain('codex の使用量の上限');
+  const state = await f.state();
+  expect(state.runs).toBe(0);
+  expect(state.tasks[0].attempts).toBe(0);
+  expect(state.tasks[0].launches[0]).toMatchObject({ counted: false, limited: true });
+  const until = state.limits.codex.until;
+  expect(until).toBeGreaterThan(Date.now());
+  expect(until - Date.now()).toBeLessThanOrEqual(24 * 3600_000 + 60_000);
+  expect((await f.load()).issues[0]!.labels.some(label => label.name === 'status:blocked')).toBe(false);
+  await f.update(d => { delete d.workerLog; });
+  expect((await f.run()).stdout).toContain('使用量の上限で見送り中');
+  expect((await f.load()).workerPrompts).toHaveLength(1);
+  expect((await f.run('--report')).stdout).toContain('"limit":"codex"');
+  await f.updateState(d => { d.limits.codex.until = Date.now() - 1; });
+  await f.run();
+  expect((await f.load()).workerPrompts).toHaveLength(2);
+  expect((await f.load()).prs).toHaveLength(1);
+});
+
+it('runs another CLI while one waits for its quota and does not claim work for the waiting CLI', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', workerOverrides: { 'agent:claude': { agent: 'claude', agentArgs: ['--permission-mode', 'auto'] } } }));
+  await f.update(d => {
+    d.issues[0]!.labels.push({ name: 'agent:claude' });
+    d.issues.push({ number: 8, title: 'Other', body: '', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] });
+  });
+  await f.run(); // Claim #7.
+  await f.updateState(d => { d.limits = { codex: { until: Date.now() + 3600_000, message: 'usage limit' } }; });
+  await f.run(); // #7 uses claude, which is not limited.
+  const calls = (await f.load()).calls;
+  expect(calls.filter(call => call[0] === 'claude')).toHaveLength(1);
+  await f.update(d => { d.prs = []; d.issues[0]!.state = 'CLOSED'; });
+  await f.run();
+  await f.run();
+  // #8 would run on codex: it is not claimed while codex waits.
+  expect((await f.load()).issues[1]!.comments).toHaveLength(0);
+  expect((await f.state()).tasks.map((task: { issue: number }) => task.issue)).toEqual([7]);
+});
+
+it('keeps the PM schedule when PM hits a quota and lets workers continue', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, agent: 'claude', agentArgs: ['--permission-mode', 'auto'] } }));
+  await f.update(d => { d.managerLog = [JSON.stringify({ type: 'result', is_error: true, result: 'Claude AI usage limit reached|' + Math.floor(Date.now() / 1000 + 600) })]; });
+  const hit = await f.run();
+  expect(hit.stdout).toContain('claude の使用量の上限');
+  const state = await f.state();
+  expect(state.manager).toBeUndefined();
+  expect(state.limits.claude.until).toBeGreaterThan(Date.now() + 500_000);
+  expect(state.tasks).toHaveLength(1); // The worker claimed in the same tick.
 });
 
 it('runs PM with independent agent/args and report, persists schedule, then resumes worker tasks', async () => {
   const f = await fixture();
   await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: {
-    enabled: true, agent: 'claude', agentArgs: ['--model', 'manager-model'], instructions: 'M1の依存を優先',
+    enabled: true, agent: 'claude', agentArgs: ['--model', 'manager-model', '--permission-mode', 'auto'], instructions: 'M1の依存を優先',
   } }));
   const result = await f.run();
   expect(result.stdout).toContain('[PM]');
@@ -476,7 +538,7 @@ it('keeps PM schedule after failure and stops/refunds startup failures without c
 
 it('reports PM configuration during dry-run without starting either role', async () => {
   const f = await fixture();
-  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, agent: 'claude' } }));
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, agent: 'claude', agentArgs: ['--permission-mode', 'auto'] } }));
   expect((await f.run('--dry-run')).stdout).toContain('PM: claude');
   await expect(access(join(f.root, '.git'))).rejects.toThrow();
   expect((await f.load()).calls.some(call => ['codex', 'claude'].includes(call[0]!))).toBe(false);
@@ -484,7 +546,7 @@ it('reports PM configuration during dry-run without starting either role', async
 
 it.each([false, true])('selects worker override only when label is present: %s', async (labeled) => {
   const f = await fixture();
-  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', workerOverrides: { 'model:strong': { agent: 'claude', agentArgs: ['--model', 'example'] } } }));
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', workerOverrides: { 'model:strong': { agent: 'claude', agentArgs: ['--model', 'example', '--permission-mode', 'auto'] } } }));
   if (labeled) await f.update(d => { d.issues[0]!.labels.push({ name: 'model:strong' }); });
   await f.run();
   await f.run();
