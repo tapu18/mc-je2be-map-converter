@@ -59,7 +59,7 @@ for (const s of selected) {
       const stale = Object.keys(s.knownDiffs ?? {}).filter((p) => !result.diffs.some((d) => d.path === p));
       if (result.incomparable.length) console.log(`${s.id}: 比べられなかった値（ID 対応なし）\n  ${result.incomparable.join("\n  ")}`);
       console.log(`${s.id}: ${JSON.stringify({ required: result.required, knownDifferences: result.diffs.length - unexpected.length, incomparable: result.incomparable.length, completeMatch: result.completeMatch })}`);
-      expect(result.passed, `必須観測の不足・比較不能・差分\n${JSON.stringify(result.checks)}`).toBe(true);
+      expect(result.passed, `必須観測の不足・比較不能・差分\n${JSON.stringify(result.checks)}\n${formatDiffs(unexpected)}`).toBe(true);
       expect(unexpected, `説明のない差分\n${formatDiffs(unexpected)}\n${log.join("\n")}`).toEqual([]);
       expect(stale, "knownDiffs にあるが、もう差分がない（消すこと）").toEqual([]);
     });

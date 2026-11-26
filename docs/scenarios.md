@@ -72,6 +72,8 @@ Java版サーバーで実行した結果を正解として記録し、BE で実�
 - `entityDetails: true` を指定すると、`entityTags` に一致した各エンティティの名前とブロック座標も比べる。位置は各座標を切り下げ、セル内の移動を許容する。種類・タグの組ごとに配列で比べるため、同じタグを持つエンティティが増減すると差分になる。
 - `entityScores` に目的変数名を列挙すると、Java はエンティティの UUID、BE はエンティティのスコアボード ID から値を取得し、`entityDetails` 内で比較する。配置だけを確かめる `play: []` の例は `convert/placed-entities`。防具立ての小数座標と向きは `placed-entities.servers.test.ts` で別に確認する。
 
+- `entityEffects` は一意に付けたエンティティタグから、観測する Java の効果 ID の配列への対応。Java は `data get entity`、BE は `getEffect` を使う。効果なしは `null` として比較し、対象が見つからなければ失敗する。増幅度と無期限（`-1`）は完全一致を求め、有限の残り時間は BE の観測時刻のずれとして10 tick まで許容する。
+
 ## 実行と記録
 
 ```sh

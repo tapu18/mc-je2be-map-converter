@@ -1,0 +1,71 @@
+{
+  "description": "変換したコマンドブロックでステータス効果を付与・解除し、対象ごとの有無・レベル・残り tick を比べる",
+  "setup": [
+    "gamerule spawn_mobs false",
+    "summon minecraft:pig 10.5 -60 10.5 {Tags:[\"explicit\"],PersistenceRequired:1b}",
+    "summon minecraft:pig 14.5 -60 10.5 {Tags:[\"default\"],PersistenceRequired:1b}",
+    "summon minecraft:pig 18.5 -60 10.5 {Tags:[\"infinite\"],PersistenceRequired:1b}",
+    "summon minecraft:pig 22.5 -60 10.5 {Tags:[\"maximum\"],PersistenceRequired:1b}",
+    "summon minecraft:pig 26.5 -60 10.5 {Tags:[\"clear_one\",\"clear_group\"],PersistenceRequired:1b}",
+    "summon minecraft:pig 30.5 -60 10.5 {Tags:[\"clear_all\",\"clear_group\"],PersistenceRequired:1b}",
+    "summon minecraft:pig 34.5 -60 10.5 {Tags:[\"clear_self\",\"clear_group\"],PersistenceRequired:1b}",
+    "summon minecraft:pig 38.5 -60 10.5 {Tags:[\"clear_control\",\"clear_group\"],PersistenceRequired:1b}",
+    "summon minecraft:pig 42.5 -60 10.5 {Tags:[\"missing\"],PersistenceRequired:1b}"
+  ],
+  "actions": [
+    {
+      "commandBlocks": [
+        {"pos": [2, -60, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "effect give @e[tag=explicit] minecraft:speed 12 2 true"},
+        {"pos": [2, -60, 3], "kind": "chain", "facing": "south", "command": "effect give @e[tag=default] minecraft:speed"},
+        {"pos": [2, -60, 4], "kind": "chain", "facing": "south", "command": "effect give @e[tag=infinite] minecraft:hero_of_the_village infinite 1 false"},
+        {"pos": [2, -60, 5], "kind": "chain", "facing": "south", "command": "effect give @e[tag=maximum] minecraft:resistance 1000000 255 false"},
+        {"pos": [2, -60, 6], "kind": "chain", "facing": "south", "command": "effect give @e[tag=clear_group] minecraft:hero_of_the_village 15"},
+        {"pos": [2, -60, 7], "kind": "chain", "facing": "south", "command": "effect give @e[tag=clear_group] minecraft:speed 15"},
+        {"pos": [2, -60, 8], "kind": "chain", "facing": "south", "command": "effect clear @e[tag=clear_one] minecraft:hero_of_the_village"},
+        {"pos": [2, -60, 9], "kind": "chain", "facing": "south", "command": "effect clear @e[tag=clear_all]"},
+        {"pos": [2, -60, 10], "kind": "chain", "facing": "south", "command": "execute as @e[tag=clear_self] run effect clear"},
+        {"pos": [2, -60, 11], "kind": "chain", "facing": "south", "command": "effect give @e[tag=missing] minecraft:dolphins_grace 20"},
+        {"pos": [2, -60, 12], "kind": "chain", "facing": "south", "command": "effect give @e[tag=missing] minecraft:glowing 20"},
+        {"pos": [2, -60, 13], "kind": "chain", "facing": "south", "command": "effect give @e[tag=missing] minecraft:luck 20"},
+        {"pos": [2, -60, 14], "kind": "chain", "facing": "south", "command": "effect give @e[tag=missing] minecraft:unluck 20"}
+      ]
+    }
+  ],
+  "play": [
+    { "run": "setblock 2 -60 1 minecraft:redstone_block" },
+    { "ticks": 5 }
+  ],
+  "observe": {
+    "entityEffects": {
+      "explicit": ["minecraft:speed"],
+      "default": ["minecraft:speed"],
+      "infinite": ["minecraft:hero_of_the_village"],
+      "maximum": ["minecraft:resistance"],
+      "clear_one": ["minecraft:hero_of_the_village", "minecraft:speed"],
+      "clear_all": ["minecraft:hero_of_the_village", "minecraft:speed"],
+      "clear_self": ["minecraft:hero_of_the_village", "minecraft:speed"],
+      "clear_control": ["minecraft:hero_of_the_village", "minecraft:speed"],
+      "missing": ["minecraft:dolphins_grace", "minecraft:glowing", "minecraft:luck", "minecraft:unluck"]
+    }
+  },
+  "requiredObservations": [
+    "entityEffects.explicit",
+    "entityEffects.default",
+    "entityEffects.infinite",
+    "entityEffects.maximum",
+    "entityEffects.clear_one",
+    "entityEffects.clear_all",
+    "entityEffects.clear_self",
+    "entityEffects.clear_control",
+    "entityEffects.missing.minecraft:dolphins_grace",
+    "entityEffects.missing.minecraft:glowing",
+    "entityEffects.missing.minecraft:luck",
+    "entityEffects.missing.minecraft:unluck"
+  ],
+  "knownDiffs": {
+    "entityEffects.missing.minecraft:dolphins_grace": "BDS 1.26.66.1 の効果レジストリに相当する効果がなく、付与コマンドは変換レポートで unsupported になる",
+    "entityEffects.missing.minecraft:glowing": "BDS 1.26.66.1 の効果レジストリに相当する効果がなく、付与コマンドは変換レポートで unsupported になる",
+    "entityEffects.missing.minecraft:luck": "BDS 1.26.66.1 の効果レジストリに相当する効果がなく、付与コマンドは変換レポートで unsupported になる",
+    "entityEffects.missing.minecraft:unluck": "BDS 1.26.66.1 の効果レジストリに相当する効果がなく、付与コマンドは変換レポートで unsupported になる"
+  }
+}

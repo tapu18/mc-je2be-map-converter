@@ -59,6 +59,27 @@ describe("scenario normalize/compare", () => {
     expect(unexpectedDiffs(r, { "scores.t.#b": "調査済み" }).map((d) => d.path)).toEqual(["scores.t.#a", "entities.minecraft:pig p"]);
   });
 
+  it("compares effect presence, amplifier and remaining ticks independently", () => {
+    const j = { entityEffects: { pig: {
+      "minecraft:speed": { amplifier: 2, duration: 235 },
+      "minecraft:resistance": { amplifier: 255, duration: 235 },
+      "minecraft:village_hero": { amplifier: 0, duration: -1 },
+      "minecraft:glowing": { amplifier: 0, duration: 395 },
+    } } };
+    const b = { entityEffects: { pig: {
+      "minecraft:speed": { amplifier: 2, duration: 230 },
+      "minecraft:resistance": { amplifier: 254, duration: 224 },
+      "minecraft:village_hero": { amplifier: 0, duration: 1 },
+      "minecraft:glowing": null,
+    } } };
+    expect(compareStates(j, b).diffs).toEqual([
+      { path: "entityEffects.pig.minecraft:resistance.amplifier", java: 255, bedrock: 254 },
+      { path: "entityEffects.pig.minecraft:resistance.duration", java: 235, bedrock: 224 },
+      { path: "entityEffects.pig.minecraft:village_hero.duration", java: -1, bedrock: 1 },
+      { path: "entityEffects.pig.minecraft:glowing", java: { amplifier: 0, duration: 395 }, bedrock: null },
+    ]);
+  });
+
   it("formats Java block states in a stable order", () => {
     expect(javaBlockString("minecraft:oak_stairs", { half: "top", facing: "east" })).toBe("minecraft:oak_stairs[facing=east,half=top]");
     expect(minimalBlockMapper("minecraft:stone", {})).toBeUndefined();

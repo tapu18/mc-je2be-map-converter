@@ -73,7 +73,7 @@ function registryVerdict(family: Family, id: string): Verdict {
     if (result.status === "rewritten" || result.status === "unchanged") return {
       method: "rewrite", implementation: "partial", loss: null, issue: 72,
       evidence: fixedTests ? { confidence: "measured", source: rewriteTest, scope }
-        : { confidence: "unconfirmed", source: "packages/core/src/command/bedrock-command-ids.ts", scope: "Existing command ID translation; target version unverified" },
+        : { confidence: "unconfirmed", source: family === "entity" ? "packages/core/src/command/bedrock-command-ids.ts" : "packages/core/src/features/effect/ids.ts", scope: "Existing command ID translation; target version unverified" },
     };
     if (family === "entity" && customEntities.has(id)) {
       return { method: "asset", implementation: "planned", loss: null, issue: null,
