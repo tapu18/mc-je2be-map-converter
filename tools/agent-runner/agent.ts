@@ -4,8 +4,17 @@ import { join } from 'node:path';
 import { failedChecks } from './policy.ts';
 import type { Issue, PullRequest } from './policy.ts';
 
+export class AgentLaunchError extends Error {}
+
 export function agentArguments(agent: 'codex' | 'claude', extra: string[]): string[] {
-  if (agent === 'claude') return ['-p', '--output-format', 'stream-json', '--verbose', ...extra];
+  if (agent === 'claude') {
+    // `claude -p` cannot ask for approval, so without a mode every tool call is refused.
+    const grants = ['--permission-mode', '--allowedTools', '--allowed-tools'];
+    if (!extra.some(arg => grants.some(flag => arg === flag || arg.startsWith(`${flag}=`)) || arg === '--dangerously-skip-permissions')) {
+      throw new AgentLaunchError('Claude needs --permission-mode or --allowedTools in agentArgs: non-interactive runs cannot approve tools.');
+    }
+    return ['-p', '--output-format', 'stream-json', '--verbose', ...extra];
+  }
   const explicitSandbox = extra.some(arg => arg === '-s' || arg.startsWith('-s=') || arg === '--sandbox' || arg.startsWith('--sandbox='));
   const automatic = extra.includes('--approve-for-me');
   const bypass = extra.includes('--dangerously-bypass-approvals-and-sandbox');
@@ -14,16 +23,16 @@ export function agentArguments(agent: 'codex' | 'claude', extra: string[]): stri
   return ['exec', ...(!automatic && !bypass && !explicitSandbox ? ['--sandbox', 'workspace-write'] : []), '--json', ...extra, '-'];
 }
 
-export class AgentLaunchError extends Error {}
 
 // Validate worker options before acquiring the runner lock or spending a budget.
 export function validateWorkerArgs(args: string[]): void {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
-    if (arg !== '--model' && !arg.startsWith('--model=')) continue;
-    const value = arg === '--model' ? args[++i] : arg.slice('--model='.length);
+    const flag = ['--model', '-m'].find(name => arg === name || arg.startsWith(`${name}=`));
+    if (!flag) continue;
+    const value = arg === flag ? args[++i] : arg.slice(flag.length + 1);
     if (!value || value !== value.trim() || /^[\"']|[\"']$/.test(value) || value.startsWith('-')) {
-      throw new AgentLaunchError('Invalid --model value in agentArgs: remove surrounding whitespace or quotes and provide a model name.');
+      throw new AgentLaunchError(`Invalid ${flag} value in agentArgs: remove surrounding whitespace or quotes and provide a model name.`);
     }
   }
 }
@@ -37,7 +46,7 @@ export async function failedBeforeWork(logfile: string): Promise<boolean> {
   for await (const line of lines) {
     try {
       const event = JSON.parse(line);
-      if (event.type === 'turn.failed' || event.type === 'error') failed = true;
+      if (event.type === 'turn.failed' || event.type === 'error' || (event.type === 'result' && event.is_error)) failed = true;
       if (event.type === 'item.completed' && ['command_execution', 'file_change', 'mcp_tool_call'].includes(event.item?.type)) worked = true;
       if (event.type === 'assistant' && event.message?.content?.some((block: { type: string }) => block.type === 'tool_use')) worked = true;
     } catch { /* CLI diagnostics can be plain text. */ }
@@ -45,6 +54,48 @@ export async function failedBeforeWork(logfile: string): Promise<boolean> {
   return failed && !worked;
 }
 
+// Provider quota messages, e.g. Codex: "You’ve hit your usage limit ... try again at 2:21 PM."
+// Claude: "Claude AI usage limit reached|<epoch seconds>" or "You've hit your limit · resets 3pm".
+const limitPattern = /usage limit|hit your (?:usage )?limit|limit reached|rate limit/i;
+
+function limitMessage(line: string): string | undefined {
+  let event;
+  try { event = JSON.parse(line); }
+  catch { return limitPattern.test(line) ? line.trim() : undefined; } // CLI diagnostics on stderr.
+  if (!event || typeof event !== 'object') return undefined;
+  // Only the CLI's own failure events: tool output and agent text may mention limits harmlessly.
+  const text = event.type === 'error' ? event.message
+    : event.type === 'turn.failed' ? event.error?.message
+    : event.type === 'result' && event.is_error ? event.result
+    : undefined;
+  return typeof text === 'string' && limitPattern.test(text) ? text : undefined;
+}
+
+/** Parse the reset time a quota message names; local wall-clock times are the next occurrence. */
+export function limitResetAt(message: string, now: number): number | undefined {
+  const epoch = /\|(\d{10})\b/.exec(message);
+  if (epoch) return Number(epoch[1]) * 1000;
+  const clock = /(?:try again at|resets(?: at)?)\s+(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?/i.exec(message);
+  if (!clock) return undefined;
+  let hour = Number(clock[1]);
+  const minute = Number(clock[2] ?? 0);
+  const meridiem = clock[3]?.[0]?.toLowerCase();
+  if (meridiem === 'p' && hour < 12) hour += 12;
+  if (meridiem === 'a' && hour === 12) hour = 0;
+  if (hour > 23 || minute > 59) return undefined;
+  const at = new Date(now);
+  at.setHours(hour, minute, 0, 0);
+  if (at.getTime() <= now) at.setDate(at.getDate() + 1);
+  return at.getTime();
+}
+
+/** The last provider quota failure in a CLI log, if the run ended because of one. */
+export async function usageLimit(logfile: string): Promise<string | undefined> {
+  let found: string | undefined;
+  const lines = createInterface({ input: createReadStream(logfile), crlfDelay: Infinity });
+  for await (const line of lines) found = limitMessage(line) ?? found;
+  return found;
+}
 
 export function workerPrompt({ task, item, repo, root, base, pr }: {
   task: { claim: string; issue: number; worktree: string; branch: string; attempts: number };

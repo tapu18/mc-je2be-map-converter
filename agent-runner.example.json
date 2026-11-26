@@ -8,10 +8,15 @@
   "maxRunsPerDay": 12,
   "autoMerge": true,
   "agentArgs": ["--approve-for-me"],
+  "limitWaitSeconds": 3600,
+  "workerOverrides": {
+    "model:light": { "agentArgs": ["--approve-for-me", "-m", "ここに軽いモデルを指定"] },
+    "model:strong": { "agent": "claude", "agentArgs": ["--model", "ここに強いモデルを指定", "--permission-mode", "auto"] }
+  },
   "manager": {
     "enabled": true,
     "agent": "claude",
-    "agentArgs": [],
+    "agentArgs": ["--permission-mode", "auto"],
     "intervalSeconds": 21600,
     "runWhenIdle": true,
     "minIntervalSeconds": 3600,
