@@ -88,6 +88,7 @@ export function executeCommand(state: RuntimeState, ir: CommandIR, budget: Execu
 }
 
 function* execute(state: RuntimeState, ir: CommandIR, depth: number, context: ExecutionContext): Frame {
+  if (ir.macro) return fail("macro requires function arguments");
   const modifiers = ir.context.map(step => compileModifier(step, state.host));
   // Validate the whole chain before any condition can run a function or write a result.
   if (modifiers.some(modifier => !modifier)) return fail("unsupported execute step");

@@ -14,27 +14,16 @@ export interface MacroProbe {
  */
 export function probeMacroTemplate(parser: CommandParser, source: string, replacement: string): MacroProbe | undefined {
   if (!source.startsWith("$") || !replacement) return undefined;
-  const holes = [...source.matchAll(/\$\(([^()]+)\)/g)];
+  const holes = readHoles([...source.matchAll(/\$\(([^()]+)\)/g)]);
   if (!holes.length) return undefined;
-  let concrete = "";
-  let cursor = 1;
-  const positions: { name: string; start: number; end: number; concreteStart: number; concreteEnd: number }[] = [];
-  for (const hole of holes) {
-    const start = hole.index;
-    concrete += source.slice(cursor, start);
-    const concreteStart = concrete.length;
-    concrete += replacement;
-    positions.push({ name: hole[1]!, start, end: start + hole[0].length, concreteStart, concreteEnd: concrete.length });
-    cursor = start + hole[0].length;
-  }
-  concrete += source.slice(cursor);
+  const {concrete, positions} = substituteHoles(source, holes, replacement);
   const result = parser.parse(concrete);
   if (!result.ok) return undefined;
   const mapped: MacroProbe["holes"] = [];
-  for (const hole of positions) {
-    const node = result.nodes.find(n => n.kind === "argument" && n.start <= hole.concreteStart && n.end >= hole.concreteEnd);
+  for (const {hole, start, end} of positions) {
+    const node = result.nodes.find(n => n.kind === "argument" && n.start <= start && n.end >= end);
     if (!node?.parser) return undefined;
-    mapped.push({ name: hole.name, start: hole.start, end: hole.end, argument: node.name, parser: node.parser, offset: hole.concreteStart - node.start });
+    mapped.push({ name: hole.key, start: hole.start, end: hole.end, argument: node.name, parser: node.parser, offset: start - node.start });
   }
   return { nodes: result.nodes, holes: mapped };
 }
@@ -45,37 +34,44 @@ interface MacroHole {
   end: number;
 }
 
-type MacroCompilation = { ok: true; ir: CommandIR } | { ok: false; reason: string; start: number; end: number };
+function readHoles(matches: RegExpExecArray[]): MacroHole[] {
+  return matches.map(match => ({key: match[1]!, start: match.index, end: match.index + match[0].length}));
+}
 
-const holePattern = /\$\(([^()]*)\)/g;
+function substituteHoles(source: string, holes: MacroHole[], replacement: string) {
+  let cursor = 1;
+  let concrete = "";
+  const positions = holes.map(hole => {
+    concrete += source.slice(cursor, hole.start);
+    const start = concrete.length;
+    concrete += replacement;
+    cursor = hole.end;
+    return {hole, start, end: concrete.length};
+  });
+  return {concrete: concrete + source.slice(cursor), positions};
+}
+
+type MacroDiagnostic = { ok: false; reason: string; start: number; end: number };
+type MacroCompilation = { ok: true; ir: CommandIR } | MacroDiagnostic;
+type MacroCandidate = { ok: true; ir: CommandIR; shape: string };
+
+const holePattern = /\$\(([^)]*)(\)|$)/g;
 
 // A successful sample locates the argument boundaries. The grammar checks below constrain
 // the paths we accept, and each replacement must be consumed by its own parser at runtime.
-const samples = ["0", "1", "64", "true", "x", '"x"', "{}", "[]", "=", "0 0", "0 0 0", "x x", "x x x", "@s"];
+const samples = ["0", "1", "64", "true", "x", '"x"', "{}", "[]", "=", "0 0", "0 0 0", "x x", "x x x", "@s", "run say x"];
 
 export function compileMacroTemplate(parser: CommandParser, source: string, version: string): MacroCompilation {
-  const holes: MacroHole[] = [...source.matchAll(holePattern)].map(match => ({
-    key: match[1]!, start: match.index, end: match.index + match[0].length,
-  }));
+  const matches = [...source.matchAll(holePattern)];
+  const holes = readHoles(matches);
   const issue = (reason: string, hole = holes[0]) =>
     ({ok: false as const, reason, start: hole?.start ?? 0, end: hole?.end ?? source.length});
-  if (!source.startsWith("$") || !holes.length || source.replace(holePattern, "").includes("$(")) {
-    return issue("invalid macro placeholder");
-  }
-  const invalid = holes.find(hole => !isMacroKey(hole.key));
+  if (!source.startsWith("$") || !holes.length) return issue("invalid macro placeholder");
+  const invalid = holes.find((hole, index) => !matches[index]![2] || !isMacroKey(hole.key));
   if (invalid) return issue("invalid macro placeholder", invalid);
 
-  const compile = (replacement: string): MacroCompilation | undefined => {
-    let cursor = 1;
-    let concrete = "";
-    const positions = holes.map(hole => {
-      concrete += source.slice(cursor, hole.start);
-      const start = concrete.length;
-      concrete += replacement;
-      cursor = hole.end;
-      return {hole, start, end: concrete.length};
-    });
-    concrete += source.slice(cursor);
+  const compile = (replacement: string): MacroCandidate | MacroDiagnostic | undefined => {
+    const {concrete, positions} = substituteHoles(source, holes, replacement);
     const grammar = new Map<number, ParsedArgumentGrammar>();
     const parsed = parser.parse(concrete, grammar);
     if (!parsed.ok) return;
@@ -122,22 +118,24 @@ export function compileMacroTemplate(parser: CommandParser, source: string, vers
       args.push({start: node.start, end: node.end, parser: node.parser!, parts, properties});
     }
     const ir = toCommandIR(concrete, parsed.nodes);
-    return {ok: true, ir: {...ir, macro: {version, textFormat: parser.options.textFormat, arguments: args}}};
+    const shape = JSON.stringify(parsed.nodes.map(node => [node.kind, node.name, node.parser, node.jump]));
+    return {ok: true, shape, ir: {...ir, macro: {version, textFormat: parser.options.textFormat, arguments: args}}};
   };
 
-  let result: MacroCompilation | undefined;
+  let result: MacroCandidate | undefined;
   for (const sample of samples) {
     const candidate = compile(sample);
     if (!candidate) continue;
     if (!candidate.ok) return candidate;
-    if (result?.ok && result.ir.macro!.arguments.some((argument, i) => {
-      const other = candidate.ir.macro!.arguments[i];
-      return !other || other.parser !== argument.parser || JSON.stringify(other.parts) !== JSON.stringify(argument.parts);
-    })) return issue("macro values produce different argument boundaries");
+    if (result && result.shape !== candidate.shape) return issue("macro values produce different command shapes");
+    if (result && JSON.stringify(result.ir.macro!.arguments.map(argument => argument.parts)) !==
+        JSON.stringify(candidate.ir.macro!.arguments.map(argument => argument.parts))) {
+      return issue("macro values produce different argument boundaries");
+    }
     result ??= candidate;
   }
   if (!result?.ok) return issue("cannot determine fixed command shape and argument boundaries for macro");
   const normalized = normalizeCommandIR(result.ir, version);
   if (!normalized.ok) return issue(normalized.reason);
-  return result;
+  return {ok: true, ir: result.ir};
 }

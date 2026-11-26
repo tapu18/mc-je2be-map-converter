@@ -89,6 +89,7 @@ it("rejects missing keys and invalid values before any function line runs", () =
   if (!template.ok) throw Error(template.reason);
   state.functions.set("demo:macro", [parse("scoreboard objectives add demo dummy"), template.ir]);
   const run = (command: string) => executeCommand(state, parse(command));
+  expect(executeCommand(state, template.ir)).toEqual({success: false, error: "macro requires function arguments"});
   expect(run("function demo:macro")).toEqual({success: false, error: "missing macro argument 'holder'"});
   expect(run('function demo:macro {holder:"a b",score:3}')).toMatchObject({success: false});
   expect(run('function demo:macro {holder:"a",score:2147483648L}')).toMatchObject({success: false});
