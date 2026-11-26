@@ -20,13 +20,15 @@ export function assessScore(input: CapabilityInput): CapabilityResult {
     const objective = text("objective") ?? text("targetObjective");
     const selection = nodes.find(n => n.name === "target" || n.name === "targets")?.value;
     if (selection?.kind === "selector" && entityTarget(selection)) {
-      supported = !!objective && (op === "get" || (op === "set" && nodes.some(n => n.name === "score" && n.value?.kind === "number")));
+      supported = !!objective && (op === "get" || ((op === "set" || op === "remove") && nodes.some(n => n.name === "score" && n.value?.kind === "number")));
     } else if (holder && holder !== "*") {
       if (op === "reset") supported = true;
       else if (objective && op === "get") supported = true;
       else if (objective && op === "operation") {
         const source = text("source"), operator = text("operation");
-        supported = !!source && source !== "*" && !!text("sourceObjective") && !!operator && ["=", "+=", "-=", "*=", "/=", "%=", "<", ">", "><"].includes(operator);
+        const sourceTarget = entityTarget(nodes.find(n => n.name === "source")?.value);
+        const self = sourceTarget?.kind === "selector" && sourceTarget.selector.variable === "s";
+        supported = ((!!source && source !== "*") || self) && !!text("sourceObjective") && !!operator && ["=", "+=", "-=", "*=", "/=", "%=", "<", ">", "><"].includes(operator);
       } else if (objective && ["set", "add", "remove"].includes(op ?? "")) {
         supported = nodes.some(n => n.name === "score" && n.value?.kind === "number");
       }

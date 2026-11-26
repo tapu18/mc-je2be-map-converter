@@ -30,6 +30,7 @@ class FakeHost implements ExecutionHost {
   readonly blocks: Map<string, Block>;
   readonly forcedChunks: Set<string>;
   readonly state = new RuntimeState(this);
+  private readonly teams = new Set<string>();
   private nextEntityId: number;
 
   constructor(candidates: RuntimeEntity[] = [], blocks = new Map<string, Block>(), forcedChunks = new Set<string>()) {
@@ -75,6 +76,21 @@ class FakeHost implements ExecutionHost {
   }
 
   runNative(command: Parameters<NonNullable<ExecutionHost["runNative"]>>[0], context: Parameters<NonNullable<ExecutionHost["runNative"]>>[1], source: string) {
+    if (command.name === "team") {
+      const [action, team, members] = command.nodes;
+      if (team?.value?.kind !== "word" && team?.value?.kind !== "string") throw new Error("Expected fixture team name");
+      const name = team.value.value;
+      if (action?.name === "add") {
+        if (this.teams.has(name)) throw new Error("Duplicate fixture team");
+        this.teams.add(name);
+        return {success: true, result: this.teams.size} as const;
+      }
+      const target = entityTarget(members?.value);
+      const entities = target && selectEntities(this, context, target, this.state.scores);
+      if (action?.name !== "join" || !this.teams.has(name) || !entities?.length) throw new Error("Invalid fixture team join");
+      for (const entity of entities) entity.team = name;
+      return {success: true, result: entities.length} as const;
+    }
     if (command.name === "forceload" && command.nodes[0]?.name === "add") {
       const column = command.nodes[1]?.value;
       if (column?.kind !== "coordinates" || column.coordinates.length !== 2
@@ -86,7 +102,7 @@ class FakeHost implements ExecutionHost {
     if (command.name === "tp" || command.name === "kill") {
       const [target, position, rotation] = command.nodes;
       const selector = entityTarget(target?.value);
-      const entities = selector && selectEntities(this, context, selector);
+      const entities = selector && selectEntities(this, context, selector, this.state.scores);
       if (!entities?.length) return {success: false, error: "no fixture targets"} as const;
       for (const entity of entities) {
         if (command.name === "kill") {
@@ -105,7 +121,7 @@ class FakeHost implements ExecutionHost {
     if (command.name === "data" && command.nodes[6]?.name === "entity") {
       const [, , , , operation, mode, , target, path] = command.nodes;
       const selector = entityTarget(target?.value);
-      const entities = selector && selectEntities(this, context, selector);
+      const entities = selector && selectEntities(this, context, selector, this.state.scores);
       if (operation?.name !== "set" || mode?.name !== "from" || entities?.length !== 1
         || path?.value?.kind !== "nbtPath" || path.value.path.length !== 1) throw new Error("Invalid entity storage fixture");
       const [field] = path.value.path;
@@ -133,7 +149,7 @@ class FakeHost implements ExecutionHost {
   }
 }
 
-const scenarioIds = ["execute-context", "execute-anchor", "execute-dimension", "calls", "execute-order", "execute-order-reload", "execute-extra"];
+const scenarioIds = ["execute-context", "execute-anchor", "execute-dimension", "calls", "execute-order", "execute-order-reload", "execute-extra", "score-selector-conditions"];
 const scenarios = loadScenarios();
 
 const knownDiffs = {
@@ -213,6 +229,44 @@ it.each(scenarioIds)("%s matches the recorded Java state through CommandIR", id 
     }
   }
   expect(actual).toEqual(expected);
+});
+
+it("filters player gamemodes, team membership and runtime scores before applying limit", () => {
+  const candidates = ([
+    {id: "entity-1", type: "minecraft:player", name: "Builder", gamemode: "creative", team: "red"},
+    {id: "entity-2", type: "minecraft:player", name: "Explorer", gamemode: "survival"},
+    {id: "entity-3", type: "minecraft:marker"},
+  ] as const).map((entity): RuntimeEntity => ({
+    tags: [], position: [0, 0, 0], rotation: [0, 0], dimension: overworld, eyeHeight: 0, ...entity,
+  }));
+  const {state} = new FakeHost(candidates);
+  const run = (line: string) => executeCommand(state, parse(line));
+  expect(run("scoreboard objectives add __proto__ dummy").success).toBe(true);
+  expect(run("scoreboard players set Explorer __proto__ 4").success).toBe(true);
+  expect(run("scoreboard players set @e[type=marker] __proto__ 4").success).toBe(true);
+  expect(run("execute if entity @e[gamemode=creative,team=red]")).toEqual({success: true, result: 1});
+  expect(run("execute if entity @e[gamemode=!creative,team=]")).toEqual({success: true, result: 1});
+  expect(run("scoreboard players remove @e[scores={__proto__=4},gamemode=!creative,limit=1] __proto__ 1"))
+    .toEqual({success: true, result: 3});
+  expect(state.scores.get("entity-3", "__proto__")).toBe(4);
+  expect(run("execute as @a[scores={__proto__=3}] unless entity @s[team=red]"))
+    .toEqual({success: true, result: 1});
+  expect(run("scoreboard players set @e[team=] __proto__ -2147483648").success).toBe(true);
+  expect(run("scoreboard players remove @e[scores={__proto__=-2147483648}] __proto__ 1"))
+    .toEqual({success: true, result: -2});
+});
+
+it("distinguishes a missing score from an unknown objective in unless score", () => {
+  const {state} = new FakeHost();
+  const run = (line: string) => executeCommand(state, parse(line));
+  expect(run("scoreboard objectives add result dummy").success).toBe(true);
+  expect(run("execute store result score #missing result unless score #entry result matches 1"))
+    .toEqual({success: true, result: 1});
+  expect(run("execute store result score #unknown result unless score #entry result = #entry unknown"))
+    .toEqual({success: false, error: "unknown objective"});
+  expect(run("execute store result score #skipped result unless score #entry unknown matches 1 run scoreboard players set #ran result 42"))
+    .toEqual({success: false, error: "unknown objective"});
+  expect(Object.fromEntries(state.scores.objectives.get("result")!)).toEqual({"#missing": 1, "#unknown": 0});
 });
 
 it("scales relative block coordinates in both directions when changing dimensions", () => {

@@ -193,14 +193,14 @@ function readSelectorValue(r: StringReader, key: string): SelectorValue {
       return { kind: "nbt", value: readSnbtCompound(r) };
     case "scores": {
       r.expect("{");
-      const scores: Record<string, Range> = {};
+      const scores = new Map<string, Range>();
       r.skipWhitespace();
       while (r.canRead() && r.peek() !== "}") {
         const name = r.readUnquotedString();
         r.skipWhitespace();
         r.expect("=");
         r.skipWhitespace();
-        scores[name] = readRange(r, true);
+        scores.set(name, readRange(r, true));
         r.skipWhitespace();
         if (r.peek() === ",") {
           r.skip();
@@ -208,7 +208,7 @@ function readSelectorValue(r: StringReader, key: string): SelectorValue {
         }
       }
       r.expect("}");
-      return { kind: "scores", scores };
+      return { kind: "scores", scores: Object.fromEntries(scores) };
     }
     case "advancements": {
       r.expect("{");

@@ -41,7 +41,7 @@ function select(node: ParsedNode | undefined, transform: (context: ExecutionCont
   const target = entityTarget(node?.value);
   if (!target) return;
   return function* (state, branch) {
-    const entities = selectEntities(state.host, branch.context, target);
+    const entities = selectEntities(state.host, branch.context, target, state.scores);
     if (!entities) return {success: false, error: "unsupported entity selection"};
     const branches: ExecuteBranch[] = [];
     for (const entity of entities) {
@@ -63,6 +63,7 @@ const comparisons = new Map<string, (left: number, right: number) => boolean>([
   [">", (left, right) => left > right],
   [">=", (left, right) => left >= right],
 ]);
+const unknownObjective = {success: false, error: "unknown objective"} as const;
 
 const conditions = new Map<string, Compile>([
   ["data", step => {
@@ -80,17 +81,19 @@ const conditions = new Map<string, Compile>([
     if (operator?.name === "matches" && arg?.value?.kind === "range") {
       const range = arg.value.range;
       return condition(step, function* (state) {
+        if (!state.scores.objectives.has(leftObjective)) return unknownObjective;
         const value = state.scores.get(left, leftObjective);
         return value !== undefined && inRange(value, range);
-      });
+      }, true);
     }
     const compare = comparisons.get(operator?.name ?? "");
     if (!compare || arg?.value?.kind !== "name" || otherObjective?.value?.kind !== "word") return;
     const right = arg.value.value, rightObjective = otherObjective.value.value;
     return condition(step, function* (state) {
+      if (!state.scores.objectives.has(leftObjective) || !state.scores.objectives.has(rightObjective)) return unknownObjective;
       const lhs = state.scores.get(left, leftObjective), rhs = state.scores.get(right, rightObjective);
       return lhs !== undefined && rhs !== undefined && compare(lhs, rhs);
-    });
+    }, true);
   }],
   ["function", step => {
     const node = step.nodes[1], target = node?.value;
@@ -111,9 +114,10 @@ const conditions = new Map<string, Compile>([
     const target = entityTarget(step.nodes[1]?.value);
     if (!host || !target) return;
     return condition(step, function* (state, context) {
-      const entities = selectEntities(state.host, context, target);
-      return entities ? entities.length > 0 : {success: false, error: "unsupported entity selection"};
-    });
+      const entities = selectEntities(state.host, context, target, state.scores);
+      if (!entities) return {success: false, error: "unsupported entity selection"};
+      return entities.length || false;
+    }, true);
   }],
   ["block", (step, host) => {
     const [, position, predicate] = step.nodes;
