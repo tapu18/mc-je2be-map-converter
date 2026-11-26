@@ -393,6 +393,8 @@ Java 26.3 で複数の名前空間に compound、long 最大値と long 配列�
 
 Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、同一の `score-selector-conditions.java.json` を得た。4体の marker のうち値 1・3・5 の3体にスコアを設定すると、`..3` は2体、`5..`・`2..4`・完全一致 3 は各1体、2目的の条件も1体に一致した。未設定の1体は全域指定にも一致しなかった。3体への `remove 2` は -1・1・3、最小値からの `remove 1` は 2147483647 になった。チーム条件と `unless` の結果も同じ記録にある。プレイヤーは接続していないため、`@a` と `gamemode` の観測は空集合に限る。
 
+#262 で Java 26.3 の同シナリオを再実行し、Node のフェイクホストでも全観測値が正解データと一致した。Java の追加 RCON 検証では、`scores={__proto__=-2147483648}` で選んだ2体に `scoreboard players remove … __proto__ 1` を実行すると、各スコアは 2147483647、`execute store result` が保存した合計は -2 になった。`unless score` は存在する objective の未設定スコアでは成立し、存在しない objective ではエラーになった。根拠は [正解データ](../scenarios/datapack/score-selector-conditions.java.json) と [Node の照合テスト](../packages/bridge/src/runtime-context-ir.data.test.ts)。
+
 ### CI schedule の実行履歴（#241）
 
 2026-11-24 の調査時点で `gh run list --workflow ci.yml --event schedule --limit 100` に表示された実行は [run 45323204840](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45323204840) のみだった。UTC 11月24日 03:59:11 に作成・開始され、04:10:38 に成功した。`check` と `servers / result` も成功した。CI の cron は `23 18 * * *` で、直前の予定は 11月23日 18:23 UTC。予定との対応は履歴から直接確認できない。11月22日 18:23 UTC の予定に対応すると特定できる実行は見つからなかった。

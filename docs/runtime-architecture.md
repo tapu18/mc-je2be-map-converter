@@ -52,6 +52,8 @@ Node のフェイクホストでは Java の正解データ（#96）と意味論
 
 エンティティ・ブロックを使う経路は `ExecutionHost` に候補列と操作を求める。中核では名前空間付きの Java ID（`minecraft:the_nether` など）を用い、座標を換算する。フェイクホストでは種別、タグ、距離、sort、limit を評価する経路と、セレクタを使う scoreboard players set/get を照合した。Script API との接続は後続の範囲。未知の操作は失敗を返す。
 
+`scores=` はランタイムのスコアボードを参照する。候補の保持者名にはプレイヤー名またはプレイヤー以外のエンティティ ID を使い、指定された全 objective の値が揃って範囲に入る候補を選ぶ。`team=` と `gamemode=` は候補のチームとプレイヤーのゲームモードを参照する。いずれも並べ替えと件数制限の前に評価する。
+
 変換器は初期化パックの `scripts/datapacks.js` に `datapacks` を出力する。`schemaVersion: 1` と保存された有効順の `packs` を持ち、各パックの `functions` は関数 ID から行順の IR codec JSON 文字列の配列への対応、`tags` は関数タグ ID から元の JSON への対応である。ワールドの版で選んだオーバーレイを順に適用する。パック順とタグの `replace`・任意参照は保持し、解決は将来のランタイムに委ねる。`minecraft:load` と `minecraft:tick` も通常のタグとして保存する。版を選べないパック、パースできない関数、マクロはレポートに診断し、関数単位で同梱しない。データを置く段階であり、関数の自動実行はまだ接続していない。
 
 変換器の storage 初期データは初期化パックの `scripts/storage.js` に `storage` 配列として収める。各要素は `id`（名前空間付きキー）と順序付き `chunks` を持ち、連結すると `schemaVersion: 1` の JSON になる。値は IR と同じ型付き符号化であり、`deserializeStorage` で compound に復号する。各片は UTF-8 で 32,767 バイト以下。読み取り・符号化の失敗は変換レポートの `storage.errors` に記録する。起動時に確定済み状態がなければ取り込んで確定し、以後は確定状態を復元する。管理対象 objective の fake-player スコアは BE 側の変更も取り込み、storage と共に tick 境界で同じ世代として確定する（#303）。

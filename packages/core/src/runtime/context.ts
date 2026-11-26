@@ -1,6 +1,7 @@
 import type { ArgumentValue, Coordinate, EntitySelector, Range } from "../command/arguments.ts";
 import type { CommandIR, ParsedNode } from "../command/parser.ts";
 import type { ExecutionResult } from "./index.ts";
+import type { Scoreboard } from "./scores.ts";
 
 export type Position = [number, number, number];
 export type Rotation = [number, number]; // yaw, pitch
@@ -20,6 +21,10 @@ export interface RuntimeEntity {
   name?: string;
   type: string;
   tags: readonly string[];
+  /** Absent for an entity without a team. */
+  team?: string;
+  /** Supplied for player candidates when the host knows their game mode. */
+  gamemode?: "survival" | "creative" | "adventure" | "spectator";
   position: Position;
   rotation: Rotation;
   dimension: string;
@@ -101,7 +106,9 @@ function supportsSelector(selector: EntitySelector): boolean {
   return selector.arguments.every(({key, value}) => {
     if (["x", "y", "z", "limit"].includes(key)) return value.kind === "number";
     if (key === "type") return value.kind === "resource" && !value.tag;
-    if (key === "tag" || key === "name") return value.kind === "string";
+    if (key === "tag" || key === "name" || key === "team") return value.kind === "string";
+    if (key === "gamemode") return value.kind === "string" && ["survival", "creative", "adventure", "spectator"].includes(value.value);
+    if (key === "scores") return value.kind === "scores";
     if (key === "sort") return value.kind === "string" && ["arbitrary", "nearest", "furthest", "random"].includes(value.value);
     return key === "distance" && value.kind === "range";
   });
@@ -111,11 +118,12 @@ export function entityTarget(value?: ArgumentValue): EntityTarget | undefined {
   return value?.kind === "name" || (value?.kind === "selector" && supportsSelector(value.selector)) ? value : undefined;
 }
 
-/** Undefined indicates a selection requiring a capability the host does not supply. */
-export function selectEntities(host: ExecutionHost | undefined, context: ExecutionContext, target: EntityTarget): RuntimeEntity[] | undefined {
+/** Undefined indicates a selection requiring unavailable host capabilities or scoreboard state. */
+export function selectEntities(host: ExecutionHost | undefined, context: ExecutionContext, target: EntityTarget, scores?: Scoreboard): RuntimeEntity[] | undefined {
   const entities = host?.entities() ?? [];
   if (target.kind === "name") return entities.filter(entity => entity.id === target.value || (entity.type === "minecraft:player" && entity.name === target.value));
   const {variable, arguments: args} = target.selector;
+  if (!scores && args.some(({value}) => value.kind === "scores" && Object.keys(value.scores).length > 0)) return undefined;
   const playersOnly = ["a", "p", "r"].includes(variable);
   const origin = [...context.position] as Position;
   let worldLimited = false;
@@ -139,6 +147,17 @@ export function selectEntities(host: ExecutionHost | undefined, context: Executi
       if (key === "type" && value.kind === "resource") return (entity.type === value.id) !== negated;
       if (key === "tag" && value.kind === "string") return (value.value ? entity.tags.includes(value.value) : entity.tags.length === 0) !== negated;
       if (key === "name" && value.kind === "string") return (entity.name === value.value) !== negated;
+      if (key === "team" && value.kind === "string") return ((entity.team ?? "") === value.value) !== negated;
+      if (key === "gamemode" && value.kind === "string") {
+        return entity.type === "minecraft:player" && entity.gamemode !== undefined && (entity.gamemode === value.value) !== negated;
+      }
+      if (key === "scores" && value.kind === "scores") {
+        const holder = scoreHolder(entity);
+        return Object.entries(value.scores).every(([objective, range]) => {
+          const score = scores?.get(holder, objective);
+          return score !== undefined && inRange(score, range);
+        });
+      }
       if (key === "distance" && value.kind === "range") return inRange(Math.sqrt(distanceSquared(entity)), value.range);
       return true;
     });
