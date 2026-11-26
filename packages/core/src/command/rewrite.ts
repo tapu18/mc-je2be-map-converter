@@ -521,7 +521,7 @@ function checkExecuteStep(kind: string, nodes: ParsedNode[], ed: Editor): void {
       return;
     }
     default:
-      ed.unsupported(`execute ${kind} は BE にない（ランタイムで実行する。未実装）`);
+      ed.unsupported(`execute ${kind} は BE コマンドに変換できない`);
   }
 }
 

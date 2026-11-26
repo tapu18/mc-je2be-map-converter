@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { RuntimeState } from "../../core/src/runtime/command.ts";
-import { loadDatapacks } from "./load-datapacks.ts";
+import { loadDatapacks } from "../../core/src/runtime/datapacks.ts";
 
 it("resolves ordered overrides, nested tags and optional references", () => {
   const state = new RuntimeState();

@@ -59,7 +59,7 @@ function runNative(source: () => { runCommand(command: string): {successCount: n
 export type NativeCommandResolver = (source: string) =>
   {command: string; completion: "synchronous" | "deferred"} | undefined;
 
-const bedrockDimension = (id: string) => dimensionId(id) === "minecraft:the_nether" ? "nether" : dimensionId(id).replace(/^minecraft:/, "");
+export const bedrockDimension = (id: string) => dimensionId(id) === "minecraft:the_nether" ? "nether" : dimensionId(id).replace(/^minecraft:/, "");
 const dimensions = ["overworld", "nether", "the_end"];
 const gameModes: Record<GameMode, NonNullable<RuntimeEntity["gamemode"]>> = {
   [GameMode.Survival]: "survival",
@@ -100,7 +100,7 @@ function executeNative(context: ExecutionContext, native: NonNullable<ReturnType
     : {success: false, error: "native command failed"};
 }
 
-function executionHost(resolveNative: NativeCommandResolver | undefined, isRestricted: () => boolean): ExecutionHost {
+function executionHost(runNative: NonNullable<ExecutionHost["runNative"]>): ExecutionHost {
   return {
     entities: () => dimensions.flatMap(dimension => world.getDimension(dimension).getEntities().map(entity => {
       const {x, y, z} = entity.location;
@@ -112,10 +112,7 @@ function executionHost(resolveNative: NativeCommandResolver | undefined, isRestr
     })),
     // Core block conditions need Java IDs and states, including block entity data.
     readBlock: () => undefined,
-    runNative(_command, context, source) {
-      const native = resolveNative?.(source);
-      if (native) return isRestricted() ? {status: "unknown"} : executeNative(context, native);
-    },
+    runNative,
   };
 }
 export function readProperty(key: string): HostResult<Property | undefined> { return attempt(() => world.getDynamicProperty(key)); }
@@ -159,9 +156,19 @@ export class RuntimeSession {
   private unknownNative = false;
   private restricted = false;
   private pendingScores: Scores | undefined;
+  private chainCommands: ReadonlyMap<string, string> | undefined;
+  private pendingNative: { before: Scores; run: () => CommandResult; source: string }[] = [];
   constructor(state = new RuntimeState(), resolveNative?: NativeCommandResolver) {
     this.state = state;
-    state.host ??= executionHost(resolveNative, () => this.restricted);
+    state.host ??= executionHost((_command, context, source) => {
+      if (this.chainCommands) {
+        const command = this.chainCommands.get(source);
+        if (command === undefined) return undefined;
+        return this.deferChainCommand(source, command, context);
+      }
+      const native = resolveNative?.(source);
+      if (native) return this.restricted ? {status: "unknown"} : executeNative(context, native);
+    });
   }
   get isConsistent(): boolean { return this.consistent; }
   /** Capture changes made by native commands to managed fake-player scores. */
@@ -169,8 +176,19 @@ export class RuntimeSession {
     if (!this.consistent) throw Error("inconsistent session");
     try {
       if (this.pendingScores) {
-        const projection = project(this.pendingScores, this.state.scores.objectives);
-        if (!projection.ok) throw Error(`score projection failed for ${projection.target}: ${projection.error.message}`);
+        let before = this.pendingScores;
+        const flush = (after: Scores) => {
+          const projection = project(before, after);
+          if (!projection.ok) throw Error(`score projection failed for ${projection.target}: ${projection.error.message}`);
+          before = after;
+        };
+        for (const pending of this.pendingNative) {
+          flush(pending.before);
+          const result = pending.run();
+          if (!("status" in result) && !result.success) console.warn(`[je2be] deferred ${pending.source}: ${result.error}`);
+        }
+        this.pendingNative = [];
+        flush(this.state.scores.objectives);
         this.pendingScores = undefined;
       }
       for (const [id, scores] of this.state.scores.objectives) {
@@ -187,18 +205,31 @@ export class RuntimeSession {
     } catch (error) { this.consistent = false; throw error; }
   }
   halt(): void { this.consistent = false; }
-  /** Evaluate during a custom command, leaving score projection for the next writable tick. */
-  executeRestricted(ir: CommandIR, context: ExecutionContext): CommandResult {
+
+  deferChainCommand(source: string, command: string, context: ExecutionContext): CommandResult {
     if (!this.consistent) return {success: false, error: "inconsistent session"};
     if (this.unknownNative) return {status: "unknown"};
+    this.beginRestricted();
+    this.pendingNative.push({before: snapshot(this.state), source, run: () => executeNative(context, {command, completion: "synchronous"})});
+    return {status: "unknown"};
+  }
+
+  private beginRestricted(): void {
     // Between callbacks in one tick, core commands read the unprojected scores.
-    if (!this.pendingScores) {
-      this.syncScores();
-      this.pendingScores = snapshot(this.state);
-    }
+    if (this.pendingScores) return;
+    this.syncScores();
+    this.pendingScores = snapshot(this.state);
+  }
+
+  /** Evaluate during a custom command, leaving score projection for the next writable tick. */
+  executeRestricted(ir: CommandIR, context: ExecutionContext, chainCommands?: ReadonlyMap<string, string>): CommandResult {
+    if (!this.consistent) return {success: false, error: "inconsistent session"};
+    if (this.unknownNative) return {status: "unknown"};
+    this.beginRestricted();
     this.restricted = true;
-    try { return executeCommand(this.state, ir, undefined, context); }
-    finally { this.restricted = false; }
+    this.chainCommands = chainCommands;
+    try { return executeCommand(this.state, ir, undefined, context, undefined, chainCommands !== undefined); }
+    finally { this.restricted = false; this.chainCommands = undefined; }
   }
   runNative(dimension: string, command: string, completion: "synchronous" | "deferred") {
     if (!this.consistent) return { status: "inconsistent" as const };

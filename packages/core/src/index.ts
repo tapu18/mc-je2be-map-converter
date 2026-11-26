@@ -17,3 +17,6 @@ export * from "./runtime/command.ts";
 export * from "./features/storage/runtime.ts";
 export type { Block, ExecutionHost, Heightmap, Position, Rotation, RuntimeEntity } from "./runtime/context.ts";
 export { entityTarget, resolvePosition, selectEntities } from "./runtime/context.ts";
+export * from "./runtime/datapacks.ts";
+export { compileModifier } from "./runtime/execute-steps.ts";
+export * from "./runtime/command-chain.ts";

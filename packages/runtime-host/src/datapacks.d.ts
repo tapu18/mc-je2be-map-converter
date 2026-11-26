@@ -1,2 +1,2 @@
-import type { Datapacks } from "./load-datapacks.ts";
+import type { Datapacks } from "../../core/src/runtime/datapacks.ts";
 export const datapacks: Datapacks;

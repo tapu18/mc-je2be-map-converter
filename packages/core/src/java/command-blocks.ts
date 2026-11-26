@@ -70,9 +70,29 @@ export interface Chains {
 
 const key = (c: { dimension: string; pos: number[] }): string => `${c.dimension} ${c.pos.join(",")}`;
 
+/** Java の条件付きブロックが成否を参照する座標。 */
+export function commandBlockBehind(block: CommandBlockInfo): CommandBlockInfo["pos"] | undefined {
+  const d = block.facing && DIRS[block.facing];
+  if (d) return [block.pos[0] - d[0], block.pos[1] - d[1], block.pos[2] - d[2]];
+}
+
+/** 先端が指すチェーンブロックへの有向辺。 */
+export function commandBlockLinks(cbs: readonly CommandBlockInfo[]): Map<CommandBlockInfo, CommandBlockInfo> {
+  const byPos = new Map(cbs.map((c) => [key(c), c]));
+  const links = new Map<CommandBlockInfo, CommandBlockInfo>();
+  for (const block of cbs) {
+    const d = block.facing && DIRS[block.facing];
+    if (!d) continue;
+    const [x, y, z] = block.pos;
+    const next = byPos.get(key({dimension: block.dimension, pos: [x + d[0], y + d[1], z + d[2]]}));
+    if (next?.kind === "chain") links.set(block, next);
+  }
+  return links;
+}
+
 /** チェーンを復元する（scripts/analyze_chains.py の build_chains と同じ手順） */
 export function buildChains(cbs: readonly CommandBlockInfo[]): Chains {
-  const byPos = new Map(cbs.map((c) => [key(c), c]));
+  const links = commandBlockLinks(cbs);
   const used = new Set<string>();
   const chains: CommandBlockInfo[][] = [];
   for (const c of cbs) {
@@ -81,10 +101,8 @@ export function buildChains(cbs: readonly CommandBlockInfo[]): Chains {
     const seen = new Set([key(c)]);
     for (;;) {
       const last = seq[seq.length - 1]!;
-      const d = last.facing ? DIRS[last.facing] : undefined;
-      if (!d) break;
-      const next = byPos.get(key({ dimension: c.dimension, pos: [last.pos[0] + d[0], last.pos[1] + d[1], last.pos[2] + d[2]] }));
-      if (!next || next.kind !== "chain" || seen.has(key(next))) break;
+      const next = links.get(last);
+      if (!next || seen.has(key(next))) break;
       seen.add(key(next));
       seq.push(next);
     }

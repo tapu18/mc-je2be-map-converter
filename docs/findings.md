@@ -544,3 +544,9 @@ Java 26.3 の `data get entity … active_effects` と BDS 1.26.66.1 の `Entity
 BDS 1.26.66.1 で `scenarios/datapack/load-tick.json` の変換済みワールドを起動し、ランタイムの第 4 tick の確定世代と BE の投影を観測した。Java 26.3 の正解と、`clock/#tick = 4`、空の `after_reload`、`load` の後に tick 1〜4 を記録した順序が一致した。反復コマンドブロックの 4 行が欠けた。変換済みブロックからランタイム関数を起動する経路は #236、コマンドブロック起点との相対順序は #19 で扱う。根拠は `packages/bridge/src/scenario/scenarios.servers.test.ts`。
 
 `packages/runtime-host/src/startup.servers.test.ts` では、BDS の初回起動と同じワールドの再起動で、各起動の最初の `tick` が同じ tick の `schedule` によるスコア変更を読み取った。再起動の `load` は前セッションで確定したスコアと storage を読み取った。
+
+### 変換したコマンドブロックのチェーン起動（#321）
+
+[自作シナリオ](../scenarios/convert/runtime-command-chain.json) を Java 26.3 で生成し、Chunker 1.21.0 を通したワールドを BDS 1.26.66.1 で起動した。先頭のインパルスをレッドストーンで起動すると、storage から取得した値がスコア `observed = 42` になった。存在しないパスの取得の直後にある条件付きブロックはスキップされ、末尾の加算は1回だけ動いた。東向きに曲がる部分のローカル座標に従ってエメラルドブロックが置かれ、後続の BE への委譲がその位置で条件を満たしてダイヤモンドブロックに置き換えた。両版の観測値は [Java の正解データ](../scenarios/convert/runtime-command-chain.java.json) と一致した。
+
+BDS のカスタムコマンドの文字列引数では、`chain@0` を引用符なしで渡すと `@0` で構文エラーになった。引用符付きの `"chain@0"` は受理され、生成したワールドからの起動にも使えた。
