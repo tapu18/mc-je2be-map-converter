@@ -237,8 +237,26 @@ it("distinguishes a matching empty masked region from a failed condition", () =>
   expect(run(`execute store result score #skipped probe unless blocks ${region} masked run scoreboard players set #skipped probe 42`))
     .toEqual({success: false, error: "condition failed"});
   expect(state.scores.get("#skipped", "probe")).toBeUndefined();
-  expect(run("execute unless blocks 1000000 0 1000000 1000000 0 1000000 16 0 16 all"))
+  expect(run("execute store result score #unloaded probe unless blocks 1000000 0 1000000 1000000 0 1000000 16 0 16 all"))
     .toEqual({success: false, error: "block position not loaded"});
+  expect(state.scores.get("#unloaded", "probe")).toBe(0);
+});
+
+it("applies terminal condition stores in selector order", () => {
+  const {state} = new FakeHost();
+  const run = (line: string) => executeCommand(state, parse(line));
+  for (const line of [
+    "scoreboard objectives add probe dummy",
+    "setblock 20 70 20 stone",
+    "setblock 8 -59 8 stone",
+    "summon marker 8 -60 8",
+    "summon marker 12 -60 12",
+  ]) expect(run(line), line).toMatchObject({success: true});
+  for (const [sort, expected] of [["nearest", 0], ["furthest", 1]] as const) {
+    const line = `execute store result score #order probe as @e[type=marker,sort=${sort}] at @s if blocks ~ ~1 ~ ~ ~1 ~ 20 70 20 all`;
+    expect(run(line)).toEqual({success: true, result: 1});
+    expect(state.scores.get("#order", "probe")).toBe(expected);
+  }
 });
 
 it("resets the eyes anchor after resolving positioned and validates before executing a function condition", () => {

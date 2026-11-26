@@ -98,14 +98,12 @@ function* execute(state: RuntimeState, ir: CommandIR, depth: number, context: Ex
     branches = next;
   }
 
-  if (!ir.command && branches.some(branch => branch.conditionResult === undefined)) return fail("missing command");
+  if (!ir.command && branches.some(branch => branch.conditionOutcome === undefined)) return fail("missing command");
   let total = 0;
   let succeeded = false;
   let last: Outcome = failure;
   for (const branch of branches) {
-    const outcome: Outcome = branch.conditionResult === undefined
-      ? yield* executeTerminal(state, ir, depth, branch.context)
-      : {success: true, result: branch.conditionResult};
+    const outcome: Outcome = branch.conditionOutcome ?? (yield* executeTerminal(state, ir, depth, branch.context));
     if (!outcome.success && outcome.error.startsWith("unsupported")) return outcome;
     applyStores(branch, outcome);
     if (outcome.returned) return outcome;

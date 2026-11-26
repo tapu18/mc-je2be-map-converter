@@ -14,7 +14,7 @@ type Store = (outcome: ExecutionResult) => void;
 export interface ExecuteBranch {
   context: ExecutionContext;
   stores: readonly Store[];
-  conditionResult?: number;
+  conditionOutcome?: ExecutionResult;
 }
 
 type StepResult = Iterable<ExecuteBranch> | (Extract<ExecutionResult, {success: false}> & {skipStores?: boolean});
@@ -26,13 +26,14 @@ function condition(step: ExecuteStep, test: Test, terminalResult = false): Modif
   return function* (state, branch, depth, source, terminal) {
     yield {kind: "branch"};
     const matched = yield* test(state, branch.context, depth, source);
-    if (typeof matched === "object") return matched;
-    if ((matched !== false) !== (step.kind === "if")) {
-      // These conditions only call the result consumer when executed as the terminal command.
-      return {success: false, error: "condition failed", skipStores: terminalResult && !terminal};
+    const passed = typeof matched !== "object" && (matched !== false) === (step.kind === "if");
+    const failure = typeof matched === "object" ? matched : {success: false, error: "condition failed"} as const;
+    if (terminal && terminalResult) {
+      const conditionOutcome: ExecutionResult = passed ? {success: true, result: typeof matched === "number" ? matched : 1} : failure;
+      return [{...branch, conditionOutcome}];
     }
-    if (terminal && terminalResult) return [{...branch, conditionResult: typeof matched === "number" ? matched : 1}];
-    return [branch];
+    // A failed redirect does not run a command or call its result consumer.
+    return passed ? [branch] : {...failure, skipStores: terminalResult};
   };
 }
 
