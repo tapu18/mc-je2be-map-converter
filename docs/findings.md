@@ -492,3 +492,7 @@ python3 -I tools/block-state-audit/corpus.py /path/to/sample-map "$scratch/run/c
 ```
 
 BDS の照合には `BedrockServer.start({ world: "<scratch>/run/bedrock", tickingArea: [48, 0, 63, 15] })` を使い、上記の 2 コマンドを `exec` で実行した。関連する `playtest.servers.test.ts` と `rewrite.servers.test.ts` は計 11 件成功。対応策の検証は #323。
+
+### マクロの引数を渡す経路（#316）
+
+Java 26.3 の実サーバーで `macro-arguments`・`storage-macro` の記録を再現した（`scenarios.servers.test.ts`）。直接渡した double は型接尾辞なしの文字列に展開され、空白を含む文字列は引用符内の値として保持された。entity のパスから取得した値と block entity のルートから取得した座標が展開され、キーが欠けた呼び出しの成功値は 0 だった。storage から渡した2つの複合値によるスコア・storage の更新も正解 JSON に一致した。`macro.data.test.ts` では同じ観測項目を Node のフェイクホストで突き合わせた。
