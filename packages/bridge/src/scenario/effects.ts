@@ -1,12 +1,16 @@
 import { bedrockEffect, parseSnbt } from "@je2be/core";
+import type { BedrockServer } from "../bedrock.ts";
 import type { JavaServer } from "../java.ts";
 import type { ObservedEffect, ObservedEffects } from "./types.ts";
 
-export function bedrockEffectProbes(probes: Record<string, string[]>): Record<string, Record<string, string>> {
-  return Object.fromEntries(Object.entries(probes).map(([tag, ids]) => [
+export async function observeBedrockEffects(bds: BedrockServer, probes: Record<string, string[]>): Promise<ObservedEffects> {
+  const bedrockProbes = Object.fromEntries(Object.entries(probes).map(([tag, ids]) => [
     tag,
     Object.fromEntries(ids.map(id => [id, bedrockEffect(id) ?? id])),
   ]));
+  const response = await bds.request<ObservedEffects>("entityEffects", { probes: bedrockProbes });
+  if (!response.ok || !response.result) throw new Error(`bedrock effect observation failed: ${response.error ?? "no result"}`);
+  return response.result;
 }
 
 export async function observeJavaEffects(java: JavaServer, probes: Record<string, string[]>, log: string[]): Promise<ObservedEffects> {

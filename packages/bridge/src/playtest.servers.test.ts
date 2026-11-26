@@ -14,6 +14,7 @@ import { bedrockButton, geyserBlockMapper, javaButton, toPlaytest, type Playtest
 import { waitBedrockTicks } from "./poc-kit.ts";
 import { rewriteResources } from "./rewrite-resources.ts";
 import { assessComparison, formatDiffs, unexpectedDiffs } from "./scenario/compare.ts";
+import { observeBedrockEffects, observeJavaEffects } from "./scenario/effects.ts";
 import { loadScenarios, readGolden } from "./scenario/load.ts";
 import { minimalBlockMapper, normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./scenario/normalize.ts";
 import { blockRange, javaAction, javaTicks } from "./scenario/run.ts";
@@ -23,14 +24,17 @@ import type { NormalizedState, Observe } from "./scenario/types.ts";
 const SPAWN = "setworldspawn 0 -60 -3";
 const cli = join(repoRoot, "packages/converter/src/cli.ts");
 
-async function observeJava(java: JavaServer, observe: Observe): Promise<NormalizedState> {
+async function observeJava(java: JavaServer, observe: Observe, log: string[]): Promise<NormalizedState> {
+  const entityEffects = observe.entityEffects && await observeJavaEffects(java, observe.entityEffects, log);
   const dump = await java.dump({ scores: !!observe.scores, entities: !!observe.entityTags });
   const blocks = [];
   for (const b of observe.blocks ?? []) {
     const [from, to] = blockRange(b);
     blocks.push(...((await java.dump({ blocks: { from, to } })).blocks ?? []));
   }
-  return normalizeJava(observe, { ...(dump.scores ? { scores: dump.scores } : {}), blocks, ...(dump.entities ? { entities: dump.entities } : {}) });
+  const state = normalizeJava(observe, { ...(dump.scores ? { scores: dump.scores } : {}), blocks, ...(dump.entities ? { entities: dump.entities } : {}) });
+  if (entityEffects) state.entityEffects = entityEffects;
+  return state;
 }
 
 async function observeBedrock(bds: BedrockServer, observe: Observe, mapBlock: BedrockBlockMapper): Promise<NormalizedState> {
@@ -39,6 +43,7 @@ async function observeBedrock(bds: BedrockServer, observe: Observe, mapBlock: Be
     if (!r.ok || r.result === undefined) throw new Error(`bedrock observation failed: ${op}: ${r.error ?? "no result"}`);
     return r.result;
   };
+  const entityEffects = observe.entityEffects && await observeBedrockEffects(bds, observe.entityEffects);
   const scores = observe.scores ? await get<RawScores[]>("scores") : undefined;
   const blocks: RawBlock[] = [];
   for (const b of observe.blocks ?? []) {
@@ -46,7 +51,9 @@ async function observeBedrock(bds: BedrockServer, observe: Observe, mapBlock: Be
     blocks.push(...await get<RawBlock[]>("blocks", { from, to }));
   }
   const entities = observe.entityTags ? await get<RawEntity[]>("entities") : undefined;
-  return normalizeBedrock(observe, { ...(scores ? { scores } : {}), blocks, ...(entities ? { entities } : {}) }, mapBlock);
+  const state = normalizeBedrock(observe, { ...(scores ? { scores } : {}), blocks, ...(entities ? { entities } : {}) }, mapBlock);
+  if (entityEffects) state.entityEffects = entityEffects;
+  return state;
 }
 
 /** 統合版のワールド一覧で見分けられるよう、変換前の Java ワールドの名前を変える */
@@ -80,14 +87,14 @@ async function runPlaytest(p: Playtest, known: Record<string, string> | undefine
       await javaAction(java, { run: SPAWN }, log);
       for (const c of p.setup) await javaAction(java, { run: c }, log);
       for (const a of p.actions) await javaAction(java, a, log);
-      javaButtons = await observeJava(java, p.buttonObserve);
+      javaButtons = await observeJava(java, p.buttonObserve, log);
       await java.dump({});
       cpSync(join(paths.javaServer, "je2be-test"), join(work, "java"), { recursive: true });
       for (const step of p.steps) {
         await javaAction(java, { run: `setblock ${step.button.pos.join(" ")} ${javaButton(step.button, true)}` }, log);
         await javaTicks(java, step.ticks);
       }
-      javaState = await observeJava(java, p.observe);
+      javaState = await observeJava(java, p.observe, log);
     } finally {
       await java.stop();
     }

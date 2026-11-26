@@ -10,10 +10,10 @@ import { JavaServer } from "../java.ts";
 import { paths, repoRoot } from "../paths.ts";
 import { rewriteResources } from "../rewrite-resources.ts";
 import { createDataPack, waitBedrockTicks } from "../poc-kit.ts";
-import { bedrockEffectProbes, observeJavaEffects } from "./effects.ts";
+import { observeBedrockEffects, observeJavaEffects } from "./effects.ts";
 import { loadScenarioDatapack, startScenarioJava, type ScenarioJavaVersion } from "./datapack.ts";
 import { normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./normalize.ts";
-import type { Action, NormalizedState, ObservedEffects, Scenario, ScenarioCommandBlock, Vec3 } from "./types.ts";
+import type { Action, NormalizedState, Scenario, ScenarioCommandBlock, Vec3 } from "./types.ts";
 
 const FACING_TO_BE: Record<ScenarioCommandBlock["facing"], BeFacing> = { down: 0, up: 1, north: 2, south: 3, west: 4, east: 5 };
 
@@ -216,7 +216,7 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
       return response.result;
     };
     const entityEffects = s.observe.entityEffects
-      ? await observe<ObservedEffects>("entityEffects", { probes: bedrockEffectProbes(s.observe.entityEffects) })
+      ? await observeBedrockEffects(bds, s.observe.entityEffects)
       : undefined;
     const scores = s.observe.scores ? await observe<RawScores[]>("scores") : undefined;
     const blocks: RawBlock[] = [];
