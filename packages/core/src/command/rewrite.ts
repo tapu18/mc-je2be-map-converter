@@ -18,7 +18,7 @@ import { CommandSyntaxError, StringReader } from "./reader.ts";
 
 export interface RewriteContext {
   parser: CommandParser;
-  /** parser が使う Java の版。指定すると書き換えの前に IR を正規化する。 */
+  /** parser に設定した Java の版を上書きする。版があれば書き換えの前に IR を正規化する。 */
   sourceVersion?: string;
   mappings: MappingLookup;
   /** Java のブロックの既定の状態（データ生成の blocks.json）。`setblock ... oak_stairs[facing=east]` の省いた状態を補う */
@@ -436,7 +436,8 @@ const COMMANDS: Record<string, CommandHandler> = {
       if (timemarker && marker?.kind === "resource" && marker.id.startsWith("minecraft:")) {
         const ticks = DAY_MARKERS.get(marker.id.slice("minecraft:".length));
         if (ticks !== undefined) {
-          if (ctx.sourceVersion && isEarlierJavaRelease(ctx.sourceVersion, "26.1")) ed.replace(timemarker.start, timemarker.end, String(ticks));
+          const version = ctx.sourceVersion ?? ctx.parser.options.version;
+          if (version && isEarlierJavaRelease(version, "26.1")) ed.replace(timemarker.start, timemarker.end, String(ticks));
           return;
         }
       }
@@ -540,8 +541,9 @@ export function rewriteCommand(source: string, ctx: RewriteContext): RewriteResu
   const parsed = ctx.parser.parse(source);
   if (!parsed.ok) return { status: "invalid", message: parsed.error.message, position: parsed.error.position };
   let ir = toCommandIR(source, parsed.nodes);
-  if (ctx.sourceVersion) {
-    const normalized = normalizeCommandIR(ir, ctx.sourceVersion);
+  const sourceVersion = ctx.sourceVersion ?? ctx.parser.options.version;
+  if (sourceVersion) {
+    const normalized = normalizeCommandIR(ir, sourceVersion);
     if (!normalized.ok) {
       const { reason, start, end } = normalized;
       return { status: "unsupported", issues: [{ severity: "unsupported", message: `${reason}（${start}–${end}文字目）` }] };

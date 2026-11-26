@@ -16,6 +16,7 @@ import {
   type CommandTreeNode,
   type MappingTables,
   type NbtCompound,
+  type ParseOptions,
   type RewriteContext,
   type RewriteIssue,
   type RewriteResult,
@@ -37,12 +38,12 @@ export interface RewriteResources {
 /** 書き換えに使う文法・対応表を読む。textFormat はワールドの DataVersion から決める */
 export function loadRewriteContext(res: RewriteResources, textFormat: TextFormat): RewriteContext {
   const tree = parseCommandTree(readFileSync(res.commandsJson, "utf8"));
-  return rewriteContext(tree, textFormat, res.mappingsJson, res.blocksJson);
+  return rewriteContext(tree, { textFormat }, res.mappingsJson, res.blocksJson);
 }
 
-function rewriteContext(tree: CommandTreeNode, textFormat: TextFormat, mappingsJson: string, blocksJson: string): RewriteContext {
+function rewriteContext(tree: CommandTreeNode, options: ParseOptions, mappingsJson: string, blocksJson: string): RewriteContext {
   const tables = JSON.parse(readFileSync(mappingsJson, "utf8")) as MappingTables;
-  return { parser: new CommandParser(tree, { textFormat }), mappings: new MappingLookup(tables), blockDefaults: loadBlockDefaults(blocksJson) };
+  return { parser: new CommandParser(tree, options), mappings: new MappingLookup(tables), blockDefaults: loadBlockDefaults(blocksJson) };
 }
 
 function worldRewriteContext(res: RewriteResources, dataVersion: number | undefined): RewriteContext | undefined {
@@ -51,8 +52,7 @@ function worldRewriteContext(res: RewriteResources, dataVersion: number | undefi
   const selection = selectCommandGrammar(loadJavaGrammars(), { dataVersion });
   if (!selection.ok) return undefined;
   const grammar = selection.grammar;
-  const context = rewriteContext(loadGrammarTree(grammar), grammar.textFormat, res.mappingsJson, join(dirname(grammar.commandsPath), "blocks.json"));
-  return { ...context, sourceVersion: grammar.version };
+  return rewriteContext(loadGrammarTree(grammar), grammar, res.mappingsJson, join(dirname(grammar.commandsPath), "blocks.json"));
 }
 
 export interface CommandBlockRewrite {

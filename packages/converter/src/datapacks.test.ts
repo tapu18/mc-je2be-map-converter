@@ -12,7 +12,12 @@ vi.mock("./java-grammars.ts", () => ({
     { version: "test", dataVersion: 1, packFormat: 42, textFormat: "json", source: { functionDirectory: "function" } },
     { version: "1.20.4", dataVersion: 3700, packFormat: 26, textFormat: "json", source: { functionDirectory: "functions" } },
   ],
-  loadGrammarTree: () => ({ type: "root", children: { say: { type: "literal", executable: true } } }),
+  loadGrammarTree: () => ({ type: "root", children: {
+    say: { type: "literal", executable: true },
+    give: { type: "literal", children: { targets: {
+      type: "argument", parser: "minecraft:entity", children: { item: { type: "argument", parser: "minecraft:item_stack", executable: true } },
+    } } },
+  } }),
 }));
 
 it("collects enabled folder and zip functions and tags in saved order and reports omissions", () => {
@@ -57,10 +62,20 @@ it("selects 1.20.4 for a saved world and its legacy data pack", () => {
     const pack = join(world, "datapacks", "old");
     mkdirSync(join(pack, "data", "demo", "functions"), { recursive: true });
     writeFileSync(join(pack, "pack.mcmeta"), JSON.stringify({ pack: { pack_format: 26 } }));
-    writeFileSync(join(pack, "data", "demo", "functions", "a.mcfunction"), "say\n");
+    const dir = join(pack, "data", "demo", "functions");
+    writeFileSync(join(dir, "a.mcfunction"), "give @s stick{foo:1b}\n");
+    writeFileSync(join(dir, "unsupported.mcfunction"), "  give @s stick{HideFlags:1}\n");
     const result = collectDatapacks(world);
     expect(result.packs[0]).toMatchObject({ grammar: "1.20.4" });
-    expect(deserializeCommandIR(result.packs[0]!.functions["demo:a"]![0]!)).toMatchObject({ ok: true, document: { grammarVersion: "1.20.4" } });
-    expect(result.report.diagnostics).toEqual([]);
+    const decoded = deserializeCommandIR(result.packs[0]!.functions["demo:a"]![0]!);
+    expect(decoded).toMatchObject({ ok: true, document: { grammarVersion: "1.20.4", ir: { command: { nodes: [
+      expect.anything(), { value: { kind: "item", components: [{ key: "minecraft:custom_data" }] } },
+    ] } } } });
+    if (decoded.ok) expect(decoded.document.ir.command?.nodes[1]?.value).not.toHaveProperty("legacyTag");
+    expect(result.packs[0]!.functions["demo:unsupported"]).toBeUndefined();
+    expect(result.report.diagnostics).toEqual([{
+      pack: "old", path: "data/demo/functions/unsupported.mcfunction:1",
+      reason: expect.stringContaining("1.20.4 → 1.20.5"), start: 10, end: 28,
+    }]);
   } finally { rmSync(world, { recursive: true, force: true }); }
 });

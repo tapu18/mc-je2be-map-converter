@@ -90,7 +90,7 @@ for (const row of rows) {
     if (selected.reason !== "ambiguous") { bump("unavailable"); continue; }
     const source = { ...(row.dataVersion == null ? {} : { dataVersion: row.dataVersion }), ...(row.packFormat == null ? {} : { packFormat: row.packFormat }), ...(row.packFormatRange == null ? {} : { packFormatRange: row.packFormatRange }) };
     const candidates = commandGrammarCandidates(grammars, source);
-    const results = candidates.map(g => new CommandParser(loadGrammarTree(g), { textFormat: g.textFormat }).parse(cmd));
+    const results = candidates.map(g => new CommandParser(loadGrammarTree(g), g).parse(cmd));
     if (results.slice(1).some(result => !isDeepStrictEqual(result, results[0]))) { bump("different"); continue; }
     // Identical parse results permit using a representative for the normal tally.
     Object.assign(selected, { ok: true, grammar: candidates[0] });
@@ -100,7 +100,7 @@ for (const row of rows) {
   const parserKey = `${grammar?.version ?? "manual"}:${format}`;
   let parser = parsers.get(parserKey);
   if (!parser) {
-    parser = new CommandParser(tree ?? loadGrammarTree(grammar!), { textFormat: format });
+    parser = new CommandParser(tree ?? loadGrammarTree(grammar!), { textFormat: format, ...(grammar ? { version: grammar.version } : {}) });
     parsers.set(parserKey, parser);
   }
   const result = parser.parse(cmd);

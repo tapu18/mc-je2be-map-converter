@@ -58,7 +58,7 @@ export function collectDatapacks(world: string) {
     const selection = selectCommandGrammar(grammars, range ? { packFormatRange: range } : {});
     const grammar = selection.ok ? selection.grammar : undefined;
     if (!grammar) diagnostics.push({ pack: name, path: "pack.mcmeta", reason: range ? selection.ok ? "" : selection.reason : "invalid pack format" });
-    const parser = grammar ? new CommandParser(loadGrammarTree(grammar), { textFormat: grammar.textFormat }) : undefined;
+    const parser = grammar ? new CommandParser(loadGrammarTree(grammar), grammar) : undefined;
     const pack: typeof packs[number] = { name, ...(grammar ? { grammar: grammar.version } : {}), functions: {}, tags: {} };
     for (const [key, bytes] of [...entries].sort(([a], [b]) => a.localeCompare(b))) {
       const match = /^data\/([^/]+)\/(functions?|tags\/functions?)\/(.+)\.(mcfunction|json)$/.exec(key);
