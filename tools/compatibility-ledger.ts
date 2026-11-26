@@ -86,12 +86,6 @@ function registryVerdict(family: Family, id: string): Verdict {
       return value;
     }
   }
-  if (family === "game_rule" && id === "minecraft:keep_inventory") {
-    return { method: "rewrite", implementation: "partial", loss: null, issue: 72,
-      evidence: fixedTests
-        ? { confidence: "measured", source: rewriteTest, scope: "BDS accepts the rewritten keepInventory setting" }
-        : { confidence: "unconfirmed", source: "packages/core/src/command/rewrite.ts", scope: "Existing command spelling translation" } };
-  }
   return unknown("Java registry");
 }
 

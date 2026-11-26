@@ -151,6 +151,17 @@ BDS 1.26.66.1 でも `poc/mcstructure-version/version.servers.test.ts` が成功
 | BDS は `gamemode spectator @a`、`time query time`、`time add`、`weather rain 100`、`difficulty normal` を受理した。`weather rain 100` の直後に保存したワールドには、経過した19 tick を引いた `rainTime=81` が記録された | 同テストの変換出力と BDS の `level.dat` の読み戻し |
 | Java 1.20.5 が保存したコマンドブロックの旧 `time set noon`、`gamerule keepInventory`、`belowName`、JSON のスラッシュエスケープ、ボートのセレクタを、DataVersion 3837 の文法で読み、出力を BDS が受理した | 同ファイルの `rewrites command blocks saved by Java 1.20.5 with that world's grammar` |
 
+### ゲームルールの設定と照会（#318）
+
+| 事実 | 根拠 |
+| --- | --- |
+| Java の `gamerule` の固定文法では、1.21.10 は旧名、26.3 は名前空間付きと省略形の両方を受理する。対応表の真偽値・整数の型は、両版の `commands.json` の引数型に一致した | `packages/bridge/src/game-rule.servers.test.ts` の `matches the Java 1.21.10 and 26.3 names and value types` |
+| BDS 1.26.66.1 は対応する真偽値・整数を、Java の旧名と 26.3 の名前空間付き ID から変換して設定できた。各設定の直後に `gamerule <名前>` で照会し、設定値を確認した | 同ファイルの `sets and reads back each supported boolean and integer from both Java name forms` |
+| BDS 1.26.66.1 の `randomTickSpeed` は 0〜4096、`spawnRadius` は 0〜128。上限値を設定して読み返した。下限の直前と上限の直後は成功件数 0 だった | 同ファイルの `reports missing rules, mismatched rules and values outside the Bedrock range` |
+| BDS 1.26.66.1 は `gamerule playerWaypoints off\|everyone` で設定でき、`gamerule` 一覧で読み返せる。値を省いた `gamerule playerWaypoints` は構文エラーになった | 同ファイルの `translates the locator toggle and reports the unavailable named query` |
+
+BDS 1.26.66.1 で `gamerule playerWaypoints` の設定を含む関数を読み込むと、パックの `min_engine_version` が 1.21.0 の場合は構文エラー、変換器の出力と同じ 1.26.60 の場合は受理された。監査用パックを 1.26.60 に揃えた後、対象 288 形・330 候補はすべて読み込みエラーなしだった。旧版の監査で拒否された `time query time` も受理された。根拠は `packages/bridge/src/shape-bedrock-audit.servers.test.ts` と下記の #112 の再生成コマンド。
+
 ### 音と粒子のコマンド（#90）
 
 | 事実 | 根拠 |
@@ -369,7 +380,7 @@ BDS 1.26.63.1 の使い捨てワールドで、合成コマンドを 1 行ずつ
 
 Java 26.3 の #112 監査結果を入力とすると、1,424 形・1,520 候補のうち Java 受理かつ rewritten / unchanged の 180 形・222 候補を検査し、221 件は読み込みエラーなし、1 件はエラーだった。`time query time` は Java 受理・unchanged だが BDS 関数読み込みでは `time` 引数が構文エラーだった。残る 1,244 形・1,298 候補は Java 不受理または unsupported のため BDS 未検査。形ごとの候補数・未検査数と各候補の結果は `node tools/shape-java-audit.ts /tmp/java.json && node tools/shape-bedrock-audit.ts /tmp/java.json /tmp/bedrock.json` で再生成できる。合成入力のみを使用する。
 
-ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。既知の不一致の修正は別途必要。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。
+ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。後続の #318 では、監査パックのエンジン版を変換器に揃えると、この不一致が解消した。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。
 
 ### 中核を束ねた BDS パックの起動（#217）
 
