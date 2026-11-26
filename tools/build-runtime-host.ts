@@ -8,6 +8,12 @@ const result = await build({
   external: ["@minecraft/server", "./data.js", "./storage.js"],
 });
 const output = result.outputFiles[0]!;
+for (const input of Object.keys(result.metafile.inputs)) {
+  if (!/^packages\/(core|runtime-host)\/src\/.+\.ts$/.test(input) ||
+      /\/command\/(grammar|parser|macro-template)\.ts$/.test(input)) {
+    throw new Error(`unexpected runtime input: ${input}`);
+  }
+}
 for (const entry of Object.values(result.metafile.outputs)) {
   for (const imp of entry.imports) {
     if (!imp.external || !["@minecraft/server", "./data.js", "./storage.js"].includes(imp.path)) {

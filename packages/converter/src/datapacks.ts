@@ -1,7 +1,7 @@
 import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import AdmZip from "adm-zip";
-import { CommandParser, comparePackVersions, normalizeCommandIR, readPackFormatRange, rewriteNativeCommand, runtimeFamilies, selectCommandGrammar, serializeCommandIR, toCommandIR, type MappingLookup } from "@je2be/core";
+import { CommandParser, comparePackVersions, compileMacroTemplate, normalizeCommandIR, readPackFormatRange, rewriteNativeCommand, runtimeFamilies, selectCommandGrammar, serializeCommandIR, toCommandIR, type MappingLookup } from "@je2be/core";
 import { loadBlockDefaults } from "./block-defaults.ts";
 import { fixedJavaDataVersion, loadGrammarTree, loadJavaGrammars } from "./java-grammars.ts";
 import { readJavaValidationContext } from "./validation-context.ts";
@@ -81,8 +81,19 @@ export function collectDatapacks(world: string, rewrite?: {mappings: MappingLook
           for (const [index, raw] of bytes.toString("utf8").split(/\r?\n/).entries()) {
             const line = raw.trim();
             if (!line || line.startsWith("#")) continue;
+            if (line.startsWith("$")) {
+              const template = compileMacroTemplate(parser, line, grammar.version);
+              if (template.ok) {
+                lines.push(serializeCommandIR({ grammarVersion: grammar.version, textFormat: grammar.textFormat, ir: template.ir }));
+              } else {
+                const indent = raw.length - raw.trimStart().length;
+                diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: template.reason, start: indent + template.start, end: indent + template.end });
+                valid = false;
+              }
+              continue;
+            }
             const parsed = parser.parse(line);
-            if (!parsed.ok || line.startsWith("$")) { diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: line.startsWith("$") ? "macro unsupported" : "command parse failed" }); valid = false; continue; }
+            if (!parsed.ok) { diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: "command parse failed" }); valid = false; continue; }
             const normalized = normalizeCommandIR(toCommandIR(line, parsed.nodes), grammar.version);
             if (!normalized.ok) {
               const { reason, start, end } = normalized;

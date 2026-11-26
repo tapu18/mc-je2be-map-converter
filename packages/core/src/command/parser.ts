@@ -5,6 +5,7 @@
 // 子も `redirect` も持たず実行もできない節（`execute ... run`）は、木の根へ続く（commands.json は根への redirect を書かない）。
 import { ARGUMENT_PARSERS, type ArgumentOptions, type ArgumentValue } from "./arguments.ts";
 import { CommandSyntaxError, StringReader } from "./reader.ts";
+import type { MacroTemplate } from "./macro-arguments.ts";
 
 /** commands.json の節 */
 export interface CommandTreeNode {
@@ -43,6 +44,13 @@ export type ParseResult = { ok: true; nodes: ParsedNode[] } | { ok: false; error
 
 export interface ParseOptions extends ArgumentOptions {}
 
+/** Conversion-only information about the successful grammar path. */
+export interface ParsedArgumentGrammar {
+  properties?: Record<string, unknown>;
+  competingArgument: boolean;
+  competingLiterals: string[];
+}
+
 export class CommandParser {
   readonly root: CommandTreeNode;
   readonly options: ParseOptions;
@@ -63,11 +71,16 @@ export class CommandParser {
   }
 
   /** 先頭の `/` は取り除く（コマンドブロックでは書いてもよい） */
-  parse(command: string): ParseResult {
+  parse(command: string, grammar?: Map<number, ParsedArgumentGrammar>): ParseResult {
     const input = command.startsWith("/") ? command.slice(1) : command;
     const offset = command.length - input.length;
     const best: { error: ParseError | undefined } = { error: undefined };
-    const nodes = this.walk(new StringReader(input), this.root, [], best, undefined);
+    const trace = grammar && new Map<ParsedNode, ParsedArgumentGrammar>();
+    const nodes = this.walk(new StringReader(input), this.root, [], best, undefined, trace);
+    if (nodes && trace) for (const node of nodes) {
+      const entry = trace.get(node);
+      if (entry) grammar!.set(node.start + offset, entry);
+    }
     if (nodes) return { ok: true, nodes: nodes.map((n) => ({ ...n, start: n.start + offset, end: n.end + offset })) };
     const error = best.error ?? { message: "空のコマンド", position: 0 };
     return { ok: false, error: { ...error, position: error.position + offset } };
@@ -85,6 +98,7 @@ export class CommandParser {
     path: ParsedNode[],
     best: { error: ParseError | undefined },
     jump: ParsedNode["jump"],
+    trace: Map<ParsedNode, ParsedArgumentGrammar> | undefined,
   ): ParsedNode[] | undefined {
     const children = node.children ?? {};
     const start = r.cursor;
@@ -119,6 +133,11 @@ export class CommandParser {
           this.fail(best, { message: `引数の後ろに余分な文字 '${r.peek()}'`, position: r.cursor, parser: child.parser as string });
           continue;
         }
+        trace?.set(parsed, {
+          ...(child.properties && {properties: child.properties}),
+          competingArgument: candidates.length > 1,
+          competingLiterals: Object.keys(children).filter(key => children[key]?.type === "literal"),
+        });
       }
       if (jump) parsed.jump = jump;
       const here = [...path, parsed];
@@ -138,7 +157,7 @@ export class CommandParser {
         next = this.root;
         nextJump = "root";
       }
-      const result = this.walk(r, next, here, best, nextJump);
+      const result = this.walk(r, next, here, best, nextJump, trace);
       if (result) return result;
     }
     return undefined;
@@ -158,6 +177,7 @@ export interface ExecuteStep {
 export interface CommandIR {
   /** 元の文字列 */
   source: string;
+  macro?: MacroTemplate;
   /** `execute` のサブコマンドを、書かれた順に並べたもの。入れ子の `execute ... run execute ...` も平らにする */
   context: ExecuteStep[];
   /**

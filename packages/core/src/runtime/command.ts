@@ -1,4 +1,5 @@
 import type { CommandIR } from "../command/parser.ts";
+import type { NbtCompound } from "../nbt/nbt.ts";
 import type { CommandResult, ExecutionResult } from "./index.ts";
 import { scoreRuntime } from "../features/score/registration.ts";
 import { Scoreboard } from "./scores.ts";
@@ -10,6 +11,8 @@ import { ScheduleState } from "../features/schedule/runtime.ts";
 import { defaultExecutionContext, dimensionId, type ExecutionContext, type ExecutionHost } from "./context.ts";
 import { applyStores, compileModifier, type ExecuteBranch } from "./execute-steps.ts";
 import { executeWorldCommand } from "./world.ts";
+import { expandMacro } from "../command/macro-arguments.ts";
+import { readFunctionArguments } from "./function-arguments.ts";
 
 export type { ExecutionContext } from "./context.ts";
 export { defaultExecutionContext } from "./context.ts";
@@ -85,6 +88,7 @@ export function executeCommand(state: RuntimeState, ir: CommandIR, budget: Execu
 }
 
 function* execute(state: RuntimeState, ir: CommandIR, depth: number, context: ExecutionContext): Frame {
+  if (ir.macro) return fail("macro requires function arguments");
   const modifiers = ir.context.map(step => compileModifier(step, state.host));
   // Validate the whole chain before any condition can run a function or write a result.
   if (modifiers.some(modifier => !modifier)) return fail("unsupported execute step");
@@ -140,14 +144,18 @@ function* executeTerminal(state: RuntimeState, ir: CommandIR, depth: number, con
       const names = target.tag ? state.functionTags.get(target.id) : [target.id];
       if (!names || names.some(name => !state.functions.has(name))) outcome = fail("unknown function");
       else {
+        const input = readFunctionArguments(ir, state, context);
+        if (!input.ok) return fail(input.reason);
         let total = 0;
         let successes = 0;
         let single: Outcome | undefined;
         for (const name of names) {
           yield {kind: "branch"};
+          const expanded = instantiateFunction(state.functions.get(name)!, input.value);
+          if (!Array.isArray(expanded)) { single = expanded; continue; }
           let count = 0;
           let returned: Outcome | undefined;
-          for (const line of state.functions.get(name)!) {
+          for (const line of expanded) {
             const result = yield {kind: "command", ir: line, depth: depth + 1, context};
             count++;
             if (!result.success && result.error.startsWith("unsupported")) { returned = result; break; }
@@ -167,4 +175,16 @@ function* executeTerminal(state: RuntimeState, ir: CommandIR, depth: number, con
       : (yield* executeWorldCommand(state, command, context, ir.source)) ?? fail("unsupported command");
   }
   return outcome;
+}
+
+function instantiateFunction(lines: CommandIR[], args: NbtCompound | undefined): CommandIR[] | Extract<ExecutionResult, {success: false}> {
+  if (!lines.some(line => line.macro)) return lines;
+  // Java instantiates all macro lines before the function can have side effects.
+  const expanded: CommandIR[] = [];
+  for (const line of lines) {
+    const result = expandMacro(line, args);
+    if (!result.ok) return {success: false, error: result.reason};
+    expanded.push(result.ir);
+  }
+  return expanded;
 }

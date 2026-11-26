@@ -2,6 +2,7 @@ import type { ArgumentValue, Coordinate, EntitySelector, Range } from "../comman
 import type { CommandIR, ParsedNode } from "../command/parser.ts";
 import type { CommandResult, ExecutionResult } from "./index.ts";
 import type { Scoreboard } from "./scores.ts";
+import type { NbtCompound } from "../nbt/nbt.ts";
 
 export type Position = [number, number, number];
 export type Rotation = [number, number]; // yaw, pitch
@@ -38,6 +39,8 @@ export type Heightmap = "world_surface" | "motion_blocking" | "motion_blocking_n
 export interface ExecutionHost {
   /** Enumerate entities in the world's current selector traversal order (e.g. @e[sort=arbitrary]). */
   entities(): readonly RuntimeEntity[];
+  /** Read the current Java-format NBT for a selected entity, when available. */
+  readEntityNbt?(id: string): NbtCompound | undefined;
   /** Return the full block state, including air in loaded positions and block entity data without coordinates. */
   readBlock(dimension: string, position: Position): Block | undefined;
   writeBlock?(dimension: string, position: Position, block: Block): ExecutionResult;
