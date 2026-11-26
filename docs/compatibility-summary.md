@@ -9,7 +9,7 @@ Java 26.3 / BDS 1.26.66.1 / Geyser `e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`。
 | click | 8 | uninvestigated 8 | 315 行・— 定義 | 0.00% | 19.37% | 3 |
 | command | 1489 | native 62 / rewrite 129 / runtime 9 / approximation 74 / uninvestigated 1215 | 176602 行・— 定義 | 12.34% | — | 17 |
 | component | 122 | uninvestigated 122 | 1702 行・— 定義 | 0.00% | 0.00% | 12 |
-| effect | 40 | rewrite 36 / uninvestigated 4 | 254 行・— 定義 | 92.13% | 77.56% | 15 |
+| effect | 40 | rewrite 36 / impossible 4 | 254 行・— 定義 | 92.13% | 77.56% | 15 |
 | entity | 161 | rewrite 126 / asset 5 / uninvestigated 30 | 5319 行・— 定義 | 39.65% | 10.17% | 16 |
 | game_rule | 59 | native 1 / rewrite 27 / impossible 31 | 121 行・— 定義 | 64.46% | 64.46% | 8 |
 | hover | 3 | uninvestigated 3 | 237 行・— 定義 | 0.00% | 0.84% | 2 |
@@ -26,8 +26,8 @@ Java 26.3 / BDS 1.26.66.1 / Geyser `e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`。
 | runtime | 9 |
 | asset | 5 |
 | approximation | 2083 |
-| impossible | 31 |
-| uninvestigated | 1661 |
+| impossible | 35 |
+| uninvestigated | 1657 |
 | 合計 | 4170 |
 
 入力があったアーカイブ 19 本、進捗・predicate・ルートテーブル定義 1325 ファイル。

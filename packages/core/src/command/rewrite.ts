@@ -5,13 +5,14 @@
 //
 // 確度：出力する BE の書き方は BDS 1.26.63.1 が構文として受理することを実測した（rewrite.servers.test.ts）。
 // 意味が Java と一致することは、変換を通すシナリオ（scenarios/convert/）で確かめたものだけが実測で、残りは未確認。
+import { rewriteEffect } from "../features/effect/rewrite.ts";
 import { rewriteGameRule } from "../features/game_rule/rewrite.ts";
 import { rewriteSound } from "../features/sound/rewrite.ts";
 import type { BlockDefaults } from "../java/world.ts";
 import type { MappingLookup } from "../mappings/mappings.ts";
 import type { ArgumentValue, EntitySelector, Range } from "./arguments.ts";
 import { readSelector } from "./arguments.ts";
-import { bedrockEffect, bedrockEntityType } from "./bedrock-command-ids.ts";
+import { bedrockEntityType } from "./bedrock-command-ids.ts";
 import { isEarlierJavaRelease, normalizeCommandIR } from "./normalize-command.ts";
 import { toCommandIR, type CommandIR, type CommandParser, type ParsedNode } from "./parser.ts";
 import { formatRawText, plainText, toRawText } from "./rawtext.ts";
@@ -407,24 +408,7 @@ const COMMANDS: Record<string, CommandHandler> = {
     ed.replace(name.start, nodes.at(-1)!.end, `${id} ${position}`);
     ed.warn("BE のパーティクルはエミッターを使うため、粒子の数や見た目が変わり得る");
   },
-  effect: (nodes, head, _ctx, ed) => {
-    const action = nodes[0]!;
-    const targets = arg(nodes, "targets");
-    const effect = arg(nodes, "effect");
-    if (effect?.value?.kind === "resource") {
-      const id = bedrockEffect(effect.value.id);
-      if (!id) return ed.unsupported(`BE に対応のないステータス効果 ${effect.value.id}`);
-      ed.replace(effect.start, effect.end, id);
-    }
-    if (action.name === "give") {
-      ed.replace(head.end, action.end, "");
-    } else if (targets) {
-      ed.replace(head.end, action.end, "");
-      ed.replace(targets.end, targets.end, " clear");
-    } else {
-      ed.replace(head.end, action.end, " @s clear");
-    }
-  },
+  effect: (nodes, head, _ctx, ed) => rewriteEffect(nodes, head, ed),
   gamemode: ok,
   time: (nodes, _head, ctx, ed) => {
     const [sub, option] = literals(nodes);

@@ -10,6 +10,7 @@ export * from "./command/index.ts";
 export * from "./runtime/index.ts";
 
 export * from "./runtime/scores.ts";
+export { bedrockEffect } from "./features/effect/ids.ts";
 export { gameRuleByJavaName, gameRules } from "./features/game_rule/rules.ts";
 export * from "./features/score/runtime.ts";
 export * from "./runtime/command.ts";

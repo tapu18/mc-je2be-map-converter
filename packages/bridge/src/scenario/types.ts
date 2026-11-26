@@ -39,6 +39,8 @@ export interface Observe {
   /** タグで選んだ各エンティティの名前・座標と、指定した目的変数のスコアも比べる */
   entityDetails?: boolean;
   entityScores?: string[];
+  /** 一意に付けたエンティティタグ → 観測する Java の効果 ID */
+  entityEffects?: Record<string, string[]>;
 }
 
 export interface EditionSteps {
@@ -79,6 +81,15 @@ export interface Scenario {
   requiredObservations?: string[];
 }
 
+export interface ObservedEffect {
+  amplifier: number;
+  /** 残り tick。-1 は無期限 */
+  duration: number;
+}
+
+/** 一意なタグ → Java の効果 ID → 状態。効果がないときは null */
+export type ObservedEffects = Record<string, Record<string, ObservedEffect | null>>;
+
 /** 両エディションの結果をそろえた形。比較はこの形どうしで行う */
 export interface NormalizedState {
   /** 目的変数 → 参加者 → 値 */
@@ -88,6 +99,7 @@ export interface NormalizedState {
   blocks?: Record<string, string | { unmapped: string }>;
   /** "種類 タグ1,タグ2" → 数 */
   entities?: Record<string, number>;
+  entityEffects?: ObservedEffects;
   entityDetails?: Record<string, { name: string; block: Vec3; scores: Record<string, number> }[]>;
 }
 

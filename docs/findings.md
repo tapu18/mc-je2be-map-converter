@@ -513,3 +513,11 @@ Java 26.3 の実サーバーで `macro-arguments`・`storage-macro` の記録を
 BDS 1.26.66.1 の `packages/runtime-host/src/launcher.servers.test.ts` で、オーバーワールドのコマンドブロックから渡した実行者・位置・向きを中核が使い、ネザーの指定位置にある対象を選んだ。成功した関数は `return 0` でも後続の条件付きブロックを動かし、比較器を点灯させた。`return fail` の行では、失敗前に設定したスコアは反映され、条件付きブロックは動かず、比較器は消灯したままだった。成否の伝わり方は M0 の `poc/launcher/launcher.servers.test.ts` と一致した。
 
 続く条件付きブロックから起動口を呼ぶと、同じチェーンの先頭で設定したスコアを中核が読めた。ハンドラで同期実行できない委譲に達したケースでは診断が出て、委譲先のコマンドによるスコア変更は発生しなかった。
+
+### ステータス効果の付与・解除（#319）
+
+Java 26.3 の `data get entity … active_effects` と BDS 1.26.66.1 の `Entity.getEffect` を [変換シナリオ](../scenarios/convert/effects.json) と [Java の記録](../scenarios/convert/effects.java.json) で照合した。両版で継続時間の省略は30秒、無期限は残り tick が `-1` だった。12秒・増幅度2と、上限の1,000,000秒・増幅度255を変換後に読み返せた。Java の増幅度255は NBT の符号付き byte で `-1b` だった。BE は観測の間にも tick が進むため、有限の残り時間は10 tick 以内の差を許容した。
+
+`clear <対象> <効果>` は指定した効果だけを解除し、`clear <対象>` と `execute as … run effect clear` は対象の両方の効果を解除した。比較用の別個体には両方の効果が残った。Java では実行者を設定せずにコンソールから `effect clear` を実行するとエンティティを要求された。`hideParticles` の真偽値を渡した変換コマンドで効果が付与され、Java の `true` では NBT の `show_particles` と `show_icon` がともに `0b` になった。
+
+[ID 照合テスト](../packages/bridge/src/rewrite.servers.test.ts) では36種の変換先が BDS の効果レジストリにあり、ブタを対象にした付与で成功件数1が返った。`hero_of_the_village` の変換先は `village_hero`。残る `dolphins_grace`・`glowing`・`luck`・`unluck` は Java では付与され、BDS の効果レジストリに相当する項目がなく、同名の付与コマンドは BDS で構文エラーになった。

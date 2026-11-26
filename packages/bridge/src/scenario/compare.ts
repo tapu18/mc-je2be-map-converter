@@ -15,6 +15,28 @@ function compareMaps<T>(prefix: string, java: Record<string, T> | undefined, bed
   }
 }
 
+// Java は観測まで freeze できるが、BE はコマンド・観測要求の間も tick が進む。
+const EFFECT_TICK_TOLERANCE = 10;
+
+function compareEffects(java: NormalizedState["entityEffects"], bedrock: NormalizedState["entityEffects"], diffs: Diff[]): void {
+  for (const tag of new Set([...Object.keys(java ?? {}), ...Object.keys(bedrock ?? {})])) {
+    const javaEffects = java?.[tag];
+    const bedrockEffects = bedrock?.[tag];
+    for (const id of new Set([...Object.keys(javaEffects ?? {}), ...Object.keys(bedrockEffects ?? {})])) {
+      const j = javaEffects?.[id];
+      const b = bedrockEffects?.[id];
+      const path = `entityEffects.${tag}.${id}`;
+      if (!j || !b) {
+        if (j !== b) diffs.push({ path, java: j, bedrock: b });
+        continue;
+      }
+      if (j.amplifier !== b.amplifier) diffs.push({ path: `${path}.amplifier`, java: j.amplifier, bedrock: b.amplifier });
+      const close = j.duration >= 0 && b.duration >= 0 && Math.abs(j.duration - b.duration) <= EFFECT_TICK_TOLERANCE;
+      if (j.duration !== b.duration && !close) diffs.push({ path: `${path}.duration`, java: j.duration, bedrock: b.duration });
+    }
+  }
+}
+
 export function compareStates(java: NormalizedState, bedrock: NormalizedState): CompareResult {
   const diffs: Diff[] = [];
   const incomparable: string[] = [];
@@ -29,6 +51,7 @@ export function compareStates(java: NormalizedState, bedrock: NormalizedState): 
   compareMaps("blocks", java.blocks, bedrock.blocks, diffs, incomparable);
   compareMaps("entities", java.entities, bedrock.entities, diffs);
   compareMaps("entityDetails", java.entityDetails, bedrock.entityDetails, diffs);
+  compareEffects(java.entityEffects, bedrock.entityEffects, diffs);
   return { diffs, incomparable };
 }
 

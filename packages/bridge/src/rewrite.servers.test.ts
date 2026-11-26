@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { rewriteCommand, type RewriteContext } from "@je2be/core";
+import { bedrockEffect, rewriteCommand, type RewriteContext } from "@je2be/core";
 import { javaGrammarSources, loadRewriteContext, rewriteWorldCommands, setupJavaGrammar } from "@je2be/converter";
 import { BedrockServer, JavaServer, checkJavaSyntax, rewriteResources } from "./index.ts";
 import { paths } from "./paths.ts";
@@ -163,14 +163,25 @@ describe("command rewrite against the real grammar and mappings", () => {
     }
 
     expect(await bds.exec("summon pig 20 -60 20")).toMatchObject({ ok: true, result: { successCount: 1 } });
+    const registered = await bds.request<string[]>("effectTypes");
+    expect(registered).toMatchObject({ ok: true });
+    expect(registered.result).toContain("minecraft:village_hero");
     const unsupportedEffects: string[] = [];
     for (const id of effects) {
       const output = rewriteCommand(effectProbe(id), ctx);
       if ("command" in output) {
+        expect(registered.result, id).toContain(`minecraft:${bedrockEffect(id)}`);
         expect(await bds.exec(output.command), output.command).toMatchObject({ ok: true, result: { successCount: 1 } });
       } else {
         unsupportedEffects.push(id);
-        expect(await bds.exec(`effect @e[type=pig] ${id.slice("minecraft:".length)} 20`), id).toMatchObject({ ok: false });
+        expect(output, id).toMatchObject({
+          status: "unsupported",
+          issues: expect.arrayContaining([{ severity: "unsupported", message: expect.stringContaining(id) }]),
+        });
+        expect(registered.result, id).not.toContain(id);
+        expect(await bds.exec(`effect @e[type=pig] ${id.slice("minecraft:".length)} 20`), id).toMatchObject({
+          ok: false, error: expect.stringContaining("Syntax error"),
+        });
       }
     }
     expect(unsupportedEffects).toEqual(["minecraft:dolphins_grace", "minecraft:glowing", "minecraft:luck", "minecraft:unluck"]);
