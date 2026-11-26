@@ -240,6 +240,7 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 | --- | --- | --- |
 | 関数の戻り値とタグ | `return run function` で内側の戻り値 7 と成功値 1 が得られた。`return fail` の結果値と成功値はともに 0。各 return より後の行は実行されなかった。スコア条件を満たして呼んだ関数タグは記載順に実行された | [calls.java.json](../scenarios/datapack/calls.java.json) |
 | 複数の実行者 | 距離の異なる marker 3体で、`execute as` から呼んだ関数が `sort=nearest` で 1, 2, 3、`sort=furthest` で 3, 2, 1 の順に実行された | [calls.java.json](../scenarios/datapack/calls.java.json) |
+| `@e` の既定順（#232） | 同じチャンク内で召喚コマンドの X 座標を 13, 9, 11 と指定した marker 3体で、`execute as @e[type=marker,tag=worker]` は召喚順の 1, 2, 3 で関数を実行した。保存とサーバー再起動を挟んだシナリオでも同じ順だった | [execute-order.java.json](../scenarios/datapack/execute-order.java.json)、[execute-order-reload.java.json](../scenarios/datapack/execute-order-reload.java.json) |
 | スコアの演算 | `operation` の全9演算子を記録した。負数を含む除算では −7 / 2 と 7 / −2 がともに −4、剰余はそれぞれ 1 と −1。最大の int に `+= 1` すると −2147483648 になった | [score-operations.java.json](../scenarios/datapack/score-operations.java.json) |
 | storage とマクロ | `merge` は入れ子の既存キーを残し、指定したキーを更新・追加した。スコアを storage に保存し、2組の引数でマクロを呼ぶと、それぞれの名前に対応するスコア −7 と 12 が付いた | [storage-macro.java.json](../scenarios/datapack/storage-macro.java.json) |
 | 予約実行 | `append` の2件は予約から 2、4 tick 後に動いた。`replace` を使った関数は古い予約の 2 tick 後には動かず、5 tick 後に1回動いた。`clear` で取り消した 3、6 tick 後の2件は、7 tick 後まで記録されなかった | [schedule.java.json](../scenarios/datapack/schedule.java.json) |
