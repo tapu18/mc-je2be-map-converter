@@ -9,7 +9,7 @@ import { agentArguments, AgentLaunchError, failedBeforeWork, limitResetAt, usage
 import { followProgress } from './agent-runner/progress.ts';
 import { managerConfig, managerDue, managerPrompt, managerReport } from './agent-runner/manager.ts';
 import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
-import { activeClaims, baseAllowsMerge, canMerge, checksFailed, dependencies, hasLabel, latestBaseRun } from './agent-runner/policy.ts';
+import { activeClaims, baseAllowsMerge, canMerge, checksFailed, dependencies, hasLabel, isDependencyBlocked, latestBaseRun } from './agent-runner/policy.ts';
 import type { Issue, PullRequest, WorkflowRun } from './agent-runner/policy.ts';
 
 type Agent = 'codex' | 'claude';
@@ -103,7 +103,7 @@ async function main() {
   const ciRuns = (pr: PullRequest) => json<WorkflowRun[]>(['run', 'list', '--workflow', 'ci.yml', '--branch', pr.headRefName, '--limit', '100', '--json', 'headSha,event,status,conclusion']);
   const baseRuns = () => json<WorkflowRun[]>(['run', 'list', '--workflow', 'ci.yml', '--branch', config.base, '--event', 'push', '--limit', '100', '--json', 'headSha,event,status,conclusion']);
   const git = (args: string[]) => command('git', args, { cwd: root, signal: abort.signal });
-  const api = async <T>(path: string): Promise<T> => JSON.parse(await command('gh', ['api', path], { cwd: root, signal: abort.signal })) as T;
+  const api = async <T>(path: string, ...args: string[]): Promise<T> => JSON.parse(await command('gh', ['api', path, ...args], { cwd: root, signal: abort.signal })) as T;
   const reportBaseFailure = async (run: WorkflowRun) => {
     const marker = `<!-- agent-runner-base-ci:${run.headSha} -->`;
     const associated = await api<{ number: number }[]>(`repos/${config.repo}/commits/${run.headSha}/pulls`);
@@ -273,6 +273,35 @@ async function main() {
       await gh(['issue', 'edit', String(number), '--add-label', next, ...remove.flatMap(name => ['--remove-label', name])]);
     };
     const comment = (number: number, body: string) => gh(['issue', 'comment', String(number), '--body', body]);
+    const unblockUnclaimed = async () => {
+      const pages = await api<(Pick<Issue, 'number' | 'labels'> & { body: string | null; pull_request?: unknown })[][]>(
+        `repos/${config.repo}/issues?state=open&labels=status%3Ablocked&per_page=100`, '--paginate', '--slurp');
+      const managed = new Set(state.tasks.filter(task => task.phase !== 'done').map(task => task.issue));
+      const closed = new Map<number, boolean>();
+      const marker = '<!-- agent-runner-dependencies-closed -->';
+      for (const candidate of pages.flat()) {
+        if (candidate.pull_request || !candidate.body || managed.has(candidate.number) || !isDependencyBlocked(candidate)) continue;
+        const deps = dependencies(candidate.body);
+        if (!deps.length) continue;
+        try {
+          for (const number of deps) {
+            if (!closed.has(number)) closed.set(number, (await issue(number)).state === 'CLOSED');
+            if (!closed.get(number)) break;
+          }
+          if (!deps.every(number => closed.get(number))) continue;
+          const fresh = await issue(candidate.number);
+          if (fresh.state !== 'OPEN' || fresh.body !== candidate.body ||
+              !isDependencyBlocked(fresh) || activeClaims(fresh.comments).length) continue;
+          // Leave a notice before editing labels so retries after a failed edit reuse it.
+          if (!fresh.comments.some(c => c.body.includes(marker)))
+            await comment(fresh.number, `${marker}\n依存先（${deps.map(n => `#${n}`).join('、')}）がすべて閉じたため、管理プログラムがこの Issue を status:ready に変更します。`);
+          await gh(['issue', 'edit', String(fresh.number), '--add-label', 'status:ready', '--remove-label', 'status:blocked']);
+          log(`#${fresh.number} 依存完了のため status:ready に変更しました`);
+        } catch (error) {
+          log(`#${candidate.number} の依存による保留解除を保留: ${String(error)}`);
+        }
+      }
+    };
     const stopTask = async (task: Task, message: string) => {
       task.phase = 'blocked';
       task.error = message;
@@ -364,6 +393,7 @@ async function main() {
       await save();
       const day = new Date().toISOString().slice(0, 10);
       if (day !== state.day) { state.day = day; state.runs = 0; await save(); }
+      await unblockUnclaimed();
       if (await runManager(false)) return;
       for (const task of state.tasks) {
         if (task.phase === 'done') {

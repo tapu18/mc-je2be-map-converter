@@ -62,6 +62,10 @@ if (tool === 'git') {
   else if (args[0] === 'run' && args[1] === 'list') out(args.includes('--event') ? [{headSha:'base',event:'push',status:'completed',conclusion:'success'}] : (d.runs ?? [{headSha:'abc',event:'pull_request',status:'completed',conclusion:'success'}]));
   else if (args[0] === 'pr' && args[1] === 'list') out(d.prs);
   else if (args[0] === 'pr' && args[1] === 'merge') { d.prs[0].state = 'MERGED'; d.issues[0].state = 'CLOSED'; }
+  else if (args[0] === 'api' && args[1].includes('labels=status%3Ablocked')) {
+    const blocked = d.issues.filter(i => has(i, 'status:blocked') && i.state === 'OPEN');
+    out([blocked.slice(0, 1), blocked.slice(1)]);
+  }
   else if (args[0] === 'issue') {
     const item = d.issues.find(i => i.number === Number(args[2]));
     if (args[1] === 'list') out(d.issues.filter(i => has(i, 'status:ready') && i.state === 'OPEN'));
@@ -162,6 +166,45 @@ it('dry-run only reads; excludes other claims and unclosed dependencies', async 
   await expect(access(join(f.root, '.git'))).rejects.toThrow();
   expect((await f.load()).calls.every(call => !call.some(arg => ['edit', 'comment', 'exec', 'merge'].includes(arg)))).toBe(true);
 });
+
+it('promotes only unclaimed issues blocked solely on closed dependencies and comments once', async () => {
+  const f = await fixture();
+  await f.update(d => {
+    const base = d.issues[0]!;
+    const blocked = { ...base, body: 'Depends on: #8, #9', labels: [{ name: 'status:blocked' }] };
+    d.issues.push(
+      { ...base, number: 8, state: 'CLOSED' },
+      { ...base, number: 9, state: 'OPEN', labels: [] },
+      { ...blocked, number: 10 },
+      { ...blocked, number: 11, body: blocked.body + '\n\nBlocked: PM が子 Issue に分けるまで待つ' },
+      { ...blocked, number: 12, comments: [{ body: 'claim: other' }] },
+      { ...blocked, number: 13, labels: [...blocked.labels, { name: 'needs-approval' }] },
+      { ...blocked, number: 14, body: '関連: #8, #9' },
+      { ...blocked, number: 15, labels: [...blocked.labels, { name: 'status:paused' }] },
+      { ...blocked, number: 16, body: 'Depends on: #999' },
+      { ...blocked, number: 17, body: 'Depends on: #8', comments: [
+        { body: '<!-- agent-runner-dependencies-closed -->\n前回の巡回で通知済み' },
+      ] },
+    );
+  });
+  await f.run('--dry-run');
+  expect((await f.load()).calls.some(call => call.includes('--paginate'))).toBe(false);
+  await f.run();
+  const readIssue = async (number: number) => (await f.load()).issues.find(item => item.number === number)!;
+  expect((await readIssue(10)).labels).toEqual([{ name: 'status:blocked' }]);
+  expect((await readIssue(17)).labels).toEqual([{ name: 'status:ready' }]);
+  expect((await readIssue(17)).comments).toHaveLength(1);
+  await f.update(d => { d.issues.find(item => item.number === 9)!.state = 'CLOSED'; });
+  await f.run();
+  await f.run();
+  expect((await readIssue(10)).labels).toEqual([{ name: 'status:ready' }]);
+  const notices = (await readIssue(10)).comments.filter(c => c.body.includes('agent-runner-dependencies-closed'));
+  expect(notices).toEqual([{ body: expect.stringContaining('#8、#9') }]);
+  for (const number of [11, 12, 13, 14, 15, 16]) {
+    expect((await readIssue(number)).labels).toContainEqual({ name: 'status:blocked' });
+    expect((await readIssue(number)).labels).not.toContainEqual({ name: 'status:ready' });
+  }
+}, 15_000);
 
 it('claims, resumes in its own worktree, waits for all CI, and merges with a SHA guard', async () => {
   const f = await fixture();

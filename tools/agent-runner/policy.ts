@@ -64,6 +64,12 @@ export function activeClaims(comments: Issue['comments']): string[] {
   return [...claims];
 }
 
+export function isDependencyBlocked(item: Pick<Issue, 'labels'> & { body: string | null }): boolean {
+  return hasLabel(item, 'status:blocked') && !hasLabel(item, 'needs-approval') &&
+    !item.labels.some(l => l.name.startsWith('status:') && l.name !== 'status:blocked') &&
+    !/^[ \t]*Blocked[ \t]*[:：]/im.test(item.body ?? '');
+}
+
 export function failedChecks(pr: PullRequest): string[] {
   return pr.statusCheckRollup.filter(check =>
     ['FAILURE', 'ERROR', 'failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(check.conclusion ?? check.state ?? ''))
