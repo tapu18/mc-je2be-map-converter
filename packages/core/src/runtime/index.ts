@@ -14,6 +14,7 @@ export interface ScoreSetInstruction {
 
 export type RuntimeInstruction = ScoreSetInstruction;
 export type ExecutionResult = { success: true; result: number } | { success: false; error: string };
+export type CommandResult = ExecutionResult | { status: "unknown"; success?: never; error?: never };
 
 /** Execute one already validated instruction against the runtime's authoritative state. */
 export function executeInstruction(host: RuntimeHost, instruction: RuntimeInstruction): ExecutionResult {

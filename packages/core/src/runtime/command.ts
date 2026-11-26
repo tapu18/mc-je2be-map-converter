@@ -1,5 +1,5 @@
 import type { CommandIR } from "../command/parser.ts";
-import type { ExecutionResult } from "./index.ts";
+import type { CommandResult, ExecutionResult } from "./index.ts";
 import { scoreRuntime } from "../features/score/registration.ts";
 import { Scoreboard } from "./scores.ts";
 import { StorageState } from "../features/storage/runtime.ts";
@@ -23,7 +23,7 @@ export class RuntimeState {
   readonly schedule = new ScheduleState();
   readonly functions = new Map<string, CommandIR[]>();
   readonly functionTags = new Map<string, string[]>();
-  readonly host: ExecutionHost | undefined;
+  host: ExecutionHost | undefined;
 
   constructor(host?: ExecutionHost) {
     this.host = host;
@@ -31,8 +31,8 @@ export class RuntimeState {
 }
 
 /** Run one tick's callbacks in their registration order using the game loop's execution source. */
-export function advanceScheduledTick(state: RuntimeState, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext()): {id: string; result: ExecutionResult}[] {
-  const outcomes: {id: string; result: ExecutionResult}[] = [];
+export function advanceScheduledTick(state: RuntimeState, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext()): {id: string; result: CommandResult}[] {
+  const outcomes: {id: string; result: CommandResult}[] = [];
   for (const target of state.schedule.advanceTick()) {
     const names = target.tag ? state.functionTags.get(target.id) ?? [] : [target.id];
     for (const id of names) {
@@ -50,11 +50,13 @@ export function advanceScheduledTick(state: RuntimeState, budget: ExecutionBudge
 export interface ExecutionBudget { instructions: number; depth: number; branches: number }
 export const defaultExecutionBudget: ExecutionBudget = {instructions: 100000, depth: 128, branches: 10000};
 export type Outcome = ExecutionResult & {returned?: boolean; explicitReturn?: boolean};
-type Request = {kind: "command"; ir: CommandIR; depth: number; context: ExecutionContext} | {kind: "branch"};
+type NativeRequest = {kind: "native"; command: NonNullable<CommandIR["command"]>; context: ExecutionContext; source: string};
+type Request = {kind: "command"; ir: CommandIR; depth: number; context: ExecutionContext} | {kind: "branch"} | NativeRequest;
 export type Frame<T = Outcome> = Generator<Request, T, Outcome>;
+type BeforeNative = () => Extract<ExecutionResult, {success: false}> | undefined;
 
 /** Execute supported commands using an explicit stack of suspended frames. */
-export function executeCommand(state: RuntimeState, ir: CommandIR, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext()): ExecutionResult {
+export function executeCommand(state: RuntimeState, ir: CommandIR, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext(), beforeNative?: BeforeNative): CommandResult {
   if (Object.values(budget).some(limit => !Number.isSafeInteger(limit) || limit < 0)) return {success: false, error: "invalid execution budget"};
   const frames: Frame[] = [];
   let instructions = 0, branches = 0;
@@ -65,6 +67,12 @@ export function executeCommand(state: RuntimeState, ir: CommandIR, budget: Execu
       if (++instructions > budget.instructions) return {success: false, error: "instruction budget exceeded"};
       if (request.depth > budget.depth) return {success: false, error: "depth budget exceeded"};
       frames.push(execute(state, request.ir, request.depth, request.context));
+    } else if (request.kind === "native") {
+      const failure = beforeNative?.();
+      if (failure) return failure;
+      const native = state.host?.runNative?.(request.command, request.context, request.source);
+      if (native && "status" in native) return native;
+      value = native ?? fail("unsupported command");
     } else if (++branches > budget.branches) return {success: false, error: "branch budget exceeded"};
     while (frames.length) {
       const next = frames[frames.length - 1]!.next(value);
@@ -156,7 +164,7 @@ function* executeTerminal(state: RuntimeState, ir: CommandIR, depth: number, con
   } else {
     const family = runtimeFamilies.find(entry => entry.assess({status: "parsed", ir}).status === "runtime");
     outcome = family ? family.execute(state, ir, context)
-      : executeWorldCommand(state, command, context, ir.source) ?? fail("unsupported command");
+      : (yield* executeWorldCommand(state, command, context, ir.source)) ?? fail("unsupported command");
   }
   return outcome;
 }

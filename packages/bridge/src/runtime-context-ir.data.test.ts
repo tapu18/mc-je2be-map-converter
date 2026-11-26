@@ -3,8 +3,8 @@ import { deserialize, serialize } from "node:v8";
 import { expect, it } from "vitest";
 import {
   CommandParser, defaultExecutionContext, entityTarget, executeCommand, executeStorageCommand,
-  nbt, nbtToPlain, resolvePosition, RuntimeState, selectEntities, toCommandIR,
-  type Block, type CommandTreeNode, type ExecutionHost, type Position, type Rotation, type RuntimeEntity,
+  MappingLookup, nbt, nbtToPlain, resolvePosition, rewriteNativeCommand, RuntimeState, selectEntities, toCommandIR,
+  type Block, type CommandTreeNode, type ExecutionContext, type ExecutionHost, type Position, type Rotation, type RuntimeEntity,
 } from "@je2be/core";
 import { paths } from "./paths.ts";
 import { loadScenarios, readGolden } from "./scenario/load.ts";
@@ -30,6 +30,8 @@ class FakeHost implements ExecutionHost {
   readonly blocks: Map<string, Block>;
   readonly forcedChunks: Set<string>;
   readonly state = new RuntimeState(this);
+  readonly delegated: {command: string; context: ExecutionContext}[] = [];
+  delegate?: ExecutionHost["runNative"];
   private readonly teams = new Set<string>();
   private nextEntityId: number;
 
@@ -76,6 +78,7 @@ class FakeHost implements ExecutionHost {
   }
 
   runNative(command: Parameters<NonNullable<ExecutionHost["runNative"]>>[0], context: Parameters<NonNullable<ExecutionHost["runNative"]>>[1], source: string) {
+    if (this.delegate) return this.delegate(command, context, source);
     if (command.name === "team") {
       const [action, team, members] = command.nodes;
       if (team?.value?.kind !== "word" && team?.value?.kind !== "string") throw new Error("Expected fixture team name");
@@ -148,6 +151,60 @@ class FakeHost implements ExecutionHost {
     return {success: true, result: 1} as const;
   }
 }
+
+it("delegates rewritten and unchanged terminals with the resolved execute context and projected scores", () => {
+  const candidate: RuntimeEntity = {
+    id: "entity-1", type: "minecraft:armor_stand", tags: ["delegated"],
+    position: [12.25, 70, -4.5], rotation: [90, 15], dimension: nether, eyeHeight: 1.7,
+  };
+  const host = new FakeHost([candidate]);
+  const mappings = new MappingLookup({
+    schemaVersion: 1, source: {repository: "", revision: "", javaVersion: "", bedrockVersion: "", sha256: {}}, blocks: [], items: [],
+  });
+  const projected: (number | undefined)[] = [];
+  const observed: (number | undefined)[] = [];
+  host.delegate = (_command, context, source) => {
+    const rewrite = rewriteNativeCommand(source, {parser, mappings, blockDefaults: () => undefined});
+    if (rewrite.status === "rewritten" || rewrite.status === "unchanged") {
+      host.delegated.push({command: rewrite.command, context});
+      observed.push(projected.at(-1));
+      return {success: true, result: 1};
+    }
+  };
+  host.state.functions.set("test:delegate", [
+    parse("scoreboard objectives add t dummy"),
+    parse("scoreboard players set alice t 42"),
+    parse("execute as @e[tag=delegated] at @s run say hello"),
+    parse("scoreboard players add alice t 1"),
+    parse('return run execute as @e[tag=delegated] at @s run tellraw @s {score:{name:"alice",objective:"t"}}'),
+  ]);
+  const result = executeCommand(host.state, parse("function test:delegate"), undefined, undefined, () => {
+    projected.push(host.state.scores.get("alice", "t"));
+    return undefined;
+  });
+  const context = {executor: candidate.id, position: candidate.position, rotation: candidate.rotation, dimension: nether, anchor: "feet"};
+  expect(result).toEqual({success: true, result: 1});
+  expect(host.delegated).toEqual([
+    {command: "say hello", context},
+    {command: 'tellraw @s {"rawtext":[{"score":{"name":"alice","objective":"t"}}]}', context},
+  ]);
+  expect(observed).toEqual([42, 43]);
+
+  host.state.functions.set("test:unsupported", [parse("advancement grant @a everything"), parse("scoreboard players set alice t 99")]);
+  expect(executeCommand(host.state, parse("function test:unsupported"))).toEqual({success: false, error: "unsupported command"});
+  expect(host.state.scores.get("alice", "t")).toBe(43);
+});
+
+it("propagates an unknown native result through function and store without writing a result", () => {
+  const host = new FakeHost();
+  host.delegate = () => ({status: "unknown"});
+  host.state.scores.addObjective("t");
+  host.state.functions.set("test:delegate", [parse("say hello"), parse("scoreboard players set after t 1")]);
+  const result = executeCommand(host.state, parse("execute store success score outcome t run function test:delegate"));
+  expect(result).toEqual({status: "unknown"});
+  expect(host.state.scores.get("after", "t")).toBeUndefined();
+  expect(host.state.scores.get("outcome", "t")).toBeUndefined();
+});
 
 const scenarioIds = ["execute-context", "execute-anchor", "execute-dimension", "calls", "execute-order", "execute-order-reload", "execute-extra", "score-selector-conditions"];
 const scenarios = loadScenarios();

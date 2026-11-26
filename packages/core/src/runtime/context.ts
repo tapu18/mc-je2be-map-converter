@@ -1,6 +1,6 @@
 import type { ArgumentValue, Coordinate, EntitySelector, Range } from "../command/arguments.ts";
 import type { CommandIR, ParsedNode } from "../command/parser.ts";
-import type { ExecutionResult } from "./index.ts";
+import type { CommandResult, ExecutionResult } from "./index.ts";
 import type { Scoreboard } from "./scores.ts";
 
 export type Position = [number, number, number];
@@ -40,14 +40,14 @@ export interface ExecutionHost {
   entities(): readonly RuntimeEntity[];
   /** Return the full block state, including air in loaded positions and block entity data without coordinates. */
   readBlock(dimension: string, position: Position): Block | undefined;
-  writeBlock(dimension: string, position: Position, block: Block): ExecutionResult;
+  writeBlock?(dimension: string, position: Position, block: Block): ExecutionResult;
   /** Report whether the chunk has reached the loaded state required by Java's execute if loaded. */
   isLoaded?(dimension: string, position: Position): boolean;
   /** Return the first Y above the heightmap surface, or undefined for an unloaded column. */
   heightmapY?(dimension: string, x: number, z: number, heightmap: Heightmap): number | undefined;
   /** Order a mutable candidate list using the host's random source. */
   shuffle?(entities: RuntimeEntity[]): void;
-  runNative?(command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string): ExecutionResult | undefined;
+  runNative?(command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string): CommandResult | undefined;
 }
 
 export function defaultExecutionContext(): ExecutionContext {

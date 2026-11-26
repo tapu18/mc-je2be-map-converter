@@ -12,7 +12,7 @@ import type { ArgumentValue, EntitySelector, Range } from "./arguments.ts";
 import { readSelector } from "./arguments.ts";
 import { bedrockEffect, bedrockEntityType } from "./bedrock-command-ids.ts";
 import { isEarlierJavaRelease, normalizeCommandIR } from "./normalize-command.ts";
-import { toCommandIR, type CommandParser, type ParsedNode } from "./parser.ts";
+import { toCommandIR, type CommandIR, type CommandParser, type ParsedNode } from "./parser.ts";
 import { formatRawText, plainText, toRawText } from "./rawtext.ts";
 import { CommandSyntaxError, StringReader } from "./reader.ts";
 
@@ -538,6 +538,15 @@ function checkExecuteStep(kind: string, nodes: ParsedNode[], ed: Editor): void {
 
 /** コマンド1つを BE のコマンドに書き換える */
 export function rewriteCommand(source: string, ctx: RewriteContext): RewriteResult {
+  return rewrite(source, ctx, false);
+}
+
+/** Rewrite just the terminal command. The runtime evaluates the Java execute/return frames itself. */
+export function rewriteNativeCommand(source: string, ctx: RewriteContext): RewriteResult {
+  return rewrite(source, ctx, true);
+}
+
+function rewrite(source: string, ctx: RewriteContext, terminalOnly: boolean): RewriteResult {
   const parsed = ctx.parser.parse(source);
   if (!parsed.ok) return { status: "invalid", message: parsed.error.message, position: parsed.error.position };
   let ir = toCommandIR(source, parsed.nodes);
@@ -550,14 +559,24 @@ export function rewriteCommand(source: string, ctx: RewriteContext): RewriteResu
     }
     ir = normalized.ir;
   }
-  const ed = new Editor(source);
+  const head = [...parsed.nodes].reverse().find(node => node.jump === "root") ?? parsed.nodes[0]!;
+  if (terminalOnly) {
+    while (ir.command?.name === "return" && ir.command.run) ir = ir.command.run;
+    if (!ir.command) {
+      return {status: "unsupported", issues: [{severity: "unsupported", message: "委譲する末尾命令がない"}]};
+    }
+    ir = {source, context: [], command: ir.command};
+  }
+  return rewriteIR(ir, head, ctx, terminalOnly ? head.start : 0);
+}
+
+function rewriteIR(ir: CommandIR, head: ParsedNode, ctx: RewriteContext, start: number): RewriteResult {
+  const ed = new Editor(ir.source);
   for (const step of ir.context) checkExecuteStep(step.kind, step.nodes, ed);
   if (ir.command) {
-    const handler = COMMANDS[ir.command.name];
+    const handler = Object.hasOwn(COMMANDS, ir.command.name) ? COMMANDS[ir.command.name] : undefined;
     if (!handler) ed.unsupported(`${ir.command.name} の書き換えは未対応`);
     else {
-      // 最後のコマンドの名前の節：run の先なら最後の jump=root、execute でなければ先頭
-      const head = [...parsed.nodes].reverse().find((n) => n.jump === "root") ?? parsed.nodes[0]!;
       if (!ed.failed) handler(ir.command.nodes, head, ctx, ed, ir);
     }
   }
@@ -565,7 +584,7 @@ export function rewriteCommand(source: string, ctx: RewriteContext): RewriteResu
   for (const step of ir.context) for (const node of step.nodes) rewriteNode(node, ctx, ed);
   for (const node of ir.command?.nodes ?? []) rewriteNode(node, ctx, ed);
   if (ed.failed) return { status: "unsupported", issues: ed.issues };
-  let command = ed.result();
+  let command = ed.result().slice(start);
   if (command.startsWith("/")) command = command.slice(1);
   return { status: ed.changed ? "rewritten" : "unchanged", command, issues: ed.issues };
 }

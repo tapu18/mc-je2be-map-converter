@@ -3,11 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import AdmZip from "adm-zip";
-import { deserializeCommandIR, writeNbt, type NbtTag } from "@je2be/core";
+import { deserializeCommandIR, MappingLookup, writeNbt, type NbtTag } from "@je2be/core";
 import { expect, it, vi } from "vitest";
 import { collectDatapacks } from "./datapacks.ts";
 
 vi.mock("./java-grammars.ts", () => ({
+  fixedJavaDataVersion: 1,
   loadJavaGrammars: () => [
     { version: "test", dataVersion: 1, packFormat: 42, textFormat: "json", source: { functionDirectory: "function" } },
     { version: "1.20.4", dataVersion: 3700, packFormat: 26, textFormat: "json", source: { functionDirectory: "functions" } },
@@ -46,6 +47,10 @@ it("collects enabled folder and zip functions and tags in saved order and report
     expect(result.packs[0]!.tags["minecraft:load"]).toEqual({ values: ["demo:a"] });
     expect(result.packs[1]!.tags["minecraft:tick"]).toEqual({ replace: true, values: ["demo:b"] });
     expect(deserializeCommandIR(result.packs[0]!.functions["demo:a"]![0]!)).toMatchObject({ ok: true, document: { grammarVersion: "test", ir: { source: "say" } } });
+    const blocksJson = join(world, "blocks.json");
+    writeFileSync(blocksJson, "{}");
+    const mappings = new MappingLookup({schemaVersion: 1, source: {repository: "", revision: "", javaVersion: "", bedrockVersion: "", sha256: {}}, blocks: [], items: []});
+    expect(collectDatapacks(world, {mappings, blocksJson}).nativeCommands).toEqual([["say", "say"]]);
     writeFileSync(join(folder, "pack.mcmeta"), JSON.stringify({ pack: { pack_format: 999 } }));
     const unknown = collectDatapacks(world);
     expect(unknown.packs[0]!.functions).toEqual({});
