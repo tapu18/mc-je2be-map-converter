@@ -2,6 +2,14 @@
   "$comment": "#58 / #70: 対象安定版の文法検証用。BDSの固定版 tools/servers.json とは別枠。Mojang公式マニフェストから2026-11-16に取得。",
   "versions": [
     {
+      "version": "1.20.4",
+      "url": "https://piston-data.mojang.com/v1/objects/8dd1a28015f51b1803213892b50b7b4fc76e594d/server.jar",
+      "sha1": "8dd1a28015f51b1803213892b50b7b4fc76e594d",
+      "metadataUrl": "https://piston-meta.mojang.com/v1/packages/4d0b218aac37f052c75d0a5edac9ae9d09674a5d/1.20.4.json",
+      "metadataSha1": "4d0b218aac37f052c75d0a5edac9ae9d09674a5d",
+      "functionDirectory": "functions"
+    },
+    {
       "version": "1.20.5",
       "url": "https://piston-data.mojang.com/v1/objects/79493072f65e17243fd36a699c9a96b4381feb91/server.jar",
       "sha1": "79493072f65e17243fd36a699c9a96b4381feb91",

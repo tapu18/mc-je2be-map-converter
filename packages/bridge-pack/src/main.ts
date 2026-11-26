@@ -1,7 +1,7 @@
 // BDSの検証用パック。
 // ブリッジがサーバーコンソールから `scriptevent je2be:req <JSON>` を送り、
 // このパックが処理して `JE2BE_RES <JSON>` をコンソールに出力する。
-import { system, world, type Dimension, type Vector3 } from "@minecraft/server";
+import { EffectTypes, system, world, type Dimension, type Vector3 } from "@minecraft/server";
 
 interface Request {
   id: number;
@@ -66,6 +66,24 @@ const handlers: Record<string, Handler> = {
           out.push(b ? { pos: [x, y, z], type: b.typeId, states: b.permutation.getAllStates() } : { pos: [x, y, z], type: null });
         }
     return out;
+  },
+
+  effectTypes: () => EffectTypes.getAll().map((type) => type.getName()).sort(),
+
+  blockWaterlogged: (req) => dim(req).getBlock(vec(req.pos))?.isWaterlogged,
+
+  entityEffects: (req) => {
+    const probes = req.probes as Record<string, Record<string, string>>;
+    const dimension = dim(req);
+    return Object.fromEntries(Object.entries(probes).map(([tag, ids]) => {
+      const entities = dimension.getEntities({ tags: [tag] });
+      if (entities.length !== 1) throw new Error(`Expected one entity tagged ${tag}, got ${entities.length}`);
+      return [tag, Object.fromEntries(Object.entries(ids).map(([key, id]) => {
+        const type = EffectTypes.get(id);
+        const effect = type && entities[0]!.getEffect(type);
+        return [key, effect ? { amplifier: effect.amplifier, duration: effect.duration } : null];
+      }))];
+    }));
   },
 
   entities: (req) => {

@@ -1,7 +1,7 @@
 // 引数の型（commands.json の parser）ごとの読み取り。
 // 文法の木（どの引数がどこに来るか）は Java 版サーバーのデータ生成の commands.json から取り、
 // 個々の引数の中身の書き方はここで実装する。レジストリ（ID が実在するか）は確かめない。
-import type { NbtTag } from "../nbt/nbt.ts";
+import type { NbtCompound, NbtTag } from "../nbt/nbt.ts";
 import { StringReader } from "./reader.ts";
 import { readSnbtCompound, readSnbtValue, uuidToInts } from "./snbt.ts";
 
@@ -10,6 +10,8 @@ export type TextFormat = "json" | "snbt";
 export interface ArgumentOptions {
   /** テキスト（minecraft:component）の書き方。1.21.5 より前は JSON、以降は SNBT */
   textFormat: TextFormat;
+  /** 文法を生成した Java リリース。省略時は現行のアイテム引数を読む。 */
+  version?: string;
 }
 
 export interface Coordinate {
@@ -75,8 +77,8 @@ export type ArgumentValue =
   | { kind: "name"; value: string }
   | { kind: "coordinates"; coordinates: Coordinate[] }
   | { kind: "block"; id: string; tag: boolean; states: Record<string, string>; nbt?: NbtTag }
-  | { kind: "item"; id: string; tag: boolean; components: ItemComponent[] }
-  | { kind: "itemPredicate"; id: string; tag: boolean; alternatives: ItemPredicateTest[][] }
+  | { kind: "item"; id: string; tag: boolean; components: ItemComponent[]; legacyTag?: NbtCompound }
+  | { kind: "itemPredicate"; id: string; tag: boolean; alternatives: ItemPredicateTest[][]; legacyTag?: NbtCompound }
   | { kind: "nbt"; value: NbtTag }
   | { kind: "nbtPath"; path: NbtPathNode[] }
   | { kind: "text"; format: TextFormat; value: NbtTag }
@@ -193,14 +195,14 @@ function readSelectorValue(r: StringReader, key: string): SelectorValue {
       return { kind: "nbt", value: readSnbtCompound(r) };
     case "scores": {
       r.expect("{");
-      const scores: Record<string, Range> = {};
+      const scores = new Map<string, Range>();
       r.skipWhitespace();
       while (r.canRead() && r.peek() !== "}") {
         const name = r.readUnquotedString();
         r.skipWhitespace();
         r.expect("=");
         r.skipWhitespace();
-        scores[name] = readRange(r, true);
+        scores.set(name, readRange(r, true));
         r.skipWhitespace();
         if (r.peek() === ",") {
           r.skip();
@@ -208,7 +210,7 @@ function readSelectorValue(r: StringReader, key: string): SelectorValue {
         }
       }
       r.expect("}");
-      return { kind: "scores", scores };
+      return { kind: "scores", scores: Object.fromEntries(scores) };
     }
     case "advancements": {
       r.expect("{");
@@ -382,9 +384,12 @@ function readBlock(r: StringReader, allowTag: boolean): ArgumentValue {
   return value;
 }
 
-function readItemStack(r: StringReader): ArgumentValue {
+const readItemStack: ArgumentParser = (r, _properties, options) => {
   const id = readResourceLocation(r);
   const components: ItemComponent[] = [];
+  if (options.version === "1.20.4") {
+    return { kind: "item", id, tag: false, components, ...(r.peek() === "{" ? { legacyTag: readSnbtCompound(r) } : {}) };
+  }
   if (r.peek() === "[") {
     r.skip();
     r.skipWhitespace();
@@ -407,11 +412,13 @@ function readItemStack(r: StringReader): ArgumentValue {
     }
     r.expect("]");
   }
-  // 1.20.5 より前の書き方（`id{NBT}`）は、26.3 の Java も読めない（実測、#13）。後ろの '{' は余分な文字として失敗させる
   return { kind: "item", id, tag: false, components };
-}
+};
 
-function readItemPredicate(r: StringReader): ArgumentValue {
+const readItemPredicate: ArgumentParser = (r, _properties, options) => {
+  if (options.version === "1.20.4") {
+    return { kind: "itemPredicate", ...readTagOrId(r), alternatives: [], ...(r.peek() === "{" ? { legacyTag: readSnbtCompound(r) } : {}) };
+  }
   let id = "*";
   let tag = false;
   if (r.peek() === "*") r.skip();
@@ -450,7 +457,7 @@ function readItemPredicate(r: StringReader): ArgumentValue {
     alternatives.push(group);
   }
   return { kind: "itemPredicate", id, tag, alternatives };
-}
+};
 
 // ---- 引数の型の一覧 ----
 
@@ -682,7 +689,8 @@ export const ARGUMENT_PARSERS: Record<string, ArgumentParser> = {
     const unit = r.peek();
     const scale = unit === "d" ? 24000 : unit === "s" ? 20 : 1;
     if (unit === "d" || unit === "s" || unit === "t") r.skip();
-    const ticks = Math.round(n * scale);
+    // TimeArgument scales a Java float and rounds it to a signed int.
+    const ticks = Math.max(-2_147_483_648, Math.min(2_147_483_647, Math.round(Math.fround(Math.fround(n) * scale)))) || 0;
     checkBounds(r, start, ticks, p);
     return { kind: "time", ticks };
   },

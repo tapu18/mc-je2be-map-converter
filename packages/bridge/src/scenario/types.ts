@@ -39,6 +39,8 @@ export interface Observe {
   /** タグで選んだ各エンティティの名前・座標と、指定した目的変数のスコアも比べる */
   entityDetails?: boolean;
   entityScores?: string[];
+  /** 一意に付けたエンティティタグ → 観測する Java の効果 ID */
+  entityEffects?: Record<string, string[]>;
 }
 
 export interface EditionSteps {
@@ -71,6 +73,8 @@ export interface Scenario {
   play?: Action[];
   /** BE で実行する内容を変える場合（変換器ができるまでの手書きの対応）。省略時は同じものを実行する */
   bedrock?: EditionSteps;
+  /** 変換済みランタイムを起動し、指定 tick の確定世代を観測する */
+  bedrockRuntime?: "load-tick";
   /** BE の比較を実行できない理由。テストではスキップになる */
   bedrockPending?: string;
   /** 既知の差分（調査済みのもの）。パスごとに理由を書く。ここにない差分はテストの失敗になる */
@@ -78,6 +82,15 @@ export interface Scenario {
   /** 製品の受け入れ確認で必須の正規化パス。scores.t / blocks / entities 等。playでは必須 */
   requiredObservations?: string[];
 }
+
+export interface ObservedEffect {
+  amplifier: number;
+  /** 残り tick。-1 は無期限 */
+  duration: number;
+}
+
+/** 一意なタグ → Java の効果 ID → 状態。効果がないときは null */
+export type ObservedEffects = Record<string, Record<string, ObservedEffect | null>>;
 
 /** 両エディションの結果をそろえた形。比較はこの形どうしで行う */
 export interface NormalizedState {
@@ -88,6 +101,7 @@ export interface NormalizedState {
   blocks?: Record<string, string | { unmapped: string }>;
   /** "種類 タグ1,タグ2" → 数 */
   entities?: Record<string, number>;
+  entityEffects?: ObservedEffects;
   entityDetails?: Record<string, { name: string; block: Vec3; scores: Record<string, number> }[]>;
 }
 

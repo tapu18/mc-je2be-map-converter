@@ -151,6 +151,17 @@ BDS 1.26.66.1 でも `poc/mcstructure-version/version.servers.test.ts` が成功
 | BDS は `gamemode spectator @a`、`time query time`、`time add`、`weather rain 100`、`difficulty normal` を受理した。`weather rain 100` の直後に保存したワールドには、経過した19 tick を引いた `rainTime=81` が記録された | 同テストの変換出力と BDS の `level.dat` の読み戻し |
 | Java 1.20.5 が保存したコマンドブロックの旧 `time set noon`、`gamerule keepInventory`、`belowName`、JSON のスラッシュエスケープ、ボートのセレクタを、DataVersion 3837 の文法で読み、出力を BDS が受理した | 同ファイルの `rewrites command blocks saved by Java 1.20.5 with that world's grammar` |
 
+### ゲームルールの設定と照会（#318）
+
+| 事実 | 根拠 |
+| --- | --- |
+| Java の `gamerule` の固定文法では、1.21.10 は旧名、26.3 は名前空間付きと省略形の両方を受理する。対応表の真偽値・整数の型は、両版の `commands.json` の引数型に一致した | `packages/bridge/src/game-rule.servers.test.ts` の `matches the Java 1.21.10 and 26.3 names and value types` |
+| BDS 1.26.66.1 は対応する真偽値・整数を、Java の旧名と 26.3 の名前空間付き ID から変換して設定できた。各設定の直後に `gamerule <名前>` で照会し、設定値を確認した | 同ファイルの `sets and reads back each supported boolean and integer from both Java name forms` |
+| BDS 1.26.66.1 の `randomTickSpeed` は 0〜4096、`spawnRadius` は 0〜128。上限値を設定して読み返した。下限の直前と上限の直後は成功件数 0 だった | 同ファイルの `reports missing rules, mismatched rules and values outside the Bedrock range` |
+| BDS 1.26.66.1 は `gamerule playerWaypoints off\|everyone` で設定でき、`gamerule` 一覧で読み返せる。値を省いた `gamerule playerWaypoints` は構文エラーになった | 同ファイルの `translates the locator toggle and reports the unavailable named query` |
+
+BDS 1.26.66.1 で `gamerule playerWaypoints` の設定を含む関数を読み込むと、パックの `min_engine_version` が 1.21.0 の場合は構文エラー、変換器の出力と同じ 1.26.60 の場合は受理された。監査用パックを 1.26.60 に揃えた後、対象 288 形・330 候補はすべて読み込みエラーなしだった。旧版の監査で拒否された `time query time` も受理された。根拠は `packages/bridge/src/shape-bedrock-audit.servers.test.ts` と下記の #112 の再生成コマンド。
+
 ### 音と粒子のコマンド（#90）
 
 | 事実 | 根拠 |
@@ -240,6 +251,7 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 | --- | --- | --- |
 | 関数の戻り値とタグ | `return run function` で内側の戻り値 7 と成功値 1 が得られた。`return fail` の結果値と成功値はともに 0。各 return より後の行は実行されなかった。スコア条件を満たして呼んだ関数タグは記載順に実行された | [calls.java.json](../scenarios/datapack/calls.java.json) |
 | 複数の実行者 | 距離の異なる marker 3体で、`execute as` から呼んだ関数が `sort=nearest` で 1, 2, 3、`sort=furthest` で 3, 2, 1 の順に実行された | [calls.java.json](../scenarios/datapack/calls.java.json) |
+| `@e` の既定順（#232） | 同じチャンク内で召喚コマンドの X 座標を 13, 9, 11 と指定した marker 3体で、`execute as @e[type=marker,tag=worker]` は召喚順の 1, 2, 3 で関数を実行した。保存とサーバー再起動を挟んだシナリオでも同じ順だった | [execute-order.java.json](../scenarios/datapack/execute-order.java.json)、[execute-order-reload.java.json](../scenarios/datapack/execute-order-reload.java.json) |
 | スコアの演算 | `operation` の全9演算子を記録した。負数を含む除算では −7 / 2 と 7 / −2 がともに −4、剰余はそれぞれ 1 と −1。最大の int に `+= 1` すると −2147483648 になった | [score-operations.java.json](../scenarios/datapack/score-operations.java.json) |
 | storage とマクロ | `merge` は入れ子の既存キーを残し、指定したキーを更新・追加した。スコアを storage に保存し、2組の引数でマクロを呼ぶと、それぞれの名前に対応するスコア −7 と 12 が付いた | [storage-macro.java.json](../scenarios/datapack/storage-macro.java.json) |
 | 予約実行 | `append` の2件は予約から 2、4 tick 後に動いた。`replace` を使った関数は古い予約の 2 tick 後には動かず、5 tick 後に1回動いた。`clear` で取り消した 3、6 tick 後の2件は、7 tick 後まで記録されなかった | [schedule.java.json](../scenarios/datapack/schedule.java.json) |
@@ -253,11 +265,17 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 
 Java 26.3 の [schedule-restart](../scenarios/datapack/schedule-restart.json) では、100 tick 後の関数を予約して 30 tick 進め、保存・停止して同じワールドを再起動した。再起動直後とさらに 50 tick 後は未実行、100 tick 後には実行済みだった（[記録](../scenarios/datapack/schedule-restart.java.json)）。予約時と関数の実行時のゲーム内時刻の差は 100 tick だった。したがって、この実験では停止前に進めた 30 tick を含め、予定は予約時からのゲーム内 tick を維持していた。再起動直後の残り時間は 50 tick より長く 100 tick 以下だった。起動中にも tick が進むため、再起動直後の正確な残り tick 数や長期停止中の実時間の影響はこの実験では測っていない。
 
+#101 の Java 26.3 RCON 確認では、`tick freeze` 中に同じ関数を同じ期限に 2 回 `append` しても実行は 1 回だった。同じ ID の関数とタグは両方実行され、`schedule clear #probe:a` は構文エラーだった。1 tick 後に予約済みの関数をモード省略で 2 tick 後に予約し直すと、1 tick 後の実行は消えた。同じ tick の先頭の関数から `schedule clear` すると、その tick で後に登録した対象の実行も消えた。`0t` は実行時に拒否され、`0.0249999999s` と `2147483648t` はそれぞれ 1、2,147,483,647 tick として予約された。ゲーム内時刻 10 のときに 2 tick 後を予約し、`execute store result` で取得した値は 12 だった。Node 側の回帰確認は [schedule.data.test.ts](../packages/runtime-host/src/schedule.data.test.ts) にある。
+
 ## execute の追加修飾句（#134）
 
 Java 26.3 の [execute-extra](../scenarios/datapack/execute-extra.json) で観測した（[正解データ](../scenarios/datapack/execute-extra.java.json)）。負座標の `align xyz` は [-2, -60, 8]、`align xz` は [-2, -59.3, 8] になった。防具立てへの `facing entity` は feet と eyes で pitch が異なり、`rotated as` は対象の [90, 30]、`positioned as` は対象の位置を得た。
 
 石・水・葉を積んだ列で `positioned over` の高さは world_surface と motion_blocking が 73、motion_blocking_no_leaves が 72、ocean_floor が 73 だった。この配置に限る観測である。`if blocks` は一致した2ブロックで all・masked とも結果 2、空気を含む範囲では masked が対応先の非空気を無視した。不一致、読み込み外チャンク、ディメンションの条件も同シナリオに記録した。
+
+#233 の Java 26.3 RCON 確認では、空気同士の1ブロックを比較した `execute if blocks 16 70 16 16 70 16 17 70 16 masked` は成功して結果 0 を返し、`store success` で 1 を記録した。`unless blocks` は失敗し、`store result` の後にこの条件と `run` を続けると後続コマンドは実行されずスコアも作られなかった。`if loaded` は同じチャンクの Y=500 と Y=-100 の両方で成功した。未ロードの座標を使った `positioned over` と `unless blocks` は `That position is not loaded` を返し、終端の `if blocks` が同じエラーを返したときは `store result` で 0 が記録された。
+
+終端の `if blocks` を marker 2 体で分岐させ、手前の marker の上だけに比較先と同じブロックを置いた。同じ保持者への `store result score` は `sort=nearest` で最終値 0、`sort=furthest` で最終値 1 になった。Node の照合と回帰確認は [runtime-context-ir.data.test.ts](../packages/bridge/src/runtime-context-ir.data.test.ts) にある。
 
 ### スコア保持者とゼロ除算（#140）
 
@@ -314,7 +332,7 @@ python3 -I scripts/dump_commands.py /home/tapukoko/code/mc-je2be-map-converter/s
 node tools/probe-macro-corpus.ts /tmp/issue155-commands.jsonl servers/reports-26.3/reports/commands.json
 ```
 
-同環境で Java 26.3 の `commands.json` は 583,592 bytes、`servers/mappings/mappings.json` は 10,357,025 bytes（`wc -c`）。これは元データのサイズであり、実際に同梱が必要な範囲や起動時メモリの測定ではない。
+同環境で Java 26.3 の `commands.json` は 583,592 bytes、`servers/mappings/mappings.json` は 10,357,025 bytes（`wc -c`）。`commands.json` を `gzip -n -c` で圧縮すると 19,663 bytes（2026-11-25、#240）。これはデータのサイズであり、実際に同梱が必要な範囲や起動時メモリの測定ではない。
 
 ### コマンド形の候補（#112）
 
@@ -325,6 +343,14 @@ BDS 1.26.63.1 の使い捨てワールドで、Java が受理した候補のう�
 ### Java 1.20.4 ワールドの更新（#145）
 
 合成した 1.20.4 ワールドを Java 26.3 で開いた実サーバーテストでは、コマンドブロックの `Command` と関数ファイルの文字列が保存され、チェスト内アイテムの `CustomModelData` は `minecraft:custom_model_data` に移った。防具立ての `CustomName` の内容も残った。対象はテスト内の各1例である。根拠は `packages/bridge/src/upgrade-1204.servers.test.ts`（3回成功）、再現方法と文法・コーパスの調査は `docs/research-1204.md`。
+
+### Java 1.20.4 と 1.20.5 のアイテムコマンド（#308）
+
+両版でチェストに独自 NBT を持つ石を `item replace` で入れ、1.20.4 の `Items[{Slot:0b}].tag.foo` と
+1.20.5 の `Items[{Slot:0b}].components."minecraft:custom_data".foo` が同じ byte 値 `1b` を返した。
+1.20.5 の `custom_data~{foo:1b}` は別のキーも持つその石に一致した。テキスト表示エンティティの NBT を
+`data get entity` で読むと、両版の `show_item` の JSON にカスタムキー `foo` が残った。
+根拠は `packages/bridge/src/versioned-grammar-item-components.servers.test.ts`。
 
 ### Actions の定期実行（#222）
 
@@ -354,7 +380,7 @@ BDS 1.26.63.1 の使い捨てワールドで、合成コマンドを 1 行ずつ
 
 Java 26.3 の #112 監査結果を入力とすると、1,424 形・1,520 候補のうち Java 受理かつ rewritten / unchanged の 180 形・222 候補を検査し、221 件は読み込みエラーなし、1 件はエラーだった。`time query time` は Java 受理・unchanged だが BDS 関数読み込みでは `time` 引数が構文エラーだった。残る 1,244 形・1,298 候補は Java 不受理または unsupported のため BDS 未検査。形ごとの候補数・未検査数と各候補の結果は `node tools/shape-java-audit.ts /tmp/java.json && node tools/shape-bedrock-audit.ts /tmp/java.json /tmp/bedrock.json` で再生成できる。合成入力のみを使用する。
 
-ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。既知の不一致の修正は別途必要。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。
+ローカルで実サーバーテストを 3 回実行した所要時間は 14.23、14.19、13.88 秒（Java の監査生成を含む）。CI では bridge 実サーバージョブに対照と全対象候補の読み込みを追加し、既知の `time query time` の不一致を明示して他の読み込みエラーを回帰として検出する。後続の #318 では、監査パックのエンジン版を変換器に揃えると、この不一致が解消した。読み込みエラーの有無と Java の受理を比較するもので、候補生成の網羅性や実行結果を保証しない。
 
 ### 中核を束ねた BDS パックの起動（#217）
 
@@ -386,6 +412,8 @@ Java 26.3 で複数の名前空間に compound、long 最大値と long 配列�
 
 Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、同一の `score-selector-conditions.java.json` を得た。4体の marker のうち値 1・3・5 の3体にスコアを設定すると、`..3` は2体、`5..`・`2..4`・完全一致 3 は各1体、2目的の条件も1体に一致した。未設定の1体は全域指定にも一致しなかった。3体への `remove 2` は -1・1・3、最小値からの `remove 1` は 2147483647 になった。チーム条件と `unless` の結果も同じ記録にある。プレイヤーは接続していないため、`@a` と `gamemode` の観測は空集合に限る。
 
+#262 で Java 26.3 の同シナリオを再実行し、Node のフェイクホストでも全観測値が正解データと一致した。Java の追加 RCON 検証では、`scores={__proto__=-2147483648}` で選んだ2体に `scoreboard players remove … __proto__ 1` を実行すると、各スコアは 2147483647、`execute store result` が保存した合計は -2 になった。`unless score` は存在する objective の未設定スコアでは成立し、存在しない objective ではエラーになった。根拠は [正解データ](../scenarios/datapack/score-selector-conditions.java.json) と [Node の照合テスト](../packages/bridge/src/runtime-context-ir.data.test.ts)。
+
 ### CI schedule の実行履歴（#241）
 
 2026-11-24 の調査時点で `gh run list --workflow ci.yml --event schedule --limit 100` に表示された実行は [run 45323204840](https://github.com/tapu18/mc-je2be-map-converter/actions/runs/45323204840) のみだった。UTC 11月24日 03:59:11 に作成・開始され、04:10:38 に成功した。`check` と `servers / result` も成功した。CI の cron は `23 18 * * *` で、直前の予定は 11月23日 18:23 UTC。予定との対応は履歴から直接確認できない。11月22日 18:23 UTC の予定に対応すると特定できる実行は見つからなかった。
@@ -394,4 +422,125 @@ Java 26.3 の `scenarios/datapack/score-selector-conditions` を3回記録し、
 
 `packages/runtime-host/src/host.servers.test.ts`（BDS 1.26.66.1）では、現行 `executeCommand` の objective 追加、`scoreboard players set alice test 42`、保持者と objective の削除を Script API へ投影し、3回連続で値と結果を確認した。同テストで既存 objective との衝突による投影失敗と以降の実行停止、ブロックの読み書き・未ロード・範囲外・不正 ID、候補とエンティティ取得、ネイティブ命令、動的プロパティを確認した。削除済みの文字列保持者を `getScore` で読むと例外となったため、削除は参加者一覧で検証した。候補の完全性は検証しておらず、ホストは常に不完全と返す。
 
-- BDS 1.26.66.1 で、変換データ相当の関数 IR を起動時に読み込む試作は、`minecraft:load` のスコア設定と `minecraft:tick` の加算を投影し、再起動時には未実装の状態復元を理由に起動を拒否した。`packages/runtime-host/src/startup.servers.test.ts` を3回実行して確認。これはキュー・schedule や `scenarios/datapack/load-tick.json` の一致を確認したものではない（#235）。
+### 関数からのネイティブ委譲（#309）
+
+`packages/runtime-host/src/host.servers.test.ts` は BDS 1.26.66.1 の独立したワールド 3 回で、関数内の `execute as … at @s` を経由した `setblock` が試験プレイヤーからの相対位置に石を配置することを確認した。委譲直前の BE スコアは `setblock` で 41、続く `score` 成分付き `tellraw @s` で 42 だった。後者は試験プレイヤー 1 人への成功件数を観測した。クライアントの描画結果は観測していない。
+
+同テストでは、`-0.0000001` を位置と向きに含むコンテキストでも生成パックからの委譲が成功した。BDS 1.26.66.1 の別のコンソール試行では、`execute positioned -1e-7 -59 0 run say precision` が構文エラーになった。
+
+### worldborder の時間指定（#199）
+
+`packages/bridge/src/worldborder-normalize.servers.test.ts` で Java 1.21.10 の `7` と 1.21.11 の `7s` を比較した。固定した境界から `add`、`set`、`warning time` を個別に実行すると、応答に示される時間はどちらも 7 秒だった（3回実行）。進行中の境界の操作全般は未検証。
+
+#302 で同テストに極端な `warning time` を追加した。Java 1.21.10 の `2147483647` では応答に 2147483647 秒、1.21.11 の `2147483647s` では 107374182.35 秒が表示された。
+
+### time set の固定時刻名（#199）
+
+`packages/bridge/src/time-marker-normalize.servers.test.ts` は Java 1.21.11 と 26.1 で tick を止め、`time set day/noon/night/midnight` 後の保存値を調べた。旧版の `level.dat` の `DayTime` と新版の `world_clocks.dat` の overworld `total_ticks` を 24000 で割った余りは、両版とも順に 1000・6000・13000・18000 だった（3回実行、既定データパック）。
+
+### 確定世代の再起動（#303）
+
+`packages/runtime-host/src/persistence.servers.test.ts` は BDS 1.26.66.1 で、通常のランタイム起動後にセッションのコマンドでスコアと storage を変更し、tick 境界で確定して正常停止したワールドを再起動した。両方の復元と BE スコアへの投影は独立したワールドで 3 回成功した。`packages/bridge/src/output-world.servers.test.ts` では BE コマンドによるスコア変更も正常停止・再起動後に残り、修正後に3回成功した。強制終了、部分書き込み、容量不足はこれらのテストでは検証していない。
+
+### Java 1.20.4 の文法（#191）
+
+固定した公式サーバーから生成した文法の版情報は DataVersion 3700、データパック形式 26 だった。`packages/bridge/src/versioned-grammar.servers.test.ts` で JSON テキスト、ゲームルール、チーム色、座標など14例の受理・不受理を生成文法のパーサと Java 1.20.4 で比較し、3回一致した。旧アイテムや particle の網羅的な対応を示すものではない。
+
+## 実行コンテキストの正解照合（#231）
+
+Java 26.3 の実サーバーで `execute-context`、`execute-anchor`、`execute-dimension`、`calls` の記録を再検証し、フェイクホストでも4本の正規化済み観測値が一致した。`calls` では、関数内の `@s` から読み出したスコアが近い順に `1, 2, 3`、遠い順に `3, 2, 1` になった。根拠は `packages/bridge/src/scenario/scenarios.servers.test.ts`、`packages/bridge/src/runtime-context-ir.data.test.ts`、`scenarios/datapack/calls.java.json`。
+
+## attribute modifier とスポーン回転の版差（#301）
+
+`packages/bridge/src/versioned-grammar-spawn-attribute.servers.test.ts` で、Java 1.20.6 の UUID と 1.21 の `minecraft:<uuid>` を使って同じカスタム modifier を操作し、3種類の演算で取得値・適用後の属性値・削除後の属性値が一致した。速度効果の組み込み modifier も、旧 UUID と新 ID `minecraft:effect.speed` で同じ値を取得できた。
+
+同テストで、実行元の yaw が 20、pitch が 40 のとき、Java 1.21.8 の `setworldspawn 2 64 3 ~15` と 1.21.9 の `setworldspawn 2 64 3 ~15 0` はともに座標 `[2, 64, 3]` と yaw 35 を保存し、1.21.9 の pitch は 0 だった。`spawnpoint` の両版の構文も Java が受理した。プレイヤー不在のため、個人のスポーン地点の保存は測定していない。
+
+## 変換時の版境界の連結（#302）
+
+`packages/bridge/src/datapack-convert.servers.test.ts` では、Java 1.20.5、1.21.1、26.2 で保存したワールドを変換した。生成した `datapacks.js` に含まれる固定時刻指定、`execute if items` と時刻指定の組み合わせ、`data modify block` の IR はそれぞれ 26.3 の生成文法でパースした IR と一致した。名前空間を省いた `schedule clear` を含む関数は、変換レポートにパック名・ファイル名・行番号付きの診断が出て、関数ごと出力から省かれた。
+
+`packages/bridge/src/rewrite.servers.test.ts` では、Java 1.20.5 で保存した `time set noon` のコマンドブロックが `time set 6000` に書き換わり、BDS が受理した。同じワールドの名前空間を省いた `schedule clear` と極端な `worldborder warning time` は、コマンドブロックの位置付きで診断された。
+
+## 地形とコマンドのブロック状態の対応差（#111）
+
+Java 26.3 の `blocks.json` が列挙する 1,286 ID・35,723 状態を測った。Geyser の固定表（`e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`、BE 1.26.60）とは Java 側のキーが重複・欠落なしで一致した。Java 26.3 の保存形式で全状態を 70 チャンクの合成ワールドに置き、ファイルを開き直して全座標の状態を照合した。状態の間には空気を挟み、ゲーム内の tick を経由せずに Chunker 1.21.0 で `BEDROCK_R26_60` へ変換した。変換後の LevelDB を開き、全チャンクの目印と空気の対照セルを確認してから、各座標の全層を読んだ。
+
+| BE 出力の比較 | Java 状態数 |
+| --- | ---: |
+| 主層が一致し、副層に非空気ブロックなし | 21,734 |
+| 主層だけに差 | 632 |
+| 副層だけに差 | 13,054 |
+| 主層と副層の両方に差 | 303 |
+| 合計 | 35,723 |
+
+主層に差がある 935 状態のうち、47 状態は ID が異なり、888 状態は同じ ID で型付きプロパティが異なった。副層に非空気ブロックがある 13,357 状態ではすべて `minecraft:water[liquid_depth=0]` を読んだ。このうち 13,325 状態に Java の `waterlogged=true` があった。比較した Geyser 表の行は単一の BE ブロック状態を持つ。たとえば `beetroots[age=1]` の主層は Chunker が `minecraft:beetroot[growth=2]`、Geyser 表が `minecraft:beetroot[growth=3]`。BDS 1.26.66.1 で合成ワールドを開き、現行の書き換えが出力する `execute if block 61 67 15 minecraft:beetroot ["growth"=3] run say match` は成功数 0、同じ座標で `growth=2` を指定すると成功数 1 だった。ほかの状態の差は変換直後の保存値の比較で、コマンドの実行はこの例で測った。
+
+### 配布マップでの頻度
+
+差があった全 13,989 状態と、各状態の保存セル数・出現 ZIP 数は [差分一覧（TSV）](research/block-state-differences.tsv) に記録した。BE の文字列プロパティは引用符付き。副層が空欄の場合は、そのセルに非空気ブロックがなかった。
+
+配布 ZIP 19 本に含まれる保存ワールド 18 件の全ディメンションから 483 region・265,760 チャンクを読んだ。パレットの添字を数えると 25,950,519,296 セル（空気を含む）で、そのうち 25,950,516,648 セルの ID とプロパティが 26.3 の状態表と完全一致した。26.x の文字列で保存された既定状態は 26.3 の既定値で補った。旧版の状態の改名や DataFixer による更新、コマンドの参照回数やプレイ中の変化は集計対象外。
+
+| BE 出力の比較 | コーパスで出現した Java 状態数 | 保存セル数 |
+| --- | ---: | ---: |
+| 主層だけに差 | 110 | 518,777 |
+| 副層だけに差 | 341 | 12,263 |
+| 主層と副層の両方に差 | 1 | 757 |
+| 合計 | 452 | 531,797 |
+
+主層に差のあるセルは 519,534 個で、Java ID 別の上位は `brown_mushroom_block`（450,290）、`water`（52,681）、`lava`（11,770）。ビートルートの再現例と同じ `beetroots[age=1]` は 1 ZIP で 1 セル見つかった。
+
+### 再現
+
+`npm run setup:servers` と `npm run setup:mappings` を済ませ、Java 26.3 が生成した `level.dat` と Java ソースを起動できる JDK（実測は 21）を用意する。検証用の `level.dat` は、たとえば `npm run test:servers -- packages/bridge/src/playtest.servers.test.ts` で作成される `servers/java-26.3/je2be-test/level.dat` を使える。
+
+```sh
+scratch=$(mktemp -d)
+node tools/block-state-audit/measure.ts "$scratch/run" servers/java-26.3/je2be-test/level.dat
+python3 -I tools/block-state-audit/corpus.py /path/to/sample-map "$scratch/run/comparison.json" \
+  servers/reports-26.3/reports/blocks.json "$scratch/differences.tsv"
+```
+
+BDS の照合には `BedrockServer.start({ world: "<scratch>/run/bedrock", tickingArea: [48, 0, 63, 15] })` を使い、上記の 2 コマンドを `exec` で実行した。関連する `playtest.servers.test.ts` と `rewrite.servers.test.ts` は計 11 件成功。対応策の検証は #323。
+
+### 地形とコマンドのブロック状態を揃える（#323）
+
+対象は #111 と同じ Java 26.3 の状態表、Chunker 1.21.0 の `BEDROCK_R26_60` 出力、Geyser 表 `e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`。出典は [#111 の差分一覧](research/block-state-differences.tsv)。集計は保存セル数で、コマンド内の参照回数を表さない。
+
+| 採用した Java ID | 主層差のある状態数 | 出現した保存セル数 | 採用理由 |
+| --- | ---: | ---: | --- |
+| `beetroots` | 1 | 1 | BDS で条件照合の失敗を再現した |
+| `brown_mushroom_block` | 28 | 450,290 | コーパスの主層差で最多。多対一の検証に使った |
+
+補正後、ビートルートの 4 状態は 4 つの主層の状態に対応する。茶色のキノコブロックの 64 状態は 11 の主層の状態に集約され、`huge_mushroom_bits=14` には 26 状態が対応する。#111 の Chunker 主層全件を逆引きすると、この 2 種の BE ID に落ちる別の Java ID はなかった。
+
+補正した主層はワールド変換時の配置と条件で共有する。条件を満たす状態と満たさない状態を BE の条件 1 個で区別できないときは、`if` と `unless` のどちらも理由付きで未対応になる。水没を指定して配置する場合は、副層に水が入らない旨が警告される。表の適用は JAR、出力形式、対応表のリビジョンと入力のハッシュがこの計測条件に一致する場合に限る。版の更新時は #111 の手順で再計測し、BDS で再検証する。残りの主層差 906 状態には従来の表を使う。水・溶岩の 64,451 セルは #340 で追跡する。
+
+[実サーバーテスト](../packages/bridge/src/chunker-block-mappings.servers.test.ts) では、Java が保存したワールドを Chunker で変換し、書き換えレポートのコマンドを BDS 1.26.66.1 で実行した。地形と `setblock`・`fill` の全配置セルで `beetroots[age=1]` の条件が成立し、`age=2` の対照セルでは `unless` の側だけが実行された。状態指定を省くと両方の齢が一致した。後続のスコア加算回数も条件ごとの成功件数と一致した。茶色のキノコブロックの Java 2 状態は、地形とコマンド配置の両方で `huge_mushroom_bits=14` に一致した。ID のみの条件は使え、同じ主層になる状態を区別しようとする条件は診断された。
+
+同じテストで、Chunker が変換した上付きオークハーフブロックの乾いたセルと水没したセルは、向きだけを指定した条件では両方とも一致した。検証パックの `Block.isWaterlogged` では両セルを区別できた。どちらのセルでも `execute if block … minecraft:water` は成立しなかった。水没を指定した書き換え後の `setblock` で置いたブロックを同じ API で見ると乾いていた。
+
+### マクロの引数を渡す経路（#316）
+
+Java 26.3 の実サーバーで `macro-arguments`・`storage-macro` の記録を再現した（`scenarios.servers.test.ts`）。直接渡した double は型接尾辞なしの文字列に展開され、空白を含む文字列は引用符内の値として保持された。entity のパスから取得した値と block entity のルートから取得した座標が展開され、キーが欠けた呼び出しの成功値は 0 だった。storage から渡した2つの複合値によるスコア・storage の更新も正解 JSON に一致した。`macro.data.test.ts` では同じ観測項目を Node のフェイクホストで突き合わせた。
+
+### ランタイムのカスタムコマンド起動口（#317）
+
+BDS 1.26.66.1 の `packages/runtime-host/src/launcher.servers.test.ts` で、オーバーワールドのコマンドブロックから渡した実行者・位置・向きを中核が使い、ネザーの指定位置にある対象を選んだ。成功した関数は `return 0` でも後続の条件付きブロックを動かし、比較器を点灯させた。`return fail` の行では、失敗前に設定したスコアは反映され、条件付きブロックは動かず、比較器は消灯したままだった。成否の伝わり方は M0 の `poc/launcher/launcher.servers.test.ts` と一致した。
+
+続く条件付きブロックから起動口を呼ぶと、同じチェーンの先頭で設定したスコアを中核が読めた。ハンドラで同期実行できない委譲に達したケースでは診断が出て、委譲先のコマンドによるスコア変更は発生しなかった。
+
+### ステータス効果の付与・解除（#319）
+
+Java 26.3 の `data get entity … active_effects` と BDS 1.26.66.1 の `Entity.getEffect` を [変換シナリオ](../scenarios/convert/effects.json) と [Java の記録](../scenarios/convert/effects.java.json) で照合した。両版で継続時間の省略は30秒、無期限は残り tick が `-1` だった。12秒・増幅度2と、上限の1,000,000秒・増幅度255を変換後に読み返せた。Java の増幅度255は NBT の符号付き byte で `-1b` だった。BE は観測の間にも tick が進むため、有限の残り時間は10 tick 以内の差を許容した。
+
+`clear <対象> <効果>` は指定した効果だけを解除し、`clear <対象>` と `execute as … run effect clear` は対象の両方の効果を解除した。比較用の別個体には両方の効果が残った。Java では実行者を設定せずにコンソールから `effect clear` を実行するとエンティティを要求された。`hideParticles` の真偽値を渡した変換コマンドで効果が付与され、Java の `true` では NBT の `show_particles` と `show_icon` がともに `0b` になった。
+
+[ID 照合テスト](../packages/bridge/src/rewrite.servers.test.ts) では36種の変換先が BDS の効果レジストリにあり、ブタを対象にした付与で成功件数1が返った。`hero_of_the_village` の変換先は `village_hero`。残る `dolphins_grace`・`glowing`・`luck`・`unluck` は Java では付与され、BDS の効果レジストリに相当する項目がなく、同名の付与コマンドは BDS で構文エラーになった。
+
+### ランタイムの load・tick 起動（#235）
+
+BDS 1.26.66.1 で `scenarios/datapack/load-tick.json` の変換済みワールドを起動し、ランタイムの第 4 tick の確定世代と BE の投影を観測した。Java 26.3 の正解と、`clock/#tick = 4`、空の `after_reload`、`load` の後に tick 1〜4 を記録した順序が一致した。反復コマンドブロックの 4 行が欠けた。変換済みブロックからランタイム関数を起動する経路は #236、コマンドブロック起点との相対順序は #19 で扱う。根拠は `packages/bridge/src/scenario/scenarios.servers.test.ts`。
+
+`packages/runtime-host/src/startup.servers.test.ts` では、BDS の初回起動と同じワールドの再起動で、各起動の最初の `tick` が同じ tick の `schedule` によるスコア変更を読み取った。再起動の `load` は前セッションで確定したスコアと storage を読み取った。

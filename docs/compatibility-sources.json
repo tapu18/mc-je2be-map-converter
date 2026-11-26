@@ -34,7 +34,7 @@
       "component": 12,
       "effect": 15,
       "entity": 16,
-      "game_rule": 6,
+      "game_rule": 8,
       "hover": 2,
       "loot_condition": 6,
       "loot_entry": 7,
@@ -43,13 +43,13 @@
       "sound": 14
     },
     "familyOutput": {
-      "command": 23198,
+      "command": 23071,
+      "game_rule": 78,
       "sound": 1243,
       "effect": 197,
       "click": 61,
-      "entity": 543,
+      "entity": 541,
       "particle": 58,
-      "game_rule": 5,
       "hover": 2
     },
     "definitionFiles": 1325,
@@ -61,8 +61,8 @@
       "invalid": 58,
       "unmatched": 605,
       "matched": 94649,
-      "output": 16751,
-      "outputWithWarnings": 2598
+      "output": 16722,
+      "outputWithWarnings": 2589
     }
   }
 }

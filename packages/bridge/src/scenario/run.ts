@@ -10,6 +10,7 @@ import { JavaServer } from "../java.ts";
 import { paths, repoRoot } from "../paths.ts";
 import { rewriteResources } from "../rewrite-resources.ts";
 import { createDataPack, waitBedrockTicks } from "../poc-kit.ts";
+import { observeBedrockEffects, observeJavaEffects } from "./effects.ts";
 import { loadScenarioDatapack, startScenarioJava, type ScenarioJavaVersion } from "./datapack.ts";
 import { normalizeBedrock, normalizeJava, type BedrockBlockMapper, type RawBlock, type RawEntity, type RawScores } from "./normalize.ts";
 import type { Action, NormalizedState, Scenario, ScenarioCommandBlock, Vec3 } from "./types.ts";
@@ -75,6 +76,7 @@ export async function runJava(s: Scenario, version?: ScenarioJavaVersion): Promi
       } else await javaAction(java, a, log);
     }
     for (const a of s.play ?? []) await javaAction(java, a, log);
+    const entityEffects = s.observe.entityEffects && await observeJavaEffects(java, s.observe.entityEffects, log);
     const dump = await java.dump({
       scores: !!(s.observe.scores || s.observe.entityScores),
       storage: !!s.observe.storage,
@@ -99,6 +101,7 @@ export async function runJava(s: Scenario, version?: ScenarioJavaVersion): Promi
       ...(entities ? { entities } : {}),
       blocks,
     });
+    if (entityEffects) state.entityEffects = entityEffects;
     return { state, log };
   } finally {
     await java.stop();
@@ -117,18 +120,19 @@ const chunkerJar = (): string => {
  * 呼び出し側で work を消すこと
  */
 export async function buildConvertedWorld(s: Scenario, log: string[]): Promise<{ work: string; world: string; report: ConvertReport }> {
-  const java = await JavaServer.start();
+  const java = await startScenarioJava(s.datapack);
   const work = mkdtempSync(join(tmpdir(), "je2be-scenario-convert-"));
   try {
     try {
       await java.exec("tick freeze");
       for (const c of s.setup) await javaAction(java, { run: c }, log);
+      if (s.datapack) await loadScenarioDatapack(java, s.datapack, log);
       for (const a of s.actions) await javaAction(java, a, log);
       await java.dump({});
     } finally {
       await java.stop();
     }
-    cpSync(join(paths.javaServer, "je2be-test"), join(work, "java"), { recursive: true });
+    cpSync(java.worldDirectory, join(work, "java"), { recursive: true });
     const world = join(work, "bedrock");
     const report = convertWorld(join(work, "java"), world, { java: paths.java, chunkerJar: chunkerJar(), rewrite: await rewriteResources() });
     log.push(`convert: ${JSON.stringify(report)}`);
@@ -212,6 +216,9 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
       if (!response.ok || response.result === undefined) throw new ScenarioError(`bedrock observation failed: ${op}: ${response.error ?? "no result"}`);
       return response.result;
     };
+    const entityEffects = s.observe.entityEffects
+      ? await observeBedrockEffects(bds, s.observe.entityEffects)
+      : undefined;
     const scores = s.observe.scores ? await observe<RawScores[]>("scores") : undefined;
     const blocks: RawBlock[] = [];
     for (const b of s.observe.blocks ?? []) {
@@ -219,7 +226,9 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
       blocks.push(...await observe<RawBlock[]>("blocks", { from, to }));
     }
     const entities = s.observe.entityTags ? await observe<RawEntity[]>("entities", { scoreObjectives: s.observe.entityScores ?? [] }) : undefined;
-    return { state: normalizeBedrock(s.observe, { ...(scores ? { scores } : {}), blocks, ...(entities ? { entities } : {}) }, mapBlock), log };
+    const state = normalizeBedrock(s.observe, { ...(scores ? { scores } : {}), blocks, ...(entities ? { entities } : {}) }, mapBlock);
+    if (entityEffects) state.entityEffects = entityEffects;
+    return { state, log };
   } finally {
     await bds.stop();
     rmSync(pack.dir, { recursive: true, force: true });

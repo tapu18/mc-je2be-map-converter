@@ -1,5 +1,6 @@
 import type { TextFormat } from "./arguments.ts";
-import type { CommandIR } from "./parser.ts";
+import type { CommandIR, ParsedNode } from "./parser.ts";
+import { isMacroKey, supportsMacroArgument } from "./macro-arguments.ts";
 
 /** Version 1 stores a tagged JSON tree, including all non-JSON JavaScript values. */
 export interface IrDocument { grammarVersion: string; textFormat: TextFormat; ir: CommandIR }
@@ -107,7 +108,32 @@ const node = one(
   obj({kind: lit("literal"), name: str, start: num, end: num}, {jump: lit("execute", "root")}),
   obj({kind: lit("argument"), name: str, parser: str, start: num, end: num, value}, {jump: lit("execute", "root")}),
 );
-const irCheck: Check = v => obj({source: str, context: arr(obj({kind: str, nodes: arr(node)}))}, {command: obj({name: str, nodes: arr(node)}, {run: irCheck})})(v);
+const bound = one(num, x => typeof x === "bigint");
+const macroArgument = obj({
+  start: x => Number.isSafeInteger(x) && (x as number) >= 0,
+  end: x => Number.isSafeInteger(x) && (x as number) > 0,
+  parser: x => typeof x === "string" && supportsMacroArgument(x),
+  parts: arr(one(str, obj({key: x => typeof x === "string" && isMacroKey(x)}))),
+}, {properties: obj({}, {type: str, min: bound, max: bound})});
+const macro = obj({version: str, textFormat: lit("json", "snbt"), arguments: arr(macroArgument)});
+const irCheck: Check = v => {
+  if (!obj({source: str, context: arr(obj({kind: str, nodes: arr(node)}))}, {macro, command: obj({name: str, nodes: arr(node)}, {run: irCheck})})(v)) return false;
+  const ir = v as CommandIR;
+  if (!ir.macro) return true;
+  const nodes: ParsedNode[] = [];
+  for (let current: CommandIR | undefined = ir; current; current = current.command?.run) {
+    for (const step of current.context) nodes.push(...step.nodes);
+    if (current.command) nodes.push(...current.command.nodes);
+  }
+  let end = 0;
+  return ir.macro.arguments.length > 0 && ir.macro.arguments.every(argument => {
+    if (argument.start < end || argument.end <= argument.start || argument.end > ir.source.length ||
+      !argument.parts.some(part => typeof part !== "string") ||
+      !nodes.some(node => node.start === argument.start && node.end === argument.end && node.parser === argument.parser)) return false;
+    end = argument.end;
+    return true;
+  });
+};
 const documentCheck = obj({grammarVersion: x => str(x) && x !== "", textFormat: lit("json", "snbt"), ir: irCheck});
 
 export function serializeCommandIR(document: IrDocument): string {

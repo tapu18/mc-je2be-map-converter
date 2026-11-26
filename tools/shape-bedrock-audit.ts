@@ -1,20 +1,19 @@
 // Load synthetic rewritten commands as functions; never invoke the functions.
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { BedrockServer } from "@je2be/bridge";
+import { BedrockServer, createDataPack } from "@je2be/bridge";
 
 type Entry = { id: string; command: string; java: { ok: boolean }; rewrite: { status: string; command?: string } };
 const [input, output] = process.argv.slice(2);
 if (!input || !output) throw new Error("Usage: node tools/shape-bedrock-audit.ts JAVA.json OUTPUT.json");
 const audit = JSON.parse(readFileSync(input, "utf8")) as { shapes: { id: string }[]; results: Entry[] };
 const eligible = audit.results.filter(r => r.java.ok && (r.rewrite.status === "rewritten" || r.rewrite.status === "unchanged") && r.rewrite.command !== undefined);
-const pack = mkdtempSync(join(tmpdir(), "je2be-bds-syntax-"));
+// Use the converter target engine version through the shared Bedrock data pack fixture.
+const pack = createDataPack();
 let bds: BedrockServer | undefined;
 try {
   mkdirSync(join(pack, "functions"));
-  writeFileSync(join(pack, "manifest.json"), JSON.stringify({ format_version: 2, header: { name: "syntax audit", description: "synthetic probes", uuid: "1e853cc2-7235-4c25-8a93-8238d9a23eee", version: [1, 0, 0], min_engine_version: [1, 21, 0] }, modules: [{ type: "data", uuid: "0b94e76a-b500-4ba2-8a19-99e89051aabc", version: [1, 0, 0] }] }));
-  const controls = ["time set noon", "time set bogus", "effect @a je2be_invalid", "je2be_invalid_command", "scoreboard objectives add JE2BE_LOAD_MARKER dummy"];
+  const controls = ["time set noon", "time set", "effect @a je2be_invalid", "je2be_invalid_command", "scoreboard objectives add JE2BE_LOAD_MARKER dummy"];
   const commands = [...controls, ...eligible.map(r => r.rewrite.command!)];
   commands.forEach((command, i) => {
     if (/[\r\n]/.test(command)) throw new Error("Multiline command");

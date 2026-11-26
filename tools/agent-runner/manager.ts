@@ -69,9 +69,12 @@ export function managerPrompt(repo: string, base: string, milestone: string | un
 
 ## 1. 基本の整備（短く済ませる）
 - 開いている Issue をページ末尾まで確認し、\`status:*\` が未設定の Issue と \`status:blocked\` の Issue を分類する。\`status:blocked\` の解除だけで済ませず、新しく作られた未分類の仕事も必ず対象にする。
-- 分類前に本文・コメント・依存先の最新状態・関連 PR・有効な claim を読み直す。claim のある Issue、\`status:in-progress\`・\`status:in-review\`・\`status:paused\` の Issue には介入しない。
+- 分類前に本文・コメント・依存先の最新状態・関連 PR・有効な claim を読み直す。claim のある Issue、\`status:in-progress\`・\`status:in-review\`・\`status:paused\` の Issue には、次の例外を除き介入しない。
+- claim があり、worker が \`status:blocked\` にした Issue に限り、PM は本文の \`Depends on:\` の行だけを付け替えてよい。付け替えた理由をその Issue にコメントする。再開の判定は管理プログラムが行う。
 - 依存がすべて閉じていて、人の判断が要らず、現在の段階で着手でき、1つの PR で終わり、完了条件を機械的に確かめられる Issue を \`status:ready\` にする。状態未設定というだけでは着手可と判断しない。
-- 未完了の依存、前提の未確認、完了条件や作業分割の不足がある場合は \`status:blocked\` にし、本文に阻害要因と解除条件を明記する。依存は \`Depends on: #番号\` で書く。人の判断が必要なら \`needs-approval\` も付ける。既存の \`needs-approval\` は外さず、そのまま ready にもしない。
+- 未完了の依存、前提の未確認、完了条件や作業分割の不足がある場合は \`status:blocked\` にし、本文に阻害要因と解除条件を明記する。依存は \`Depends on: #番号\` で書く。依存以外の阻害要因は独立した \`Blocked: <理由>\` 行に書き、解消したら外す。人の判断が必要なら \`needs-approval\` も付ける。既存の \`needs-approval\` は外さず、そのまま ready にもしない。
+- 巡回の終わりに着手可能な ready を10件前後そろえる。足りなければ、族の追跡 Issue や大きな Issue から1回の worker 起動で完了できる子 Issue を切る（#271）。
+- 同じファイルを編集するだけの理由で依存を足さない。競合は後からマージする側が rebase で解消する。表の形を変えるなど、構造の変更が後続作業の前提になる場合は依存として先に置いてよい。
 - 未着手の Issue の状態ラベルは分類結果の1つに揃え、種類・分野など他のラベルは保持する。同じ理由を繰り返しコメントせず、根拠が変わったときだけ更新する。着手可能な Issue が0件なら、未分類・依存待ち・承認待ちなどの理由と、何が解消すれば着手できるかを報告する。
 - 前回から動きのない \`status:in-progress\`・\`status:in-review\` と、CI が失敗したままの PR を見つけ、原因と解除条件を書く。
 
@@ -112,7 +115,7 @@ export function managerPrompt(repo: string, base: string, milestone: string | un
   - 判断の受付で所有者が答えた判断の記録と、その判断の Issue の \`needs-approval\` を外すこと、\`npm run decisions -- --update\` の実行
 - しない：
   - リポジトリのファイルの編集、コミット、push、PR の作成・マージ、実サーバーのテスト
-  - claim のある Issue、\`status:in-progress\`・\`status:in-review\` の Issue、作業ブランチ、worktree、管理プログラムの設定・状態・ロックへの介入
+  - claim のある Issue（「基本の整備」の依存行の付け替えを除く）、\`status:in-progress\`・\`status:in-review\` の Issue、作業ブランチ、worktree、管理プログラムの設定・状態・ロックへの介入
   - 所有者の判断の記録がないのに \`needs-approval\` を外すこと、承認の代行、マイルストーンを閉じること
 
 ## 報告

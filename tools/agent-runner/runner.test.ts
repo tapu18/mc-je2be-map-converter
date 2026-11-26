@@ -19,7 +19,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; workerFails?: boolean; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; remoteHead?: string; pushHead?: string; workerFails?: boolean; managerLog?: string[]; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -53,7 +53,7 @@ if (tool === 'git') {
   else if (args[0] === 'rev-parse' && args[1].startsWith('origin/')) out(args[1] === 'origin/main' ? 'base' : 'abc');
   else if (args[0] === 'merge-base') out('base');
   else if (args[0] === 'diff') {}
-  else if (args[0] === 'ls-remote') out('base refs/heads/main');
+  else if (args[0] === 'ls-remote') out(args[1] === '--heads' ? (d.remoteHead ? d.remoteHead + ' refs/heads/' + d.branch : '') : 'base refs/heads/main');
   else if (args[0] === 'worktree' && args[1] === 'list') out(d.tree ? 'worktree ' + d.tree + '\nbranch refs/heads/' + d.branch + '\n' : '');
   else if (args[0] === 'worktree' && args[1] === 'add') { d.branch = args[3]; d.tree = args[4]; mkdirSync(d.tree, {recursive:true}); }
   else if (args[0] !== 'fetch') throw Error('Unexpected git ' + args);
@@ -62,6 +62,10 @@ if (tool === 'git') {
   else if (args[0] === 'run' && args[1] === 'list') out(args.includes('--event') ? [{headSha:'base',event:'push',status:'completed',conclusion:'success'}] : (d.runs ?? [{headSha:'abc',event:'pull_request',status:'completed',conclusion:'success'}]));
   else if (args[0] === 'pr' && args[1] === 'list') out(d.prs);
   else if (args[0] === 'pr' && args[1] === 'merge') { d.prs[0].state = 'MERGED'; d.issues[0].state = 'CLOSED'; }
+  else if (args[0] === 'api' && args[1].includes('labels=status%3Ablocked')) {
+    const blocked = d.issues.filter(i => has(i, 'status:blocked') && i.state === 'OPEN');
+    out([blocked.slice(0, 1), blocked.slice(1)]);
+  }
   else if (args[0] === 'issue') {
     const item = d.issues.find(i => i.number === Number(args[2]));
     if (args[1] === 'list') out(d.issues.filter(i => has(i, 'status:ready') && i.state === 'OPEN'));
@@ -83,11 +87,13 @@ if (tool === 'git') {
   let prompt = ''; for await (const chunk of process.stdin) prompt += chunk;
   if (prompt.includes('の PM 巡回です')) {
     (d.managerPrompts ??= []).push(prompt);
+    if (d.managerLog) { for (const line of d.managerLog) out(line); save(d); process.exit(1); }
     out({type:'item.completed', item:{type:'agent_message',text:'PM報告: 次は #7。承認待ちを確認しました。'}});
     if (d.managerFails) process.exitCode = 1;
   } else {
     if (!prompt.includes('Issue #7')) throw Error('No prompt supplied via stdin');
     (d.workerPrompts ??= []).push(prompt);
+    if (d.pushHead) d.remoteHead = d.pushHead;
     if (d.workerLog) { for (const line of d.workerLog) out(line); save(d); process.exit(1); }
     out({type:'item.completed', item:{type:'agent_message', text:'テストとPR作成を進めています'}});
     if (!d.workerFails) d.prs = [{number:9,state:'OPEN',isDraft:false,baseRefName:'main',headRefName:d.branch,headRefOid:'abc',mergeStateStatus:'CLEAN',reviewDecision:'',labels:[],closingIssuesReferences:[{number:7}],statusCheckRollup:[]}];
@@ -117,6 +123,24 @@ if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode =
   return { root, config, run, load, update, state, updateState };
 }
 
+it('refunds pushed progress but counts idle runs and enforces the total limit', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', maxAttempts: 2, maxTotalAttempts: 3 }));
+  await f.update(d => { d.workerFails = true; d.pushHead = 'commit1'; });
+  await f.run(); // Claim the issue before launching the worker.
+  await f.run();
+  expect((await f.state()).tasks[0]).toMatchObject({ attempts: 0, totalAttempts: 1, launches: [{ counted: false }] });
+  await f.update(d => { delete d.pushHead; });
+  await f.run();
+  expect((await f.state()).tasks[0]).toMatchObject({ attempts: 1, totalAttempts: 2 });
+  await f.update(d => { d.pushHead = 'commit2'; });
+  await f.run();
+  expect((await f.state()).tasks[0]).toMatchObject({ attempts: 1, totalAttempts: 3 });
+  await f.run();
+  expect((await f.state()).tasks[0].phase).toBe('blocked');
+  expect((await f.load()).workerPrompts).toHaveLength(3);
+}, 20_000);
+
 it('warns in the terminal, state, and PM prompt when base code changes', async () => {
   const f = await fixture();
   await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true } }));
@@ -142,6 +166,45 @@ it('dry-run only reads; excludes other claims and unclosed dependencies', async 
   await expect(access(join(f.root, '.git'))).rejects.toThrow();
   expect((await f.load()).calls.every(call => !call.some(arg => ['edit', 'comment', 'exec', 'merge'].includes(arg)))).toBe(true);
 });
+
+it('promotes only unclaimed issues blocked solely on closed dependencies and comments once', async () => {
+  const f = await fixture();
+  await f.update(d => {
+    const base = d.issues[0]!;
+    const blocked = { ...base, body: 'Depends on: #8, #9', labels: [{ name: 'status:blocked' }] };
+    d.issues.push(
+      { ...base, number: 8, state: 'CLOSED' },
+      { ...base, number: 9, state: 'OPEN', labels: [] },
+      { ...blocked, number: 10 },
+      { ...blocked, number: 11, body: blocked.body + '\n\nBlocked: PM が子 Issue に分けるまで待つ' },
+      { ...blocked, number: 12, comments: [{ body: 'claim: other' }] },
+      { ...blocked, number: 13, labels: [...blocked.labels, { name: 'needs-approval' }] },
+      { ...blocked, number: 14, body: '関連: #8, #9' },
+      { ...blocked, number: 15, labels: [...blocked.labels, { name: 'status:paused' }] },
+      { ...blocked, number: 16, body: 'Depends on: #999' },
+      { ...blocked, number: 17, body: 'Depends on: #8', comments: [
+        { body: '<!-- agent-runner-dependencies-closed -->\n前回の巡回で通知済み' },
+      ] },
+    );
+  });
+  await f.run('--dry-run');
+  expect((await f.load()).calls.some(call => call.includes('--paginate'))).toBe(false);
+  await f.run();
+  const readIssue = async (number: number) => (await f.load()).issues.find(item => item.number === number)!;
+  expect((await readIssue(10)).labels).toEqual([{ name: 'status:blocked' }]);
+  expect((await readIssue(17)).labels).toEqual([{ name: 'status:ready' }]);
+  expect((await readIssue(17)).comments).toHaveLength(1);
+  await f.update(d => { d.issues.find(item => item.number === 9)!.state = 'CLOSED'; });
+  await f.run();
+  await f.run();
+  expect((await readIssue(10)).labels).toEqual([{ name: 'status:ready' }]);
+  const notices = (await readIssue(10)).comments.filter(c => c.body.includes('agent-runner-dependencies-closed'));
+  expect(notices).toEqual([{ body: expect.stringContaining('#8、#9') }]);
+  for (const number of [11, 12, 13, 14, 15, 16]) {
+    expect((await readIssue(number)).labels).toContainEqual({ name: 'status:blocked' });
+    expect((await readIssue(number)).labels).not.toContainEqual({ name: 'status:ready' });
+  }
+}, 15_000);
 
 it('claims, resumes in its own worktree, waits for all CI, and merges with a SHA guard', async () => {
   const f = await fixture();
@@ -256,7 +319,7 @@ it('gives up a lost claim without starting a worker on the next tick', async () 
   await f.run();
   await f.run();
   expect((await f.load()).calls.some(call => call[0] === 'codex')).toBe(false);
-});
+}, 20_000);
 
 it('respects the daily run limit without discarding the active task', async () => {
   const f = await fixture();
@@ -271,7 +334,7 @@ it('respects the daily run limit without discarding the active task', async () =
 
 it('uses claude when configured and rejects an existing lock', async () => {
   const f = await fixture();
-  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agent: 'claude' }));
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agent: 'claude', agentArgs: ['--permission-mode', 'auto'] }));
   await f.run();
   await f.run();
   expect((await f.load()).calls.find(call => call[0] === 'claude')).toContain('-p');
@@ -349,17 +412,78 @@ it('counts a failure after work and refunds an early error event', async () => {
   expect((await f.state()).tasks[0].attempts).toBe(1);
 });
 
-it.each([['--model', ' bad'], ['--model=bad '], ['--model', "'bad'"], ['--model']])('rejects invalid model arguments before starting: %s', async (...args) => {
+it.each([['--model', ' bad'], ['--model=bad '], ['--model', "'bad'"], ['--model'], ['-m', ' bad'], ['-m']])('rejects invalid model arguments before starting: %s', async (...args) => {
   const f = await fixture();
   await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agentArgs: args }));
-  await expect(f.run()).rejects.toThrow('Invalid --model value');
+  await expect(f.run()).rejects.toThrow(`Invalid ${args[0]!.split('=')[0]} value`);
   await expect(access(join(f.root, '.git'))).rejects.toThrow();
+});
+
+const quota = [
+  JSON.stringify({ type: 'item.completed', item: { type: 'command_execution' } }),
+  JSON.stringify({ type: 'turn.failed', error: { message: 'You’ve hit your usage limit. Upgrade to Pro or try again at 2:21 PM.' } }),
+];
+
+it('waits for a worker CLI quota without stopping the runner or counting the launch', async () => {
+  const f = await fixture();
+  await f.run();
+  await f.update(d => { d.workerLog = quota; });
+  const hit = await f.run();
+  expect(hit.stdout).toContain('codex の使用量の上限');
+  const state = await f.state();
+  expect(state.runs).toBe(0);
+  expect(state.tasks[0].attempts).toBe(0);
+  expect(state.tasks[0].launches[0]).toMatchObject({ counted: false, limited: true });
+  const until = state.limits.codex.until;
+  expect(until).toBeGreaterThan(Date.now());
+  expect(until - Date.now()).toBeLessThanOrEqual(24 * 3600_000 + 60_000);
+  expect((await f.load()).issues[0]!.labels.some(label => label.name === 'status:blocked')).toBe(false);
+  await f.update(d => { delete d.workerLog; });
+  expect((await f.run()).stdout).toContain('使用量の上限で見送り中');
+  expect((await f.load()).workerPrompts).toHaveLength(1);
+  expect((await f.run('--report')).stdout).toContain('"limit":"codex"');
+  await f.updateState(d => { d.limits.codex.until = Date.now() - 1; });
+  await f.run();
+  expect((await f.load()).workerPrompts).toHaveLength(2);
+  expect((await f.load()).prs).toHaveLength(1);
+});
+
+it('runs another CLI while one waits for its quota and does not claim work for the waiting CLI', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', workerOverrides: { 'agent:claude': { agent: 'claude', agentArgs: ['--permission-mode', 'auto'] } } }));
+  await f.update(d => {
+    d.issues[0]!.labels.push({ name: 'agent:claude' });
+    d.issues.push({ number: 8, title: 'Other', body: '', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] });
+  });
+  await f.run(); // Claim #7.
+  await f.updateState(d => { d.limits = { codex: { until: Date.now() + 3600_000, message: 'usage limit' } }; });
+  await f.run(); // #7 uses claude, which is not limited.
+  const calls = (await f.load()).calls;
+  expect(calls.filter(call => call[0] === 'claude')).toHaveLength(1);
+  await f.update(d => { d.prs = []; d.issues[0]!.state = 'CLOSED'; });
+  await f.run();
+  await f.run();
+  // #8 would run on codex: it is not claimed while codex waits.
+  expect((await f.load()).issues[1]!.comments).toHaveLength(0);
+  expect((await f.state()).tasks.map((task: { issue: number }) => task.issue)).toEqual([7]);
+});
+
+it('keeps the PM schedule when PM hits a quota and lets workers continue', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, agent: 'claude', agentArgs: ['--permission-mode', 'auto'] } }));
+  await f.update(d => { d.managerLog = [JSON.stringify({ type: 'result', is_error: true, result: 'Claude AI usage limit reached|' + Math.floor(Date.now() / 1000 + 600) })]; });
+  const hit = await f.run();
+  expect(hit.stdout).toContain('claude の使用量の上限');
+  const state = await f.state();
+  expect(state.manager).toBeUndefined();
+  expect(state.limits.claude.until).toBeGreaterThan(Date.now() + 500_000);
+  expect(state.tasks).toHaveLength(1); // The worker claimed in the same tick.
 });
 
 it('runs PM with independent agent/args and report, persists schedule, then resumes worker tasks', async () => {
   const f = await fixture();
   await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: {
-    enabled: true, agent: 'claude', agentArgs: ['--model', 'manager-model'], instructions: 'M1の依存を優先',
+    enabled: true, agent: 'claude', agentArgs: ['--model', 'manager-model', '--permission-mode', 'auto'], instructions: 'M1の依存を優先',
   } }));
   const result = await f.run();
   expect(result.stdout).toContain('[PM]');
@@ -414,7 +538,7 @@ it('keeps PM schedule after failure and stops/refunds startup failures without c
 
 it('reports PM configuration during dry-run without starting either role', async () => {
   const f = await fixture();
-  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, agent: 'claude' } }));
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true, agent: 'claude', agentArgs: ['--permission-mode', 'auto'] } }));
   expect((await f.run('--dry-run')).stdout).toContain('PM: claude');
   await expect(access(join(f.root, '.git'))).rejects.toThrow();
   expect((await f.load()).calls.some(call => ['codex', 'claude'].includes(call[0]!))).toBe(false);
@@ -422,7 +546,7 @@ it('reports PM configuration during dry-run without starting either role', async
 
 it.each([false, true])('selects worker override only when label is present: %s', async (labeled) => {
   const f = await fixture();
-  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', workerOverrides: { 'model:strong': { agent: 'claude', agentArgs: ['--model', 'example'] } } }));
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', workerOverrides: { 'model:strong': { agent: 'claude', agentArgs: ['--model', 'example', '--permission-mode', 'auto'] } } }));
   if (labeled) await f.update(d => { d.issues[0]!.labels.push({ name: 'model:strong' }); });
   await f.run();
   await f.run();

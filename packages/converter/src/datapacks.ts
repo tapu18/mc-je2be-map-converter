@@ -1,17 +1,19 @@
 import { lstatSync, readFileSync, readdirSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import AdmZip from "adm-zip";
-import { CommandParser, comparePackVersions, readPackFormatRange, selectCommandGrammar, serializeCommandIR, toCommandIR } from "@je2be/core";
-import { loadGrammarTree, loadJavaGrammars } from "./java-grammars.ts";
+import { CommandParser, comparePackVersions, compileMacroTemplate, normalizeCommandIR, readPackFormatRange, rewriteNativeCommand, runtimeFamilies, selectCommandGrammar, serializeCommandIR, toCommandIR, type MappingLookup } from "@je2be/core";
+import { loadBlockDefaults } from "./block-defaults.ts";
+import { fixedJavaDataVersion, loadGrammarTree, loadJavaGrammars } from "./java-grammars.ts";
 import { readJavaValidationContext } from "./validation-context.ts";
 
 /** Preserve pack order and tag definitions, including replace and optional references. */
-export function collectDatapacks(world: string) {
+export function collectDatapacks(world: string, rewrite?: {mappings: MappingLookup; blocksJson: string}) {
   const context = readJavaValidationContext(world);
   const grammars = loadJavaGrammars();
   const packs: { name: string; grammar?: string; functions: Record<string, string[]>; tags: Record<string, unknown> }[] = [];
-  const diagnostics: { pack: string; path: string; reason: string }[] = [];
+  const diagnostics: { pack: string; path: string; reason: string; start?: number; end?: number }[] = [];
   const omitted = new Set<string>();
+  const nativeCommands = new Map<string, string | null>();
   for (const entry of context.packOrder) if ("builtin" in entry && entry.builtin !== "vanilla") diagnostics.push({ pack: entry.builtin, path: "", reason: "builtin pack not bundled" });
   for (const path of context.datapacks) {
     const name = basename(path);
@@ -58,7 +60,12 @@ export function collectDatapacks(world: string) {
     const selection = selectCommandGrammar(grammars, range ? { packFormatRange: range } : {});
     const grammar = selection.ok ? selection.grammar : undefined;
     if (!grammar) diagnostics.push({ pack: name, path: "pack.mcmeta", reason: range ? selection.ok ? "" : selection.reason : "invalid pack format" });
-    const parser = grammar ? new CommandParser(loadGrammarTree(grammar), { textFormat: grammar.textFormat }) : undefined;
+    const parser = grammar ? new CommandParser(loadGrammarTree(grammar), grammar) : undefined;
+    const nativeContext = rewrite && grammar && parser ? {
+      parser, mappings: rewrite.mappings,
+      blockDefaults: loadBlockDefaults(grammar.dataVersion === fixedJavaDataVersion ? rewrite.blocksJson : join(dirname(grammar.commandsPath), "blocks.json")),
+    } : undefined;
+    const rewritten = new Map<string, string | null>();
     const pack: typeof packs[number] = { name, ...(grammar ? { grammar: grammar.version } : {}), functions: {}, tags: {} };
     for (const [key, bytes] of [...entries].sort(([a], [b]) => a.localeCompare(b))) {
       const match = /^data\/([^/]+)\/(functions?|tags\/functions?)\/(.+)\.(mcfunction|json)$/.exec(key);
@@ -69,15 +76,52 @@ export function collectDatapacks(world: string) {
           try { pack.tags[id] = JSON.parse(bytes.toString("utf8")); } catch { diagnostics.push({ pack: name, path: key, reason: "invalid tag JSON" }); }
         } else if (parser && grammar) {
           const lines: string[] = [];
+          const nativeLines = new Set<string>();
           let valid = true;
           for (const [index, raw] of bytes.toString("utf8").split(/\r?\n/).entries()) {
             const line = raw.trim();
             if (!line || line.startsWith("#")) continue;
+            if (line.startsWith("$")) {
+              const template = compileMacroTemplate(parser, line, grammar.version);
+              if (template.ok) {
+                lines.push(serializeCommandIR({ grammarVersion: grammar.version, textFormat: grammar.textFormat, ir: template.ir }));
+              } else {
+                const indent = raw.length - raw.trimStart().length;
+                diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: template.reason, start: indent + template.start, end: indent + template.end });
+                valid = false;
+              }
+              continue;
+            }
             const parsed = parser.parse(line);
-            if (!parsed.ok || line.startsWith("$")) { diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: line.startsWith("$") ? "macro unsupported" : "command parse failed" }); valid = false; continue; }
-            lines.push(serializeCommandIR({ grammarVersion: grammar.version, textFormat: grammar.textFormat, ir: toCommandIR(line, parsed.nodes) }));
+            if (!parsed.ok) { diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: "command parse failed" }); valid = false; continue; }
+            const normalized = normalizeCommandIR(toCommandIR(line, parsed.nodes), grammar.version);
+            if (!normalized.ok) {
+              const { reason, start, end } = normalized;
+              const indent = raw.length - raw.trimStart().length;
+              diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason, start: indent + start, end: indent + end });
+              valid = false;
+              continue;
+            }
+            lines.push(serializeCommandIR({ grammarVersion: grammar.version, textFormat: grammar.textFormat, ir: normalized.ir }));
+            let terminal = normalized.ir;
+            while (terminal.command?.name === "return" && terminal.command.run) terminal = terminal.command.run;
+            if (nativeContext && terminal.command && !["function", "return"].includes(terminal.command.name)
+              && !runtimeFamilies.some(family => family.assess({status: "parsed", ir: terminal}).status === "runtime")) {
+              nativeLines.add(line);
+            }
           }
-          if (valid) pack.functions[id] = lines;
+          if (valid) {
+            pack.functions[id] = lines;
+            if (nativeContext) for (const line of nativeLines) {
+              if (!rewritten.has(line)) {
+                const result = rewriteNativeCommand(line, nativeContext);
+                rewritten.set(line, result.status === "rewritten" || result.status === "unchanged" ? result.command : null);
+              }
+              const candidate = rewritten.get(line)!;
+              // The runtime receives only the source line. Conflicting rewrites across grammar versions are ambiguous.
+              nativeCommands.set(line, nativeCommands.has(line) && nativeCommands.get(line) !== candidate ? null : candidate);
+            }
+          }
         } else diagnostics.push({ pack: name, path: key, reason: "grammar unavailable" });
       } else if (key.startsWith("data/")) {
         const parts = key.split("/");
@@ -86,5 +130,9 @@ export function collectDatapacks(world: string) {
     }
     packs.push(pack);
   }
-  return { packs, report: { functions: packs.reduce((n, p) => n + Object.keys(p.functions).length, 0), omitted: [...omitted].sort(), diagnostics } };
+  return {
+    packs,
+    nativeCommands: [...nativeCommands].filter((entry): entry is [string, string] => entry[1] !== null),
+    report: { functions: packs.reduce((n, p) => n + Object.keys(p.functions).length, 0), omitted: [...omitted].sort(), diagnostics },
+  };
 }

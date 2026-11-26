@@ -8,6 +8,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { nbt, serializeStorage, readBedrockLevelDat, writeBedrockLevelDat, type MappingTables, type ObjectiveScores, type NbtTag } from "@je2be/core";
+import { terrainCommandMappings } from "./chunker-block-mappings.ts";
 import { rewriteWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
 import { collectDatapacks } from "./datapacks.ts";
 import { JavaWorld } from "./java-world.ts";
@@ -76,10 +77,10 @@ function stableUuid(seed: string): string {
 }
 
 /** 初期化パックを BE ワールドの behavior_packs/ に置き、world_behavior_packs.json に足す */
-export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = [], datapackData = '{"schemaVersion":1,"packs":[]}', storageData = "[]"): void {
+export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = [], datapackData = "", storageData = "[]", nativeCommands: [string, string][] = []): void {
   const chunk = (n: number) => Math.floor(n / 16);
   const sorted = [...entities].sort((a, b) => a.dimension.localeCompare(b.dimension) || chunk(a.pos.x) - chunk(b.pos.x) || chunk(a.pos.z) - chunk(b.pos.z));
-  const data = `export const objectives = ${JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]))};\nexport const entities = ${JSON.stringify(sorted)};\n`;
+  const data = `export const objectives = ${JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]))};\nexport const entities = ${JSON.stringify(sorted)};\nexport const nativeCommands = ${JSON.stringify(nativeCommands)};\n`;
   const scriptsDir = fileURLToPath(new URL("../../runtime-host/pack/scripts/", import.meta.url));
   const files = ["main.js"];
   const script = files.map((file) => readFileSync(join(scriptsDir, file), "utf8")).join("\n") + data;
@@ -102,7 +103,7 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], e
   );
   for (const file of files) cpSync(join(scriptsDir, file), join(dir, "scripts", file));
   writeFileSync(join(dir, "scripts", "data.js"), data);
-  writeFileSync(join(dir, "scripts", "datapacks.js"), `export const datapacks = ${datapackData};\n`);
+  writeFileSync(join(dir, "scripts", "datapacks.js"), `export const datapacks = ${datapackData || '{"schemaVersion":1,"packs":[]}'};\n`);
   writeFileSync(join(dir, "scripts", "storage.js"), `export const storage = ${storageData};\n`);
   const refsPath = join(worldDir, "world_behavior_packs.json");
   const refs = existsSync(refsPath) ? (JSON.parse(readFileSync(refsPath, "utf8")) as { pack_id: string; version: number[] }[]) : [];
@@ -149,13 +150,16 @@ export function collectInitialStorage(source: JavaWorld) {
 
 /** Java ワールド（ディレクトリ）を BE ワールド（ディレクトリ）に変換する */
 export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptions): ConvertReport {
-  const datapacks = collectDatapacks(javaDir);
+  const format = opts.format ?? DEFAULT_CHUNKER_FORMAT;
+  const tables = opts.rewrite && JSON.parse(readFileSync(opts.rewrite.mappingsJson, "utf8")) as MappingTables;
+  const mappings = tables && terrainCommandMappings(tables, opts.chunkerJar, format);
+  const datapacks = collectDatapacks(javaDir, mappings && opts.rewrite ? {mappings, blocksJson: opts.rewrite.blocksJson} : undefined);
   const source = new JavaWorld(javaDir);
   const { storageEntries, storageErrors } = collectInitialStorage(source);
   const version = source.dataVersion();
   // エンティティが terrain region から専用 region に移ったのは Java 1.17。
   const legacy = version === undefined || version < 2724;
-  const items = opts.rewrite ? (JSON.parse(readFileSync(opts.rewrite.mappingsJson, "utf8")) as MappingTables).items : [];
+  const items = tables?.items ?? [];
   const placed = collectPlacedEntities(source, legacy, version, items);
   const hasEntities = placed.report.scheduled > 0 || placed.report.skipped.length > 0;
   const { objectives, skipped } = selectScores(source.scoreboard(), placed.entities);
@@ -167,16 +171,15 @@ export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptio
       input = join(work, "java");
       cpSync(javaDir, input, { recursive: true, dereference: true });
       if (hasEntities) new JavaWorld(input).removeEntitiesFromChunkerCopy(legacy);
-      if (opts.rewrite) commands = rewriteWorldCommands(input, opts.rewrite);
+      if (opts.rewrite) commands = rewriteWorldCommands(input, opts.rewrite, mappings);
     }
-    execFileSync(opts.java, ["-jar", opts.chunkerJar, "-i", input, "-f", opts.format ?? DEFAULT_CHUNKER_FORMAT, "-o", outDir], {
+    execFileSync(opts.java, ["-jar", opts.chunkerJar, "-i", input, "-f", format, "-o", outDir], {
       stdio: "pipe",
       timeout: 600_000,
     });
     if (!existsSync(join(outDir, "level.dat"))) throw new Error(`Chunker の出力に level.dat がない: ${outDir}`);
     const datapackData = JSON.stringify({ schemaVersion: 1, packs: datapacks.packs });
-    writeInitPack(outDir, objectives, placed.entities, datapackData, JSON.stringify(storageEntries));
-    writeFileSync(join(outDir, "behavior_packs", "je2be_init", "scripts", "datapacks.js"), `export const datapacks = ${datapackData};\n`);
+    writeInitPack(outDir, objectives, placed.entities, datapackData, JSON.stringify(storageEntries), datapacks.nativeCommands);
     configureOutputWorld(outDir);
     return {
       storage: { entries: storageEntries.length, errors: storageErrors },

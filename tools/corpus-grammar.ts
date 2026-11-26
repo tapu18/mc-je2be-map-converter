@@ -11,7 +11,7 @@ export function corpusContext(row: CorpusVersion, command: string, grammars: Jav
   const candidates = selected.ok ? [selected.grammar] : selected.reason === "ambiguous" ? commandGrammarCandidates(grammars, source) : [];
   const versions = candidates.map(g => {
     let context = contexts.get(g.version);
-    if (!context) { context = { ...base, parser: new CommandParser(loadGrammarTree(g), { textFormat: g.textFormat }) }; contexts.set(g.version, context); }
+    if (!context) { context = { ...base, parser: new CommandParser(loadGrammarTree(g), g) }; contexts.set(g.version, context); }
     return context;
   });
   const first = versions[0];

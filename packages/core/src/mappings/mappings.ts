@@ -55,8 +55,7 @@ export type BlockMappingResult =
 export type BlockPredicateMappingResult =
   | { status: "mapped"; target: BedrockBlockState; verification: "unverified" }
   | { status: "unknown-block" | "unknown-state" }
-  /** BE の条件で書くと、同じ Java のブロックの、Java の条件に一致しない状態まで一致してしまう */
-  | { status: "inexact" };
+  | { status: "inexact"; reason: "multiple-ids" | "overlap" | "collapsed-states" | "waterlogged" };
 
 export type ItemMappingResult =
   | { status: "mapped"; target: ItemMapping; sharedBy: number; verification: "unverified" }
@@ -126,15 +125,22 @@ export class MappingLookup {
     const matches = (this.rowsByJava.get(id) ?? []).filter((r) => Object.entries(states).every(([k, v]) => r.java.states[k] === v));
     if (matches.length === 0) return { status: "unknown-state" };
     const first = matches[0]!.bedrock;
-    if (matches.some((r) => r.bedrock.id !== first.id)) return { status: "inexact" };
+    if (matches.some((r) => r.bedrock.id !== first.id)) return { status: "inexact", reason: "multiple-ids" };
     // 一致するすべての状態に共通する BE の状態だけを条件にする
     const common: BedrockBlockState["states"] = {};
     for (const [k, v] of Object.entries(first.states)) if (matches.every((r) => r.bedrock.states[k] === v)) common[k] = v;
     // その BE の条件が、同じ Java のブロックの、Java の条件に一致しない状態まで拾わないか。
     // 別の Java のブロックが同じ BE のブロックになるもの（cave_air → air など）は、変換後の BE では見分けられないため問わない
-    const picked = (this.rowsByBedrock.get(first.id) ?? []).filter((r) => r.java.id === id && Object.entries(common).every(([k, v]) => r.bedrock.states[k] === v));
     const wanted = new Set(matches);
-    if (picked.some((r) => !wanted.has(r))) return { status: "inexact" };
+    const extra = (this.rowsByBedrock.get(first.id) ?? []).filter((r) =>
+      r.java.id === id && !wanted.has(r) && Object.entries(common).every(([k, v]) => r.bedrock.states[k] === v));
+    if (extra.length) {
+      const targets = new Set(matches.map(r => blockStateKey(r.bedrock)));
+      const collapsed = extra.filter(r => targets.has(blockStateKey(r.bedrock)));
+      const waterlogged = Object.hasOwn(states, "waterlogged") && collapsed.some(r =>
+        Object.entries(states).every(([k, v]) => k === "waterlogged" || r.java.states[k] === v));
+      return { status: "inexact", reason: waterlogged ? "waterlogged" : collapsed.length ? "collapsed-states" : "overlap" };
+    }
     return { status: "mapped", target: { id: first.id, states: common }, verification: "unverified" };
   }
 

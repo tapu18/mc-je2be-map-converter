@@ -14,6 +14,27 @@ describe('runner policy', () => {
   it('reads explicit dependencies without treating background links as blockers', () => {
     expect(dependencies('### 背景\nSee #99\n### 依存\n- #1\n- #2\n### メモ\nSee #98\nDepends on: #3, #1')).toEqual([1, 2, 3]);
   });
+  it.each([
+    [235, 'Depends on: #234, #230\n\nDepends on: #303（#200 から付け替え。#200 → #102 → #235 の循環を解くため）', [234, 230, 303]],
+    [98, 'Depends on: #95, #96, #169\n\nDepends on: #134（#98 の作業に足した修飾句の正解データ）\n\nDepends on: #123（#96 のシナリオを補う）', [95, 96, 169, 134, 123]],
+    [19, '## 依存\nDepends on: #169, #98, #102\n\n依存の変更：#98 と #102 を足した。#102 の #19 への依存は外した。', [169, 98, 102]],
+  ])('ignores explanatory references in the dependency declarations from #%i', (_number, body, expected) => {
+    expect(dependencies(body)).toEqual(expected);
+  });
+  it('reads Japanese fields and legacy section lists with inline annotations', () => {
+    expect(dependencies([
+      '依存：#166',
+      '## Dependencies',
+      '#12（抽出）、#13（パーサ。参考（#99））、#14（ID 対応）、型のカタログ #46',
+      '- #15 (see #100), #16',
+      '- 経緯は #101 を参照',
+      '### Notes',
+      '- #102',
+    ].join('\r\n'))).toEqual([166, 12, 13, 14, 15, 16]);
+  });
+  it('requires the dependency numbers to start the field or section entry', () => {
+    expect(dependencies('Depends on: なし（#99 は完了）\n## 依存\nなし（#98 は完了）')).toEqual([]);
+  });
   it('tracks chronological claims and explicit cancellations', () => {
     expect(activeClaims([{ body: 'claim: first (branch a)' }, { body: 'claim: second (branch b)' },
       { body: 'claim-cancelled: first\nStopped' }])).toEqual(['second']);

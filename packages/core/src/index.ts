@@ -10,6 +10,10 @@ export * from "./command/index.ts";
 export * from "./runtime/index.ts";
 
 export * from "./runtime/scores.ts";
-export * from "./runtime/score-command.ts";
+export { bedrockEffect } from "./features/effect/ids.ts";
+export { gameRuleByJavaName, gameRules } from "./features/game_rule/rules.ts";
+export * from "./features/score/runtime.ts";
 export * from "./runtime/command.ts";
-export * from "./runtime/storage-command.ts";
+export * from "./features/storage/runtime.ts";
+export type { Block, ExecutionHost, Heightmap, Position, Rotation, RuntimeEntity } from "./runtime/context.ts";
+export { entityTarget, resolvePosition, selectEntities } from "./runtime/context.ts";

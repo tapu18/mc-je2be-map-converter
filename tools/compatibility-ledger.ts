@@ -2,11 +2,11 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { rewriteCommand, textFormatFor, type MappingTables } from "@je2be/core";
+import { rewriteCommand, runtimeFamilies, textFormatFor, toCommandIR, type MappingTables } from "@je2be/core";
 import { loadRewriteContext } from "@je2be/converter";
 import { applyVerdicts } from "./compatibility-verdicts.ts";
 import { attachCorpus } from "./compatibility-corpus.ts";
-import { executableShapes, executeModifiers, methods, probeShape, registries, rowKey, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
+import { executableShapes, executeModifiers, methods, probeShape, registries, rowKey, terminalShape, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
 
 const { values } = parseArgs({ options: {
   out: { type: "string" },
@@ -73,7 +73,7 @@ function registryVerdict(family: Family, id: string): Verdict {
     if (result.status === "rewritten" || result.status === "unchanged") return {
       method: "rewrite", implementation: "partial", loss: null, issue: 72,
       evidence: fixedTests ? { confidence: "measured", source: rewriteTest, scope }
-        : { confidence: "unconfirmed", source: "packages/core/src/command/bedrock-command-ids.ts", scope: "Existing command ID translation; target version unverified" },
+        : { confidence: "unconfirmed", source: family === "entity" ? "packages/core/src/command/bedrock-command-ids.ts" : "packages/core/src/features/effect/ids.ts", scope: "Existing command ID translation; target version unverified" },
     };
     if (family === "entity" && customEntities.has(id)) {
       return { method: "asset", implementation: "planned", loss: null, issue: null,
@@ -85,12 +85,6 @@ function registryVerdict(family: Family, id: string): Verdict {
         scope: "BDS rejects the same-name ID in the existing command probe; replacement uninvestigated" };
       return value;
     }
-  }
-  if (family === "game_rule" && id === "minecraft:keep_inventory") {
-    return { method: "rewrite", implementation: "partial", loss: null, issue: 72,
-      evidence: fixedTests
-        ? { confidence: "measured", source: rewriteTest, scope: "BDS accepts the rewritten keepInventory setting" }
-        : { confidence: "unconfirmed", source: "packages/core/src/command/rewrite.ts", scope: "Existing command spelling translation" } };
   }
   return unknown("Java registry");
 }
@@ -105,6 +99,30 @@ function add(family: Family, id: string, javaSource: string, verdict: Verdict): 
 const modifiers = executeModifiers(context.parser.root);
 for (const [id, path] of executableShapes(context.parser.root)) {
   add("command", id, "commands.json", modifiers.has(id) ? unknown("commands.json") : probeShape(context, id, path));
+}
+// Only the exact grammar shapes exercised by the runtime-vs-Java scenario tests
+// receive runtime evidence. A matching registration must accept each concrete input.
+const runtimeScenarios = [
+  { id: "score-operations", test: "runtime-score-ir.servers.test.ts" },
+  { id: "storage-paths", test: "runtime-storage-ir.servers.test.ts" },
+];
+for (const { id, test } of runtimeScenarios) {
+  const scenario = readJson<{setup: string[]; actions: {run: string}[]; datapack?: {functions?: Record<string, string[]>}}>(join(root, `scenarios/datapack/${id}.json`));
+  const lines = id === "score-operations" ? [...scenario.setup, ...scenario.datapack!.functions!["m2:scores/operations"]!] : [...scenario.setup, ...scenario.actions.map(action => action.run)];
+  for (const line of lines) {
+    const parsed = context.parser.parse(line);
+    if (!parsed.ok) throw new Error(`Scenario ${id}: cannot parse ${line}`);
+    const ir = toCommandIR(line, parsed.nodes);
+    if (!runtimeFamilies.some(family => family.assess({status: "parsed", ir}).status === "runtime")) continue;
+    const shape = terminalShape(context.parser.root, parsed.nodes);
+    const row = shape && rows.get(rowKey("command", shape));
+    if (!row) throw new Error(`Scenario ${id}: missing command shape for ${line}`);
+    row.method = "runtime";
+    row.implementation = "partial";
+    row.loss = null;
+    row.issue = null;
+    row.evidence = { confidence: "measured", source: `scenarios/datapack/${id}.json; packages/bridge/src/${test}`, scope: "Concrete scenario inputs executed by the registered runtime and compared with Java; other values and contexts unverified" };
+  }
 }
 for (const id of modifiers.keys()) {
   if (!rows.has(rowKey("command", id))) add("command", id, "commands.json", unknown("commands.json"));

@@ -14,7 +14,11 @@ it("checks generated Java-accepted rewrites by loading BDS functions", async () 
     await run(process.execPath, ["tools/shape-bedrock-audit.ts", java, bedrock]);
     const audit = JSON.parse(await readFile(bedrock, "utf8")) as { results: { command: string; bedrock: string }[] };
     expect(audit.results.length).toBeGreaterThan(0);
-    // 現時点の既知の不一致。修正時はこの一覧と実測記録を更新する。
-    expect(audit.results.filter(r => r.bedrock === "rejected").map(r => r.command)).toEqual(["time query time"]);
+    expect(audit.results.filter(r => r.bedrock === "rejected").map(r => r.command)).toEqual([]);
+    for (const rule of ["locator_bar", "minecraft:locator_bar"]) {
+      expect(audit.results).toContainEqual(expect.objectContaining({
+        command: `gamerule ${rule} true`, bedrock: "no-load-error",
+      }));
+    }
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

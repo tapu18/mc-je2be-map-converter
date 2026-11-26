@@ -1,6 +1,6 @@
 // 各リリースの実サーバーと文法パーサを突き合わせる。ゲームデータは git 管理外で生成する。
 import { describe, expect, it } from "vitest";
-import { ARGUMENT_PARSERS, CommandParser, selectCommandGrammar } from "@je2be/core";
+import { ARGUMENT_PARSERS, CommandParser, compileMacroTemplate, executeCommand, nbtToPlain, RuntimeState, selectCommandGrammar, toCommandIR, type CommandIR } from "@je2be/core";
 import { javaGrammarSources, loadGrammarTree, setupJavaGrammar } from "@je2be/converter";
 import { checkJavaSyntax } from "./java-syntax.ts";
 
@@ -15,9 +15,31 @@ const CASES = [
 ];
 
 describe("versioned command grammars", () => {
+  it("executes JSON text holes with the generated Java 1.21.4 grammar", async () => {
+    const source = javaGrammarSources().find(source => source.version === "1.21.4")!;
+    const grammar = await setupJavaGrammar(source);
+    const parser = new CommandParser(loadGrammarTree(grammar), grammar);
+    const template = compileMacroTemplate(parser, '$return run tellraw @a {"text":"$(message)"}', grammar.version);
+    if (!template.ok) throw Error(template.reason);
+    const executed: NonNullable<CommandIR["command"]>[] = [];
+    const state = new RuntimeState({
+      entities: () => [], readBlock: () => undefined,
+      runNative(command) { executed.push(command); return {success: true, result: 1}; },
+    });
+    state.functions.set("demo:text", [template.ir]);
+    const call = String.raw`function demo:text {message:'a\\/b'}`;
+    const parsed = parser.parse(call);
+    if (!parsed.ok) throw Error(parsed.error.message);
+    expect(executeCommand(state, toCommandIR(call, parsed.nodes))).toEqual({success: true, result: 1});
+    const message = executed[0]?.nodes[1]?.value;
+    expect(message).toMatchObject({kind: "text", format: "json"});
+    expect(message?.kind === "text" && nbtToPlain(message.value)).toEqual({text: "a/b"});
+  });
+
   for (const source of javaGrammarSources()) {
     it(`matches Java ${source.version}, including text, gamerules, angles and colors`, async () => {
       const grammar = await setupJavaGrammar(source);
+      if (source.version === "1.20.4") expect(grammar).toMatchObject({ dataVersion: 3700, packFormat: 26, textFormat: "json", source: { functionDirectory: "functions" } });
       const tree = loadGrammarTree(grammar);
       const parser = new CommandParser(tree, { textFormat: grammar.textFormat });
       const types = new Set<string>();
@@ -31,8 +53,8 @@ describe("versioned command grammars", () => {
         java: grammar.java, serverDirectory: grammar.serverDirectory, packFormat: grammar.packFormat,
         packMinor: grammar.packMinor, functionDirectory: grammar.source.functionDirectory,
       } });
-      // 全17版の実サーバーとの比較で確認した、安定リリースでの変更境界。
-      const snbt = !["1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4"].includes(source.version);
+      // 各版の実サーバーとの比較で確認した、安定リリースでの変更境界。
+      const snbt = !["1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4"].includes(source.version);
       const modernRule = ["1.21.11", "26.1", "26.2", "26.3"].includes(source.version);
       const rotation = modernRule || ["1.21.9", "1.21.10"].includes(source.version);
       const expected = [true, true, snbt, snbt, snbt, snbt, !modernRule, modernRule, true, true, false, !rotation, rotation, !snbt];

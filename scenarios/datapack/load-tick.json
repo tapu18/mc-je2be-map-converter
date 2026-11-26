@@ -63,5 +63,12 @@
       "m2:clock"
     ]
   },
-  "bedrockPending": "M2 のデータパック実行が未実装"
+  "bedrockRuntime": "load-tick",
+  "requiredObservations": [
+    "scores.clock.#tick",
+    "storage.m2:clock"
+  ],
+  "knownDiffs": {
+    "storage.m2:clock": "変換後の反復コマンドブロックから Java 関数を呼べないため、trace の block 行がない（#236）。コマンドブロック起点と tick 関数の相対順序は #19。"
+  }
 }

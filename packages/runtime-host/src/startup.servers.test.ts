@@ -1,38 +1,61 @@
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { BedrockServer, paths } from "@je2be/bridge";
 import { CommandParser, serializeCommandIR, toCommandIR, type CommandTreeNode } from "@je2be/core";
+import { writeInitPack } from "../../converter/src/convert.ts";
 
-it("starts load and tick functions, then refuses an unsafe restart", async () => {
-  const pack = mkdtempSync(join(paths.servers, "runtime-startup-"));
+it("restores committed scores and storage before load and runs schedule before tick", async () => {
+  const dir = mkdtempSync(join(paths.servers, "runtime-startup-"));
   try {
-    mkdirSync(join(pack, "scripts"));
-    cpSync(new URL("../pack/scripts/main.js", import.meta.url), join(pack, "scripts/main.js"));
-    const tree = JSON.parse(readFileSync(join(paths.servers, "reports-26.3/reports/commands.json"), "utf8")) as CommandTreeNode;
-    const parser = new CommandParser(tree, { textFormat: "snbt" });
-    const line = (source: string) => {
-      const result = parser.parse(source);
-      if (!result.ok) throw Error(result.error.message);
-      return serializeCommandIR({ grammarVersion: "26.3", textFormat: "snbt", ir: toCommandIR(source, result.nodes) });
+    const tree = JSON.parse(readFileSync(paths.commandsReport, "utf8")) as CommandTreeNode;
+    const parser = new CommandParser(tree, {textFormat: "snbt"});
+    const scripts = {
+      "test:load": [
+        "scoreboard players add #loads clock 1",
+        "execute store result score #restored clock run data get storage test:clock last",
+        "execute store result storage test:clock last int 1 run scoreboard players get #loads clock",
+        "scoreboard players set #scheduled clock 0",
+        "schedule function test:scheduled 1t",
+      ],
+      "test:scheduled": ["scoreboard players operation #scheduled clock = #tick clock"],
+      "test:tick": [
+        "execute if score #scheduled clock = #tick clock run scoreboard players add #ordered clock 1",
+        "scoreboard players add #tick clock 1",
+      ],
     };
-    const data = {schemaVersion: 1, packs: [{functions: {
-      "test:load": [line("scoreboard players set #load clock 7")],
-      "test:tick": [line("scoreboard players add #tick clock 1")],
-    }, tags: {"minecraft:load": {values: ["test:load"]}, "minecraft:tick": {values: ["test:tick"]}}}]};
-    writeFileSync(join(pack, "scripts/data.js"), 'export const objectives = [["clock", [["#tick", 0]]]]; export const entities = [];');
-    writeFileSync(join(pack, "scripts/datapacks.js"), `export const datapacks = ${JSON.stringify(data)};`);
-    writeFileSync(join(pack, "scripts/storage.js"), "export const storage = [];");
-    writeFileSync(join(pack, "manifest.json"), JSON.stringify({format_version: 2, header: {name: "runtime startup test", description: "startup probe", uuid: "0fe4c6eb-0bf2-46ca-9567-feb29e384d9e", version: [0,1,0], min_engine_version: [1,26,60]}, modules: [{type: "script", language: "javascript", uuid: "a8f76311-735e-46a4-b5dd-98f97e71373d", version: [0,1,0], entry: "scripts/main.js"}], dependencies: [{module_name: "@minecraft/server", version: "2.12.0-beta"}]}));
-    let bds = await BedrockServer.start({behaviorPacks: [pack], tickingArea: false});
+    const functions = Object.fromEntries(Object.entries(scripts).map(([id, lines]) => [id, lines.map(source => {
+      const parsed = parser.parse(source);
+      if (!parsed.ok) throw Error(`${source}: ${parsed.error.message}`);
+      return serializeCommandIR({grammarVersion: "26.3", textFormat: "snbt", ir: toCommandIR(source, parsed.nodes)});
+    })]));
+    const datapacks = {schemaVersion: 1, packs: [{functions, tags: {
+      "minecraft:load": {values: ["test:load"]},
+      "minecraft:tick": {values: ["test:tick"]},
+    }}]};
+    writeInitPack(dir, [{objective: "clock", scores: ["#tick", "#loads", "#ordered"].map(participant => ({participant, score: 0}))}],
+      [], JSON.stringify(datapacks));
+
+    let bds = await BedrockServer.start({behaviorPacks: [join(dir, "behavior_packs", "je2be_init")], tickingArea: false});
     try {
-      await bds.waitForLog(l => l.includes("[je2be] initialized"), 30000, "initialization");
-      const scores = await bds.request<{objective: string; scores: {participant: string; score: number}[]}[]>("scores");
-      const rows = scores.result?.find(o => o.objective === "clock")?.scores;
-      expect(rows?.find(row => row.participant === "#load")?.score).toBe(7);
-      expect(rows?.find(row => row.participant === "#tick")?.score).toBeGreaterThan(0);
+      const scores = async () => {
+        const {result} = await bds.request<{objective: string; scores: {participant: string; score: number}[]}[]>("scores");
+        return Object.fromEntries(result?.find(row => row.objective === "clock")?.scores.map(
+          ({participant, score}) => [participant, score],
+        ) ?? []);
+      };
+      const clock = async () => (await scores())["#tick"] ?? 0;
+      await expect.poll(clock, {timeout: 30_000}).toBeGreaterThan(0);
+      const first = await scores();
+      expect(first).toMatchObject({"#loads": 1, "#ordered": 1, "#scheduled": 0});
+
       bds = await bds.restart();
-      await bds.waitForLog(l => l.includes("refusing to restart"), 30000, "restart guard");
-    } finally { await bds.stop(); }
-  } finally { rmSync(pack, {recursive: true, force: true}); }
+      await expect.poll(clock, {timeout: 30_000}).toBeGreaterThan(first["#tick"]!);
+      expect(await scores()).toMatchObject({"#loads": 2, "#restored": 1, "#ordered": 2});
+    } finally {
+      await bds.stop();
+    }
+  } finally {
+    rmSync(dir, {recursive: true, force: true});
+  }
 });

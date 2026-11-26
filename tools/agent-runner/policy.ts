@@ -38,14 +38,34 @@ export function hasLabel(issue: Pick<Issue, 'labels'>, name: string): boolean {
   return issue.labels.some(label => label.name === name);
 }
 
-// Only explicit dependency fields count; ordinary references in background text do not.
+function afterDependencyNote(text: string): string {
+  if (!/^[（(]/.test(text)) return text;
+  let depth = 0;
+  for (const bracket of text.matchAll(/[（）()]/g)) {
+    depth += /^[（(]/.test(bracket[0]) ? 1 : -1;
+    if (depth === 0) return text.slice(bracket.index + 1).trimStart();
+  }
+  return '';
+}
+
 export function dependencies(body: string): number[] {
   const result = new Set<number>();
   let section = false;
   for (const line of body.split('\n')) {
     if (/^#{1,6}\s/.test(line)) section = /^#{1,6}\s+(依存|Dependencies)\s*$/i.test(line.trim());
-    if (section || /^(?:Depends on|依存)\s*[:：]/i.test(line.trim())) {
-      for (const match of line.matchAll(/#(\d+)\b/g)) result.add(Number(match[1]));
+    const entry = section ? line.trim().replace(/^(?:[-+*]|\d+[.)])\s+/, '') : line.trim();
+    const field = /^(?:Depends on|依存)\s*[:：]\s*/i.exec(entry);
+    if (!field && !section) continue;
+
+    let remaining = field ? entry.slice(field[0].length) : entry;
+    while (remaining) {
+      const issue = /^#(\d+)\b/.exec(remaining);
+      if (!issue) break;
+      result.add(Number(issue[1]));
+      const tail = afterDependencyNote(remaining.slice(issue[0].length).trimStart());
+      const separator = /^[,，、]\s*/.exec(tail);
+      if (!separator) break;
+      remaining = tail.slice(separator[0].length);
     }
   }
   return [...result];
@@ -62,6 +82,12 @@ export function activeClaims(comments: Issue['comments']): string[] {
     }
   }
   return [...claims];
+}
+
+export function isDependencyBlocked(item: Pick<Issue, 'labels'> & { body: string | null }): boolean {
+  return hasLabel(item, 'status:blocked') && !hasLabel(item, 'needs-approval') &&
+    !item.labels.some(l => l.name.startsWith('status:') && l.name !== 'status:blocked') &&
+    !/^[ \t]*Blocked[ \t]*[:：]/im.test(item.body ?? '');
 }
 
 export function failedChecks(pr: PullRequest): string[] {

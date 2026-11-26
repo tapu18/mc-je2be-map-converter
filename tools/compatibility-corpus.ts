@@ -1,7 +1,7 @@
 import { corpusContext, type CorpusVersion } from "./corpus-grammar.ts";
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
-import { CommandParser, rewriteCommand, selectCommandGrammar, type NbtTag, type ParsedNode, type RewriteContext } from "@je2be/core";
+import { CommandParser, gameRuleByJavaName, rewriteCommand, selectCommandGrammar, type NbtTag, type ParsedNode, type RewriteContext } from "@je2be/core";
 import { loadGrammarTree, loadJavaGrammars } from "@je2be/converter";
 import { matchedModifiers, rowKey, terminalShape, type Family, type Row } from "./compatibility-inventory.ts";
 
@@ -42,7 +42,8 @@ function commandReferences(nodes: ParsedNode[], add: (family: Family, id: string
     const value = node.value;
     if (value?.kind === "particle") add("particle", value.id);
     if (command === "gamerule" && previous?.name === "gamerule") {
-      add("game_rule", namespaced(node.name === "keepInventory" ? "keep_inventory" : node.name));
+      const rule = gameRuleByJavaName(node.name);
+      add("game_rule", rule ? `minecraft:${rule.id}` : namespaced(node.name));
     }
     if (value?.kind === "resource" && !value.tag) {
       if ((command === "playsound" || command === "stopsound") && node.name === "sound") add("sound", value.id);

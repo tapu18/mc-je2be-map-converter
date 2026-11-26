@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import { paths, repoRoot } from "../paths.ts";
 import { assessComparison, formatDiffs, unexpectedDiffs } from "./compare.ts";
 import { loadScenarios, readGolden, writeGolden } from "./load.ts";
+import { runBedrockLoadTick } from "./load-tick.ts";
 import { runBedrock, runJava } from "./run.ts";
 
 const servers = JSON.parse(readFileSync(join(repoRoot, "tools/servers.json"), "utf8")) as { java: { version: string } };
@@ -52,14 +53,23 @@ for (const s of selected) {
     it("bedrock matches the golden data", async () => {
       const golden = readGolden(s);
       if (!golden) throw new Error(`${s.id}: 正解データがない`);
-      const { state, log } = await runBedrock(s);
+      const loadTick = s.bedrockRuntime === "load-tick";
+      const { state, log } = await (loadTick ? runBedrockLoadTick(s, servers.java.version) : runBedrock(s));
+      if (loadTick) {
+        const [id] = s.observe.storage!;
+        const expected = golden.state.storage?.[id!] as { trace: { source: string }[]; after_reload: unknown[] };
+        // Permit only the absent command-block rows. Load, every tick row and the reload snapshot must match.
+        expect(state.storage?.[id!], log.join("\n")).toEqual({
+          ...expected, trace: expected.trace.filter(row => row.source !== "block"),
+        });
+      }
       if (s.play && !s.requiredObservations?.length) throw new Error(`${s.id}: 変換の受け入れ確認には requiredObservations が必要`);
       const result = assessComparison(golden.state, state, s.requiredObservations, s.knownDiffs);
       const unexpected = unexpectedDiffs(result, s.knownDiffs);
       const stale = Object.keys(s.knownDiffs ?? {}).filter((p) => !result.diffs.some((d) => d.path === p));
       if (result.incomparable.length) console.log(`${s.id}: 比べられなかった値（ID 対応なし）\n  ${result.incomparable.join("\n  ")}`);
       console.log(`${s.id}: ${JSON.stringify({ required: result.required, knownDifferences: result.diffs.length - unexpected.length, incomparable: result.incomparable.length, completeMatch: result.completeMatch })}`);
-      expect(result.passed, `必須観測の不足・比較不能・差分\n${JSON.stringify(result.checks)}`).toBe(true);
+      expect(result.passed, `必須観測の不足・比較不能・差分\n${JSON.stringify(result.checks)}\n${formatDiffs(unexpected)}`).toBe(true);
       expect(unexpected, `説明のない差分\n${formatDiffs(unexpected)}\n${log.join("\n")}`).toEqual([]);
       expect(stale, "knownDiffs にあるが、もう差分がない（消すこと）").toEqual([]);
     });

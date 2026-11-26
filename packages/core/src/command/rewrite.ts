@@ -5,18 +5,23 @@
 //
 // 確度：出力する BE の書き方は BDS 1.26.63.1 が構文として受理することを実測した（rewrite.servers.test.ts）。
 // 意味が Java と一致することは、変換を通すシナリオ（scenarios/convert/）で確かめたものだけが実測で、残りは未確認。
+import { rewriteEffect } from "../features/effect/rewrite.ts";
+import { rewriteGameRule } from "../features/game_rule/rewrite.ts";
 import { rewriteSound } from "../features/sound/rewrite.ts";
 import type { BlockDefaults } from "../java/world.ts";
 import type { MappingLookup } from "../mappings/mappings.ts";
 import type { ArgumentValue, EntitySelector, Range } from "./arguments.ts";
 import { readSelector } from "./arguments.ts";
-import { bedrockEffect, bedrockEntityType } from "./bedrock-command-ids.ts";
-import { toCommandIR, type CommandParser, type ParsedNode } from "./parser.ts";
+import { bedrockEntityType } from "./bedrock-command-ids.ts";
+import { isEarlierJavaRelease, normalizeCommandIR } from "./normalize-command.ts";
+import { toCommandIR, type CommandIR, type CommandParser, type ParsedNode } from "./parser.ts";
 import { formatRawText, plainText, toRawText } from "./rawtext.ts";
 import { CommandSyntaxError, StringReader } from "./reader.ts";
 
 export interface RewriteContext {
   parser: CommandParser;
+  /** parser に設定した Java の版を上書きする。版があれば書き換えの前に IR を正規化する。 */
+  sourceVersion?: string;
   mappings: MappingLookup;
   /** Java のブロックの既定の状態（データ生成の blocks.json）。`setblock ... oak_stairs[facing=east]` の省いた状態を補う */
   blockDefaults: BlockDefaults;
@@ -238,7 +243,15 @@ function rewriteBlockPredicate(v: Value<"block">, ctx: RewriteContext, ed: Edito
   if (v.tag) return ed.unsupported(`ブロックタグ #${v.id} の展開は未実装`), undefined;
   if (v.nbt) return ed.unsupported(`ブロックの NBT の条件（${v.id}{...}）はランタイムで評価する（未実装）`), undefined;
   const m = ctx.mappings.blockPredicate(v.id, v.states);
-  if (m.status === "inexact") return ed.unsupported(`ブロックの条件 ${v.id}${JSON.stringify(v.states)} を BE では同じ範囲に書けない`), undefined;
+  if (m.status === "inexact") {
+    const reason = {
+      "multiple-ids": "対応先が複数の BE ブロック ID にまたがる",
+      overlap: "共通する BE プロパティでは別の状態にも一致する",
+      "collapsed-states": "条件に一致する状態と一致しない状態が同じ BE 主層の状態になる",
+      waterlogged: "BE 主層の状態では水没の有無を区別できない",
+    }[m.reason];
+    return ed.unsupported(`ブロックの条件 ${v.id}${JSON.stringify(v.states)} を BE では同じ範囲に書けない（${reason}）`), undefined;
+  }
   if (m.status !== "mapped") return ed.unsupported(`ブロックの条件を BE に対応させられない（${v.id}、${m.status}）`), undefined;
   return m.target.id + beStates(m.target.states);
 }
@@ -403,37 +416,28 @@ const COMMANDS: Record<string, CommandHandler> = {
     ed.replace(name.start, nodes.at(-1)!.end, `${id} ${position}`);
     ed.warn("BE のパーティクルはエミッターを使うため、粒子の数や見た目が変わり得る");
   },
-  effect: (nodes, head, _ctx, ed) => {
-    const action = nodes[0]!;
-    const targets = arg(nodes, "targets");
-    const effect = arg(nodes, "effect");
-    if (effect?.value?.kind === "resource") {
-      const id = bedrockEffect(effect.value.id);
-      if (!id) return ed.unsupported(`BE に対応のないステータス効果 ${effect.value.id}`);
-      ed.replace(effect.start, effect.end, id);
-    }
-    if (action.name === "give") {
-      ed.replace(head.end, action.end, "");
-    } else if (targets) {
-      ed.replace(head.end, action.end, "");
-      ed.replace(targets.end, targets.end, " clear");
-    } else {
-      ed.replace(head.end, action.end, " @s clear");
-    }
-  },
+  effect: (nodes, head, _ctx, ed) => rewriteEffect(nodes, head, ed),
   gamemode: ok,
-  time: (nodes, _head, _ctx, ed) => {
+  time: (nodes, _head, ctx, ed) => {
     const [sub, option] = literals(nodes);
     if (sub === "add" || (sub === "query" && ["time", "gametime", "day", "daytime"].includes(option ?? ""))) return;
     if (sub === "set") {
       if (arg(nodes, "time")) return;
-      const marker = arg(nodes, "timemarker")?.value;
-      if (marker?.kind === "resource" && marker.id.startsWith("minecraft:") && DAY_MARKERS.has(marker.id.slice("minecraft:".length))) return;
+      const timemarker = arg(nodes, "timemarker");
+      const marker = timemarker?.value;
       // 旧 Java の day などは絶対時刻。BE のマーカーは次に来る該当時刻へ進める。
-      const ticks = DAY_MARKERS.get(option ?? "");
-      if (ticks !== undefined) {
+      if (timemarker && marker?.kind === "resource" && marker.id.startsWith("minecraft:")) {
+        const ticks = DAY_MARKERS.get(marker.id.slice("minecraft:".length));
+        if (ticks !== undefined) {
+          const version = ctx.sourceVersion ?? ctx.parser.options.version;
+          if (version && isEarlierJavaRelease(version, "26.1")) ed.replace(timemarker.start, timemarker.end, String(ticks));
+          return;
+        }
+      }
+      const legacyTicks = DAY_MARKERS.get(option ?? "");
+      if (legacyTicks !== undefined) {
         const literal = nodes[1]!;
-        return ed.replace(literal.start, literal.end, String(ticks));
+        return ed.replace(literal.start, literal.end, String(legacyTicks));
       }
     }
     ed.unsupported("BE に直接対応する時刻の操作がない");
@@ -448,11 +452,7 @@ const COMMANDS: Record<string, CommandHandler> = {
   difficulty: (nodes, _head, _ctx, ed) => {
     if (!nodes.length) ed.unsupported("BE の difficulty は難易度を指定する必要がある");
   },
-  gamerule: (nodes, _head, _ctx, ed) => {
-    const rule = nodes[0]!;
-    if (rule.name === "keep_inventory") ed.replace(rule.start, rule.end, "keepInventory");
-    else if (rule.name !== "keepInventory") ed.unsupported(`gamerule ${rule.name} の書き換えは未対応`);
-  },
+  gamerule: (nodes, _head, _ctx, ed) => rewriteGameRule(nodes, ed),
   scoreboard: (nodes, _head, _ctx, ed) => {
     const [group, sub] = literals(nodes);
     if (group === "objectives") {
@@ -527,24 +527,53 @@ function checkExecuteStep(kind: string, nodes: ParsedNode[], ed: Editor): void {
 
 /** コマンド1つを BE のコマンドに書き換える */
 export function rewriteCommand(source: string, ctx: RewriteContext): RewriteResult {
+  return rewrite(source, ctx, false);
+}
+
+/** Rewrite just the terminal command. The runtime evaluates the Java execute/return frames itself. */
+export function rewriteNativeCommand(source: string, ctx: RewriteContext): RewriteResult {
+  return rewrite(source, ctx, true);
+}
+
+function rewrite(source: string, ctx: RewriteContext, terminalOnly: boolean): RewriteResult {
   const parsed = ctx.parser.parse(source);
   if (!parsed.ok) return { status: "invalid", message: parsed.error.message, position: parsed.error.position };
-  const ed = new Editor(source);
-  const ir = toCommandIR(source, parsed.nodes);
+  let ir = toCommandIR(source, parsed.nodes);
+  const sourceVersion = ctx.sourceVersion ?? ctx.parser.options.version;
+  if (sourceVersion) {
+    const normalized = normalizeCommandIR(ir, sourceVersion);
+    if (!normalized.ok) {
+      const { reason, start, end } = normalized;
+      return { status: "unsupported", issues: [{ severity: "unsupported", message: `${reason}（${start}–${end}文字目）` }] };
+    }
+    ir = normalized.ir;
+  }
+  const head = [...parsed.nodes].reverse().find(node => node.jump === "root") ?? parsed.nodes[0]!;
+  if (terminalOnly) {
+    while (ir.command?.name === "return" && ir.command.run) ir = ir.command.run;
+    if (!ir.command) {
+      return {status: "unsupported", issues: [{severity: "unsupported", message: "委譲する末尾命令がない"}]};
+    }
+    ir = {source, context: [], command: ir.command};
+  }
+  return rewriteIR(ir, head, ctx, terminalOnly ? head.start : 0);
+}
+
+function rewriteIR(ir: CommandIR, head: ParsedNode, ctx: RewriteContext, start: number): RewriteResult {
+  const ed = new Editor(ir.source);
   for (const step of ir.context) checkExecuteStep(step.kind, step.nodes, ed);
   if (ir.command) {
-    const handler = COMMANDS[ir.command.name];
+    const handler = Object.hasOwn(COMMANDS, ir.command.name) ? COMMANDS[ir.command.name] : undefined;
     if (!handler) ed.unsupported(`${ir.command.name} の書き換えは未対応`);
     else {
-      // 最後のコマンドの名前の節：run の先なら最後の jump=root、execute でなければ先頭
-      const head = [...parsed.nodes].reverse().find((n) => n.jump === "root") ?? parsed.nodes[0]!;
       if (!ed.failed) handler(ir.command.nodes, head, ctx, ed, ir);
     }
   }
   if (ed.failed) return { status: "unsupported", issues: ed.issues };
-  for (const n of parsed.nodes) rewriteNode(n, ctx, ed);
+  for (const step of ir.context) for (const node of step.nodes) rewriteNode(node, ctx, ed);
+  for (const node of ir.command?.nodes ?? []) rewriteNode(node, ctx, ed);
   if (ed.failed) return { status: "unsupported", issues: ed.issues };
-  let command = ed.result();
+  let command = ed.result().slice(start);
   if (command.startsWith("/")) command = command.slice(1);
   return { status: ed.changed ? "rewritten" : "unchanged", command, issues: ed.issues };
 }

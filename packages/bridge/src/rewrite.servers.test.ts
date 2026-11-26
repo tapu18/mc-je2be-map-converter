@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { rewriteCommand, type RewriteContext } from "@je2be/core";
+import { bedrockEffect, rewriteCommand, type RewriteContext } from "@je2be/core";
 import { javaGrammarSources, loadRewriteContext, rewriteWorldCommands, setupJavaGrammar } from "@je2be/converter";
 import { BedrockServer, JavaServer, checkJavaSyntax, rewriteResources } from "./index.ts";
 import { paths } from "./paths.ts";
@@ -163,14 +163,25 @@ describe("command rewrite against the real grammar and mappings", () => {
     }
 
     expect(await bds.exec("summon pig 20 -60 20")).toMatchObject({ ok: true, result: { successCount: 1 } });
+    const registered = await bds.request<string[]>("effectTypes");
+    expect(registered).toMatchObject({ ok: true });
+    expect(registered.result).toContain("minecraft:village_hero");
     const unsupportedEffects: string[] = [];
     for (const id of effects) {
       const output = rewriteCommand(effectProbe(id), ctx);
       if ("command" in output) {
+        expect(registered.result, id).toContain(`minecraft:${bedrockEffect(id)}`);
         expect(await bds.exec(output.command), output.command).toMatchObject({ ok: true, result: { successCount: 1 } });
       } else {
         unsupportedEffects.push(id);
-        expect(await bds.exec(`effect @e[type=pig] ${id.slice("minecraft:".length)} 20`), id).toMatchObject({ ok: false });
+        expect(output, id).toMatchObject({
+          status: "unsupported",
+          issues: expect.arrayContaining([{ severity: "unsupported", message: expect.stringContaining(id) }]),
+        });
+        expect(registered.result, id).not.toContain(id);
+        expect(await bds.exec(`effect @e[type=pig] ${id.slice("minecraft:".length)} 20`), id).toMatchObject({
+          ok: false, error: expect.stringContaining("Syntax error"),
+        });
       }
     }
     expect(unsupportedEffects).toEqual(["minecraft:dolphins_grace", "minecraft:glowing", "minecraft:luck", "minecraft:unluck"]);
@@ -189,10 +200,11 @@ describe("command rewrite against the real grammar and mappings", () => {
       ["scoreboard objectives setdisplay belowName", "scoreboard objectives setdisplay belowname"],
       ["execute if entity @e[type=minecraft:boat]", "execute if entity @e[type=boat]"],
     ] as const;
+    const unsupported = ["return run schedule clear foo", "worldborder warning time 2147483647"];
     try {
       expect(await java.exec(commands[0][0])).toContain("6000");
       expect(await java.exec(commands[1][0])).toContain("true");
-      for (const [i, [command]] of commands.entries()) {
+      for (const [i, command] of [...commands.map(([input]) => input), ...unsupported].entries()) {
         expect(await java.exec(`setblock ${i + 1} -58 2 command_block{Command:${JSON.stringify(command)}}`)).toContain("Changed the block");
       }
       expect(await java.exec("save-all flush")).toContain("Saved the game");
@@ -200,8 +212,12 @@ describe("command rewrite against the real grammar and mappings", () => {
       await java.stop();
     }
     const report = rewriteWorldCommands(java.worldDirectory, await rewriteResources());
-    expect(report).toMatchObject({ textFormat: "json", counts: { invalid: 0, unsupported: 0, unchanged: 1, rewritten: 4 } });
-    expect(report.commandBlocks.map((entry) => [entry.java, entry.bedrock]).sort()).toEqual(commands.filter(([input, output]) => input !== output).sort());
+    expect(report).toMatchObject({ textFormat: "json", counts: { invalid: 0, unsupported: 2, unchanged: 1, rewritten: 4 } });
+    expect(report.commandBlocks.filter(entry => entry.status === "rewritten").map(entry => [entry.java, entry.bedrock]).sort()).toEqual(commands.filter(([input, output]) => input !== output).sort());
+    expect(report.commandBlocks.filter(entry => entry.status === "unsupported")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ java: unsupported[0], issues: [{ severity: "unsupported", message: expect.stringContaining("26.2 → 26.3: schedule clear") }] }),
+      expect.objectContaining({ java: unsupported[1], issues: [{ severity: "unsupported", message: expect.stringContaining("1.21.10 → 1.21.11: worldborder") }] }),
+    ]));
     for (const [, command] of commands) expect(await bds.exec(command), command).toMatchObject({ ok: true });
   });
 

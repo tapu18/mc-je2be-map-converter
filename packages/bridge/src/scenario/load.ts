@@ -28,7 +28,12 @@ export function loadScenarios(dir = scenariosDir): (Scenario & { id: string })[]
         || (s.actions.some((a) => "restart" in a) && !s.bedrockPending)) {
         throw new Error(`${s.id}: restart は bedrockPending の actions 専用`);
       }
-      if (s.bedrockPending !== undefined) {
+      if (s.bedrockRuntime !== undefined) {
+        if (s.bedrockRuntime !== "load-tick" || !s.datapack || !s.observe.storage?.length
+          || s.bedrockPending !== undefined || s.bedrock || s.play) {
+          throw new Error(`${s.id}: bedrockRuntime には datapack と observe.storage が必要。bedrockPending、bedrock、play との併用はできない`);
+        }
+      } else if (s.bedrockPending !== undefined) {
         if (typeof s.bedrockPending !== "string" || !s.bedrockPending.trim() || s.bedrock || s.play || s.knownDiffs) {
           throw new Error(`${s.id}: bedrockPending には理由が必要。bedrock、play、knownDiffs との併用はできない`);
         }
