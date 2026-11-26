@@ -1,5 +1,5 @@
 import type { CommandIR, ParsedNode } from "../command/parser.ts";
-import type { RuntimeState } from "./command.ts";
+import type { Frame, RuntimeState } from "./command.ts";
 import { resolvePosition, type ExecutionContext, type ExecutionHost, type Position } from "./context.ts";
 import type { ExecutionResult } from "./index.ts";
 import { equalNbt } from "./nbt-mutation.ts";
@@ -36,8 +36,8 @@ export function compareBlockRegions(host: ExecutionHost, dimension: string, star
   return count;
 }
 
-export function executeWorldCommand(state: RuntimeState, command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string): ExecutionResult | undefined {
-  if (command.name === "setblock" && state.host) {
+export function* executeWorldCommand(state: RuntimeState, command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string): Frame<ExecutionResult | undefined> {
+  if (command.name === "setblock" && state.host?.writeBlock) {
     const [position, block, mode] = command.nodes;
     const value = block?.value;
     if (position?.value?.kind === "coordinates" && position.value.coordinates.length === 3 && value?.kind === "block"
@@ -45,5 +45,5 @@ export function executeWorldCommand(state: RuntimeState, command: NonNullable<Co
       return state.host.writeBlock(context.dimension, blockPosition(position, source, context, state.host), value);
     }
   }
-  return state.host?.runNative?.(command, context, source);
+  if (state.host?.runNative) return yield {kind: "native", command, context, source};
 }

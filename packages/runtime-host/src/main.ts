@@ -3,12 +3,16 @@ import { initialize } from "./initialize.ts";
 import { RuntimeSession } from "./host.ts";
 import { commitState } from "./persistence.ts";
 import { storage } from "./storage.js";
-import { objectives, entities } from "./data.js";
+import * as data from "./data.js";
 
 export let session: RuntimeSession | undefined;
 world.afterEvents.worldLoad.subscribe(() => {
-  initialize(objectives, entities, storage).then(state => {
-    session = new RuntimeSession(state);
+  initialize(data.objectives, data.entities, storage).then(state => {
+    const commands = new Map(data.nativeCommands);
+    session = new RuntimeSession(state, source => {
+      const command = commands.get(source);
+      if (command !== undefined) return {command, completion: "synchronous"};
+    });
     const properties = {get: (key: string) => world.getDynamicProperty(key), set: (key: string, value?: string) => world.setDynamicProperty(key, value)};
     const interval = system.runInterval(() => {
       if (!session?.isConsistent) { system.clearRun(interval); console.warn("[je2be] persistence stopped: inconsistent session"); return; }

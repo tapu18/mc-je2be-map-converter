@@ -1,6 +1,8 @@
-import { BlockPermutation, ScoreboardIdentityType, world, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, GameMode, ScoreboardIdentityType, world, type Player, type Vector3 } from "@minecraft/server";
 import { executeCommand, RuntimeState } from "../../core/src/runtime/command.ts";
 import type { CommandIR } from "../../core/src/command/parser.ts";
+import { dimensionId, type ExecutionContext, type ExecutionHost, type RuntimeEntity } from "../../core/src/runtime/context.ts";
+import type { CommandResult } from "../../core/src/runtime/index.ts";
 
 export type HostError = { kind: "unloaded" | "out-of-bounds" | "absent" | "invalid" | "exception" | "unsupported"; message: string };
 export type HostResult<T> = { ok: true; value: T } | { ok: false; error: HostError };
@@ -45,10 +47,76 @@ export function writeBlock(dimension: string, position: Vector3, state: BlockSta
 }
 /** A caller must explicitly identify commands whose effect can be observed synchronously. */
 export function nativeCommand(dimension: string, command: string, completion: "synchronous" | "deferred"): HostResult<{ status: "known"; successCount: number } | { status: "unknown" }> {
+  return runNative(() => world.getDimension(dimension), command, completion);
+}
+function runNative(source: () => { runCommand(command: string): {successCount: number} }, command: string, completion: "synchronous" | "deferred") {
   return attempt(() => {
-    const result = world.getDimension(dimension).runCommand(command);
+    const result = source().runCommand(command);
     return completion === "synchronous" ? { status: "known" as const, successCount: result.successCount } : { status: "unknown" as const };
   });
+}
+
+export type NativeCommandResolver = (source: string) =>
+  {command: string; completion: "synchronous" | "deferred"} | undefined;
+
+const bedrockDimension = (id: string) => dimensionId(id) === "minecraft:the_nether" ? "nether" : dimensionId(id).replace(/^minecraft:/, "");
+const dimensions = ["overworld", "nether", "the_end"];
+const gameModes: Record<GameMode, NonNullable<RuntimeEntity["gamemode"]>> = {
+  [GameMode.Survival]: "survival",
+  [GameMode.Creative]: "creative",
+  [GameMode.Adventure]: "adventure",
+  [GameMode.Spectator]: "spectator",
+};
+
+/** BE command coordinates use decimal tokens. Integer X/Z tokens can snap to block centers. */
+function nativeNumber(value: number): string {
+  const [coefficient, exponent] = String(value).split("e") as [string, string?];
+  if (exponent === undefined) return Number.isInteger(value) ? coefficient + ".0" : coefficient;
+  const [integer, fraction = ""] = coefficient.replace(/^-/, "").split(".") as [string, string?];
+  const digits = integer + fraction;
+  const point = integer.length + Number(exponent);
+  const sign = value < 0 ? "-" : "";
+  if (point <= 0) return sign + "0." + "0".repeat(-point) + digits;
+  if (point >= digits.length) return sign + digits + "0".repeat(point - digits.length) + ".0";
+  return sign + digits.slice(0, point) + "." + digits.slice(point);
+}
+
+function executeNative(context: ExecutionContext, native: NonNullable<ReturnType<NativeCommandResolver>>): CommandResult {
+  const dimension = bedrockDimension(context.dimension);
+  const source = () => {
+    if (context.executor === undefined) return world.getDimension(dimension);
+    const executor = world.getEntity(context.executor);
+    if (!executor?.isValid) throw Error(`executor ${context.executor} is unavailable`);
+    return executor;
+  };
+  const position = context.position.map(nativeNumber).join(" ");
+  const rotation = context.rotation.map(nativeNumber).join(" ");
+  const command = `execute in ${dimension} positioned ${position} rotated ${rotation} anchored ${context.anchor} run ${native.command}`;
+  const result = runNative(source, command, native.completion);
+  if (!result.ok) return {success: false, error: result.error.message};
+  if (result.value.status === "unknown") return result.value;
+  return result.value.successCount > 0
+    ? {success: true, result: result.value.successCount}
+    : {success: false, error: "native command failed"};
+}
+
+function executionHost(resolveNative?: NativeCommandResolver): ExecutionHost {
+  return {
+    entities: () => dimensions.flatMap(dimension => world.getDimension(dimension).getEntities().map(entity => {
+      const {x, y, z} = entity.location;
+      const {x: pitch, y: yaw} = entity.getRotation();
+      const player = entity.typeId === "minecraft:player" ? entity as Player : undefined;
+      return {id: entity.id, type: entity.typeId, tags: entity.getTags(),
+        position: [x, y, z], rotation: [yaw, pitch], dimension: dimensionId(dimension),
+        eyeHeight: entity.getHeadLocation().y - y, ...(player && {name: player.name, gamemode: gameModes[player.getGameMode()]})};
+    })),
+    // Core block conditions need Java IDs and states, including block entity data.
+    readBlock: () => undefined,
+    runNative(_command, context, source) {
+      const native = resolveNative?.(source);
+      return native && executeNative(context, native);
+    },
+  };
 }
 export function readProperty(key: string): HostResult<Property | undefined> { return attempt(() => world.getDynamicProperty(key)); }
 export function writeProperty(key: string, value?: Property): HostResult<void> { return attempt(() => world.setDynamicProperty(key, value)); }
@@ -89,7 +157,10 @@ export class RuntimeSession {
   readonly state: RuntimeState;
   private consistent = true;
   private unknownNative = false;
-  constructor(state = new RuntimeState()) { this.state = state; }
+  constructor(state = new RuntimeState(), resolveNative?: NativeCommandResolver) {
+    this.state = state;
+    state.host ??= executionHost(resolveNative);
+  }
   get isConsistent(): boolean { return this.consistent; }
   /** Capture changes made by native commands to managed fake-player scores. */
   syncScores(): void {
@@ -116,14 +187,24 @@ export class RuntimeSession {
     if (result.ok && result.value.status === "unknown") this.unknownNative = true;
     return { status: "executed" as const, result };
   }
-  execute(ir: CommandIR) {
+  execute(ir: CommandIR, context?: ExecutionContext) {
     if (!this.consistent) return { status: "inconsistent" as const };
     if (this.unknownNative) return { status: "unknown-native" as const };
     try { this.syncScores(); } catch (error) { return { status: "inconsistent" as const, error: String(error) }; }
-    const before = snapshot(this.state);
-    const core = executeCommand(this.state, ir);
-    const projection = project(before, snapshot(this.state));
-    if (!projection.ok) this.consistent = false;
+    let before = snapshot(this.state);
+    let projection: Projection = {ok: true};
+    const flush = () => {
+      if (!projection.ok) return projection;
+      const after = snapshot(this.state);
+      projection = project(before, after);
+      if (projection.ok) before = after;
+      else this.consistent = false;
+      return projection;
+    };
+    const core = executeCommand(this.state, ir, undefined, context, () =>
+      flush().ok ? undefined : {success: false, error: "score projection failed before native command"});
+    projection = flush();
+    if ("status" in core) this.unknownNative = true;
     return { status: "executed" as const, core, projection };
   }
 }
