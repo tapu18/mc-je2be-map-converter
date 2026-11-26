@@ -100,7 +100,7 @@ function executeNative(context: ExecutionContext, native: NonNullable<ReturnType
     : {success: false, error: "native command failed"};
 }
 
-function executionHost(resolveNative?: NativeCommandResolver): ExecutionHost {
+function executionHost(resolveNative: NativeCommandResolver | undefined, isRestricted: () => boolean): ExecutionHost {
   return {
     entities: () => dimensions.flatMap(dimension => world.getDimension(dimension).getEntities().map(entity => {
       const {x, y, z} = entity.location;
@@ -114,7 +114,7 @@ function executionHost(resolveNative?: NativeCommandResolver): ExecutionHost {
     readBlock: () => undefined,
     runNative(_command, context, source) {
       const native = resolveNative?.(source);
-      return native && executeNative(context, native);
+      if (native) return isRestricted() ? {status: "unknown"} : executeNative(context, native);
     },
   };
 }
@@ -157,15 +157,22 @@ export class RuntimeSession {
   readonly state: RuntimeState;
   private consistent = true;
   private unknownNative = false;
+  private restricted = false;
+  private pendingScores: Scores | undefined;
   constructor(state = new RuntimeState(), resolveNative?: NativeCommandResolver) {
     this.state = state;
-    state.host ??= executionHost(resolveNative);
+    state.host ??= executionHost(resolveNative, () => this.restricted);
   }
   get isConsistent(): boolean { return this.consistent; }
   /** Capture changes made by native commands to managed fake-player scores. */
   syncScores(): void {
     if (!this.consistent) throw Error("inconsistent session");
     try {
+      if (this.pendingScores) {
+        const projection = project(this.pendingScores, this.state.scores.objectives);
+        if (!projection.ok) throw Error(`score projection failed for ${projection.target}: ${projection.error.message}`);
+        this.pendingScores = undefined;
+      }
       for (const [id, scores] of this.state.scores.objectives) {
         const objective = world.scoreboard.getObjective(id);
         if (!objective) throw Error(`managed objective missing: ${id}`);
@@ -180,6 +187,19 @@ export class RuntimeSession {
     } catch (error) { this.consistent = false; throw error; }
   }
   halt(): void { this.consistent = false; }
+  /** Evaluate during a custom command, leaving score projection for the next writable tick. */
+  executeRestricted(ir: CommandIR, context: ExecutionContext): CommandResult {
+    if (!this.consistent) return {success: false, error: "inconsistent session"};
+    if (this.unknownNative) return {status: "unknown"};
+    // Between callbacks in one tick, core commands read the unprojected scores.
+    if (!this.pendingScores) {
+      this.syncScores();
+      this.pendingScores = snapshot(this.state);
+    }
+    this.restricted = true;
+    try { return executeCommand(this.state, ir, undefined, context); }
+    finally { this.restricted = false; }
+  }
   runNative(dimension: string, command: string, completion: "synchronous" | "deferred") {
     if (!this.consistent) return { status: "inconsistent" as const };
     if (this.unknownNative) return { status: "unknown-native" as const };

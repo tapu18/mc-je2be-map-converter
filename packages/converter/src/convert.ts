@@ -102,6 +102,7 @@ export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], e
   );
   for (const file of files) cpSync(join(scriptsDir, file), join(dir, "scripts", file));
   writeFileSync(join(dir, "scripts", "data.js"), data);
+  writeFileSync(join(dir, "scripts", "datapacks.js"), `export const datapacks = ${datapackData || '{"schemaVersion":1,"packs":[]}'};\n`);
   writeFileSync(join(dir, "scripts", "storage.js"), `export const storage = ${storageData};\n`);
   const refsPath = join(worldDir, "world_behavior_packs.json");
   const refs = existsSync(refsPath) ? (JSON.parse(readFileSync(refsPath, "utf8")) as { pack_id: string; version: number[] }[]) : [];
@@ -176,7 +177,6 @@ export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptio
     if (!existsSync(join(outDir, "level.dat"))) throw new Error(`Chunker の出力に level.dat がない: ${outDir}`);
     const datapackData = JSON.stringify({ schemaVersion: 1, packs: datapacks.packs });
     writeInitPack(outDir, objectives, placed.entities, datapackData, JSON.stringify(storageEntries), datapacks.nativeCommands);
-    writeFileSync(join(outDir, "behavior_packs", "je2be_init", "scripts", "datapacks.js"), `export const datapacks = ${datapackData};\n`);
     configureOutputWorld(outDir);
     return {
       storage: { entries: storageEntries.length, errors: storageErrors },

@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 const result = await build({
   entryPoints: ["packages/runtime-host/src/main.ts"], bundle: true, format: "esm",
   platform: "neutral", target: "es2022", write: false, metafile: true,
-  external: ["@minecraft/server", "./data.js", "./storage.js"],
+  external: ["@minecraft/server", "./data.js", "./datapacks.js", "./storage.js"],
 });
 const output = result.outputFiles[0]!;
 for (const input of Object.keys(result.metafile.inputs)) {
@@ -16,7 +16,7 @@ for (const input of Object.keys(result.metafile.inputs)) {
 }
 for (const entry of Object.values(result.metafile.outputs)) {
   for (const imp of entry.imports) {
-    if (!imp.external || !["@minecraft/server", "./data.js", "./storage.js"].includes(imp.path)) {
+    if (!imp.external || !["@minecraft/server", "./data.js", "./datapacks.js", "./storage.js"].includes(imp.path)) {
       throw new Error(`unexpected runtime import: ${imp.path}`);
     }
   }

@@ -4,8 +4,10 @@ import { RuntimeSession } from "./host.ts";
 import { commitState } from "./persistence.ts";
 import { storage } from "./storage.js";
 import * as data from "./data.js";
+import { registerLauncher } from "./launcher.ts";
 
 export let session: RuntimeSession | undefined;
+registerLauncher(() => session);
 world.afterEvents.worldLoad.subscribe(() => {
   initialize(data.objectives, data.entities, storage).then(state => {
     const commands = new Map(data.nativeCommands);

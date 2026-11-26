@@ -16,6 +16,7 @@ it("persists score and storage across BDS restarts three times", async () => {
   cpSync(new URL("../pack/scripts/main.js", import.meta.url), join(pack, "scripts/main.js"));
   writeFileSync(join(pack, "scripts/data.js"), "export const objectives = []; export const entities = [];\n");
   writeFileSync(join(pack, "scripts/storage.js"), "export const storage = [];\n");
+  writeFileSync(join(pack, "scripts/datapacks.js"), "export const datapacks = {schemaVersion: 1, packs: []};\n");
   writeFileSync(join(pack, "scripts/probe.js"), `
 import { world, system } from "@minecraft/server";
 import { session } from "./main.js";
