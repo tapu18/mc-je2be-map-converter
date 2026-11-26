@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { deserialize, serialize } from "node:v8";
 import { expect, it } from "vitest";
 import {
   CommandParser, defaultExecutionContext, executeCommand, nbtToPlain, resolvePosition, RuntimeState, toCommandIR,
@@ -22,8 +23,13 @@ const nether = "minecraft:the_nether";
 const air: Block = {kind: "block", id: "minecraft:air", tag: false, states: {}};
 
 class FakeHost implements ExecutionHost {
-  readonly candidates: RuntimeEntity[] = [];
-  readonly blocks = new Map<string, Block>();
+  readonly candidates: RuntimeEntity[];
+  readonly blocks: Map<string, Block>;
+
+  constructor(candidates: RuntimeEntity[] = [], blocks = new Map<string, Block>()) {
+    this.candidates = candidates;
+    this.blocks = blocks;
+  }
 
   entities() { return this.candidates; }
 
@@ -61,20 +67,40 @@ class FakeHost implements ExecutionHost {
   }
 }
 
-const scenarioIds = ["execute-context", "execute-anchor", "execute-dimension", "calls"];
+const scenarioIds = ["execute-context", "execute-anchor", "execute-dimension", "calls", "execute-order", "execute-order-reload"];
 const scenarios = loadScenarios();
 
 it.each(scenarioIds)("%s matches the recorded Java state through CommandIR", id => {
   const scenario = scenarios.find(scenario => scenario.id === `datapack/${id}`)!;
-  const host = new FakeHost();
-  const state = new RuntimeState(host);
+  let host = new FakeHost();
+  let state = new RuntimeState(host);
   const run = (line: string) => executeCommand(state, parse(line));
+  const loadDatapack = () => {
+    for (const [name, lines] of Object.entries(scenario.datapack?.functions ?? {})) state.functions.set(name, lines.map(parse));
+    for (const [name, tag] of Object.entries(scenario.datapack?.functionTags ?? {})) {
+      state.functionTags.set(name, tag.values.map(value => typeof value === "string" ? value : value.id));
+    }
+  };
   for (const line of scenario.setup) expect(run(line), line).toMatchObject({success: true});
-  for (const [name, lines] of Object.entries(scenario.datapack?.functions ?? {})) state.functions.set(name, lines.map(parse));
-  for (const [name, tag] of Object.entries(scenario.datapack?.functionTags ?? {})) {
-    state.functionTags.set(name, tag.values.map(value => typeof value === "string" ? value : value.id));
-  }
+  loadDatapack();
   for (const [index, action] of scenario.actions.entries()) {
+    if ("restart" in action) {
+      // The saved entity list carries the traversal order and IDs used by the scoreboard.
+      const world = {
+        entities: host.candidates,
+        blocks: host.blocks,
+        scores: state.scores.objectives,
+        storage: state.storage.values,
+      };
+      const saved = serialize(world);
+      const restored = deserialize(saved) as typeof world;
+      host = new FakeHost(restored.entities, restored.blocks);
+      state = new RuntimeState(host);
+      for (const [name, scores] of restored.scores) state.scores.objectives.set(name, scores);
+      for (const [id, nbt] of restored.storage) state.storage.values.set(id, nbt);
+      loadDatapack();
+      continue;
+    }
     if (!("run" in action)) throw new Error("Expected command action");
     const expectedError = id === "calls" ? [undefined, "return fail", undefined, "condition failed"][index] : undefined;
     expect(run(action.run), action.run).toMatchObject(expectedError ? {success: false, error: expectedError} : {success: true});

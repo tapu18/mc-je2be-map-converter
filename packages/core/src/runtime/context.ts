@@ -30,6 +30,7 @@ export type Block = Extract<ArgumentValue, {kind: "block"}>;
 
 /** Host IDs are namespaced Java IDs. The Bedrock boundary maps the_nether to nether. */
 export interface ExecutionHost {
+  /** Enumerate entities in the world's current selector traversal order (e.g. @e[sort=arbitrary]). */
   entities(): readonly RuntimeEntity[];
   readBlock(dimension: string, position: Position): Block | undefined;
   writeBlock(dimension: string, position: Position, block: Block): ExecutionResult;
@@ -136,6 +137,8 @@ export function selectEntities(host: ExecutionHost | undefined, context: Executi
       return true;
     });
   });
+  // Arbitrary order and equal-distance ties retain the host's traversal order.
+  // Apply the limit to the ordered candidates, including after a host shuffle.
   if (sort === "nearest" || sort === "furthest") {
     const sign = sort === "nearest" ? 1 : -1;
     found.sort((a, b) => sign * (distanceSquared(a) - distanceSquared(b)));
