@@ -1,0 +1,231 @@
+{
+  "date": "2026-11-27T17:11:00.302Z",
+  "bedrock": "1.26.66.1",
+  "killWithoutSave": [
+    {
+      "waitMs": 1000,
+      "before": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 22
+      },
+      "after": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 22
+      },
+      "errors": []
+    },
+    {
+      "waitMs": 5000,
+      "before": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 125
+      },
+      "after": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 22
+      },
+      "errors": []
+    },
+    {
+      "waitMs": 15000,
+      "before": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 325
+      },
+      "after": {
+        "#tick": 22,
+        "#loads": 2,
+        "#restored": 0
+      },
+      "errors": []
+    },
+    {
+      "waitMs": 40000,
+      "before": {
+        "#tick": 825,
+        "#loads": 2,
+        "#restored": 0
+      },
+      "after": {
+        "#restored": 0,
+        "#loads": 3,
+        "#tick": 22
+      },
+      "errors": []
+    },
+    {
+      "waitMs": 70000,
+      "before": {
+        "#restored": 0,
+        "#loads": 3,
+        "#tick": 1425
+      },
+      "after": {
+        "#tick": 22,
+        "#loads": 4,
+        "#restored": 0
+      },
+      "errors": []
+    }
+  ],
+  "saveHoldThenKill": [
+    {
+      "waitMs": 1000,
+      "restartedFirst": false,
+      "atHold": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 22
+      },
+      "before": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 87
+      },
+      "after": {
+        "#tick": 56,
+        "#loads": 2,
+        "#restored": 24
+      },
+      "errors": []
+    },
+    {
+      "waitMs": 10000,
+      "restartedFirst": false,
+      "atHold": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 202
+      },
+      "before": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 266
+      },
+      "after": {
+        "#tick": 32,
+        "#loads": 2,
+        "#restored": 0
+      },
+      "errors": []
+    },
+    {
+      "waitMs": 30000,
+      "restartedFirst": false,
+      "atHold": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 602
+      },
+      "before": {
+        "#restored": 0,
+        "#loads": 1,
+        "#tick": 665
+      },
+      "after": {
+        "#tick": 32,
+        "#loads": 2,
+        "#restored": 0
+      },
+      "errors": []
+    },
+    {
+      "waitMs": 1000,
+      "restartedFirst": true,
+      "atHold": {
+        "#tick": 66,
+        "#loads": 2,
+        "#restored": 44
+      },
+      "before": {
+        "#tick": 130,
+        "#loads": 2,
+        "#restored": 44
+      },
+      "after": {
+        "#tick": 76,
+        "#loads": 2,
+        "#restored": 44
+      },
+      "errors": []
+    },
+    {
+      "waitMs": 10000,
+      "restartedFirst": true,
+      "atHold": {
+        "#tick": 247,
+        "#loads": 2,
+        "#restored": 45
+      },
+      "before": {
+        "#tick": 311,
+        "#loads": 2,
+        "#restored": 45
+      },
+      "after": {
+        "#restored": 45,
+        "#loads": 2,
+        "#tick": 77
+      },
+      "errors": []
+    }
+  ],
+  "volume": {
+    "batches": [
+      {
+        "values": 500,
+        "totalBytes": 16391735,
+        "ms": 164
+      },
+      {
+        "values": 1000,
+        "totalBytes": 32783235,
+        "ms": 71
+      },
+      {
+        "values": 1500,
+        "totalBytes": 49175235,
+        "ms": 100
+      },
+      {
+        "values": 2000,
+        "totalBytes": 65567240,
+        "ms": 95
+      },
+      {
+        "values": 2500,
+        "totalBytes": 81959242,
+        "ms": 55
+      },
+      {
+        "values": 3000,
+        "totalBytes": 98351242,
+        "ms": 99
+      },
+      {
+        "values": 3500,
+        "totalBytes": 114743242,
+        "ms": 51
+      },
+      {
+        "values": 4000,
+        "totalBytes": 131135242,
+        "ms": 44
+      }
+    ],
+    "afterRestart": {
+      "totalBytes": 131135243,
+      "wrongValues": 0,
+      "scores": {
+        "#tick": 21,
+        "#loads": 2,
+        "#restored": 15
+      }
+    }
+  }
+}
