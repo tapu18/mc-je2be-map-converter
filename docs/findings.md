@@ -572,3 +572,14 @@ BDS のカスタムコマンドの文字列引数では、`chain@0` を引用符
 このため #340 では、条件だけ静止の ID に置き換えた。地形・BDS が流した水・書き換えた配置の全セルで、ID だけの条件、同じ水位の `if`、違う水位の `unless` が成立し、同じ水位の `unless` と違う水位の `if` は成立しなかった。後続のスコア加算回数も成功件数と一致した。Java の `level` 16 値は BE の `liquid_depth` 16 値に一対一で対応するので、条件で未対応にする区別はない。補正前の表では ID だけの条件が複数の BE ID になって未対応になり、水位付きの条件は `flowing_*` を指定して成立しなかった。
 
 残る差は地形の流体の更新で、Java で tick を止めて保存した水源につながらない流水は、BDS では隣が更新されるまで残る。
+
+### 確定世代の強制終了・部分書き込み・容量（#200）
+
+BDS 1.26.66.1、`@minecraft/server` 2.12.0-beta、変換と同じ `je2be_init` パックで測った。CI で確かめる性質は `packages/runtime-host/src/restart.servers.test.ts`（3 回連続で成功）、揺れる性質は `poc/state-durability/results.json`（`measure.ts`）にある。
+
+- **正常停止**：スコア、約 100KB の storage（4 片に分割）、`load` で予約した 100 tick 後の `schedule` が、正常停止と再起動を 2 回またいで残った。予約は再起動後のランタイム tick 100 に、`tick` タグより前に実行された（`#later = 99`）
+- **強制終了（SIGKILL）**：8 回の強制終了で、復元はすべて一貫した確定世代から成功し、片の欠けや索引の不整合は起きなかった。ただし、残る世代は起動中に確定した最新の世代ではなかった。`killWithoutSave` では、5 回とも、ある起動の `load` 直後（ランタイム tick 0）の世代か、それより前の世代に戻った。1〜70 秒（最大 1,425 tick）の進行が失われた。起動直後の `load` の確定が残るかどうかも、実行ごとに揺れた
+- **`save hold` / `save query` / `save resume` の後の強制終了**：`Data saved. Files are now ready to be copied.` が出た後でも、保持した時点の世代が残ったのは 5 回中 1 回だった。残りは起動時か、前回の正常停止時の世代に戻った。ランタイムから保存の時点を確かめる手段は見つかっていない
+- **部分書き込みの模擬**：確定していない世代の片（マーカーが指さない `je2be:state:<世代>:<slot>:<片>`）を書いて再起動しても、復元はそれを読まずに成功した。片は回収されずに残った。確定した世代の片を 1 件消すと、次の tick の確定が `state persistence failed: Error: missing state chunk <世代>/<slot>/<片>` で失敗して tick が止まった。再起動後も `[je2be] initialization failed` で止まり、初期データへの巻き戻しや一部だけの読み込みは起きなかった（`load` は動かない）
+- **容量**：動的プロパティ 1 件の上限は UTF-8 で 32,767 バイト（既知、`poc/dynamic-properties/`）。32,767 バイトの値を 4,000 件（合計 131,135,243 バイト）書いても失敗せず、500 件ごとに約 50〜160ms かかった。正常停止の後、全件を読み直せた。確定マーカーの索引は 1 件の動的プロパティに収める。600 個の objective を持つ初期状態では、`state index exceeds dynamic property capacity` で初期化が止まり、マーカーは書かれなかった。切り詰めは起きなかった
+- **マクロ**：`function test:macro {holder:"m",score:7}` と `with storage` による呼び出しは、BDS で中核と同じ結果になった。展開に失敗した呼び出し（引数の欠け、引数の境界を変える値）は、何も実行しなかった。失敗はスクリプトの `console.warn` で `[Scripting] [je2be] function test:macro: <理由>` としてコンテンツログ（`content-log-console-output-enabled`）に出た

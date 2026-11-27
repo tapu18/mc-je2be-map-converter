@@ -114,6 +114,8 @@ function executionHost(runNative: NonNullable<ExecutionHost["runNative"]>): Exec
     // Core block conditions need Java IDs and states, including block entity data.
     readBlock: () => undefined,
     runNative,
+    // Script console output reaches the content log, where Java's macro errors would appear in the server log.
+    diagnostic: message => console.warn(`[je2be] ${message}`),
   };
 }
 export function readProperty(key: string): HostResult<Property | undefined> { return attempt(() => world.getDynamicProperty(key)); }

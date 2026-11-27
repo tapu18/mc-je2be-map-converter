@@ -84,7 +84,8 @@ it("rejects missing keys and invalid values before any function line runs", () =
     if (!result.ok) throw Error(result.error.message);
     return toCommandIR(source, result.nodes);
   };
-  const state = new RuntimeState();
+  const diagnostics: string[] = [];
+  const state = new RuntimeState({entities: () => [], readBlock: () => undefined, diagnostic: message => diagnostics.push(message)});
   const template = compileMacroTemplate(parser, "$scoreboard players set #$(holder) demo $(score)", "26.3");
   if (!template.ok) throw Error(template.reason);
   state.functions.set("demo:macro", [parse("scoreboard objectives add demo dummy"), template.ir]);
@@ -96,4 +97,9 @@ it("rejects missing keys and invalid values before any function line runs", () =
   expect(state.scores.objectives.has("demo")).toBe(false);
   expect(run('function demo:macro {holder:"a",score:3}')).toMatchObject({success: true});
   expect(state.scores.get("#a", "demo")).toBe(3);
+  expect(diagnostics).toEqual([
+    "function demo:macro: missing macro argument 'holder'",
+    expect.stringMatching(/^function demo:macro: /),
+    expect.stringMatching(/^function demo:macro: /),
+  ]);
 });
