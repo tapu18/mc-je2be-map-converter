@@ -1,4 +1,5 @@
-import { BlockPermutation, GameMode, ScoreboardIdentityType, world, type Player, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, GameMode, world, type Player, type Vector3 } from "@minecraft/server";
+import { onlinePlayers, projectHolder, readScores } from "./holders.ts";
 import { executeCommand, RuntimeState } from "../../core/src/runtime/command.ts";
 import type { CommandIR } from "../../core/src/command/parser.ts";
 import { dimensionId, type ExecutionContext, type ExecutionHost, type RuntimeEntity } from "../../core/src/runtime/context.ts";
@@ -122,14 +123,17 @@ type Scores = Map<string, Map<string, number>>;
 const snapshot = (state: RuntimeState): Scores => new Map([...state.scores.objectives].map(([id, scores]) => [id, new Map(scores)]));
 const ordered = (values: Iterable<string>): string[] => [...values].sort();
 type Projection = { ok: true } | { ok: false; target: string; error: HostError };
-function project(before: Scores, after: Scores): Projection {
+
+function project(before: Scores, after: Scores, deferred: Set<string>): Projection {
   const perform = (target: string, action: () => void): Projection => {
     const result = attempt(action);
     return result.ok ? { ok: true } : { ok: false, target, error: result.error };
   };
+  let players: Map<string, Player> | undefined;
   for (const id of ordered(before.keys())) if (!after.has(id)) {
     const result = perform(id, () => { if (!world.scoreboard.removeObjective(id)) throw Error("objective missing"); });
     if (!result.ok) return result;
+    for (const key of deferred) if (key.startsWith(id + "\0")) deferred.delete(key);
   }
   for (const id of ordered(after.keys())) {
     const scores = after.get(id)!;
@@ -138,17 +142,22 @@ function project(before: Scores, after: Scores): Projection {
       if (!result.ok) return result;
     }
     const previous = before.get(id) ?? new Map<string, number>();
-    for (const holder of ordered(previous.keys())) if (!scores.has(holder)) {
-      const result = perform(`${id}/${holder}`, () => { if (!world.scoreboard.getObjective(id)?.removeParticipant(holder)) throw Error("score missing"); });
-      if (!result.ok) return result;
-    }
-    for (const holder of ordered(scores.keys())) if (previous.get(holder) !== scores.get(holder)) {
-      const result = perform(`${id}/${holder}`, () => { const objective = world.scoreboard.getObjective(id); if (!objective) throw Error("objective missing"); objective.setScore(holder, scores.get(holder)!); });
+    const changed = [...previous.keys()].filter(holder => !scores.has(holder));
+    for (const holder of scores.keys()) if (previous.get(holder) !== scores.get(holder)) changed.push(holder);
+    for (const holder of ordered(changed)) {
+      const result = perform(`${id}/${holder}`, () => {
+        const objective = world.scoreboard.getObjective(id);
+        if (!objective) throw Error("objective missing");
+        players ??= onlinePlayers();
+        if (projectHolder(objective, holder, scores.get(holder), players)) deferred.delete(`${id}\0${holder}`);
+        else deferred.add(`${id}\0${holder}`);
+      });
       if (!result.ok) return result;
     }
   }
   return { ok: true };
 }
+
 /** One instance tracks whether a failed projection makes subsequent execution unsafe. */
 export class RuntimeSession {
   readonly state: RuntimeState;
@@ -156,6 +165,8 @@ export class RuntimeSession {
   private unknownNative = false;
   private restricted = false;
   private pendingScores: Scores | undefined;
+  /** `objective\0holder` keys whose BE target (an unloaded entity) was unavailable. */
+  private readonly deferred = new Set<string>();
   private chainCommands: ReadonlyMap<string, string> | undefined;
   private pendingNative: { before: Scores; run: () => CommandResult; source: string }[] = [];
   constructor(state = new RuntimeState(), resolveNative?: NativeCommandResolver) {
@@ -171,14 +182,17 @@ export class RuntimeSession {
     });
   }
   get isConsistent(): boolean { return this.consistent; }
-  /** Capture changes made by native commands to managed fake-player scores. */
-  syncScores(): void {
+  /**
+   * Project pending changes, then capture changes made by native commands to managed scores.
+   * `writable` is false inside a custom command, where deferred entity projections cannot be retried.
+   */
+  syncScores(writable = true): void {
     if (!this.consistent) throw Error("inconsistent session");
     try {
       if (this.pendingScores) {
         let before = this.pendingScores;
         const flush = (after: Scores) => {
-          const projection = project(before, after);
+          const projection = project(before, after, this.deferred);
           if (!projection.ok) throw Error(`score projection failed for ${projection.target}: ${projection.error.message}`);
           before = after;
         };
@@ -191,16 +205,17 @@ export class RuntimeSession {
         flush(this.state.scores.objectives);
         this.pendingScores = undefined;
       }
+      const players = onlinePlayers();
+      if (writable) for (const key of [...this.deferred]) {
+        const [id, holder] = key.split("\0") as [string, string];
+        const objective = world.scoreboard.getObjective(id);
+        if (!objective) throw Error(`managed objective missing: ${id}`);
+        if (projectHolder(objective, holder, this.state.scores.get(holder, id), players)) this.deferred.delete(key);
+      }
       for (const [id, scores] of this.state.scores.objectives) {
         const objective = world.scoreboard.getObjective(id);
         if (!objective) throw Error(`managed objective missing: ${id}`);
-        const current = new Map<string, number>();
-        for (const participant of objective.getParticipants()) if (participant.type === ScoreboardIdentityType.FakePlayer) {
-          const value = objective.getScore(participant);
-          if (value !== undefined) current.set(participant.displayName, value);
-        }
-        scores.clear();
-        for (const [holder, value] of current) scores.set(holder, value);
+        readScores(objective, scores, players, this.deferred);
       }
     } catch (error) { this.consistent = false; throw error; }
   }
@@ -217,7 +232,7 @@ export class RuntimeSession {
   private beginRestricted(): void {
     // Between callbacks in one tick, core commands read the unprojected scores.
     if (this.pendingScores) return;
-    this.syncScores();
+    this.syncScores(false);
     this.pendingScores = snapshot(this.state);
   }
 
@@ -247,7 +262,7 @@ export class RuntimeSession {
     const flush = () => {
       if (!projection.ok) return projection;
       const after = snapshot(this.state);
-      projection = project(before, after);
+      projection = project(before, after, this.deferred);
       if (projection.ok) before = after;
       else this.consistent = false;
       return projection;

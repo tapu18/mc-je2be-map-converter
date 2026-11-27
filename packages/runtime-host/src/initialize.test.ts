@@ -11,6 +11,8 @@ vi.mock("@minecraft/server", () => ({ world: {
   getDynamicProperty: (key: string) => fake.properties.get(key),
   setDynamicProperty: (key: string, value: unknown) => fake.properties.set(key, value),
   scoreboard: { getObjective: fake.getObjective, addObjective: fake.addObjective },
+  getPlayers: () => [],
+  getEntity: () => undefined,
 } }));
 vi.mock("./restore.ts", () => ({ restoreEntities: fake.restore }));
 import { serializeStorage } from "../../core/src/command/ir-codec.ts";
