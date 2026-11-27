@@ -1,0 +1,23 @@
+{
+  "description": "Java のコマンドブロックから変換したランタイムチェーンをレッドストーンで起動し、storage・条件付き成否・各ブロックの位置に依存する委譲を観測する",
+  "setup": ["scoreboard objectives add chain dummy"],
+  "actions": [
+    {
+      "commandBlocks": [
+        { "pos": [2, -58, 2], "kind": "impulse", "facing": "south", "alwaysActive": false, "command": "data modify storage demo:chain value set value 42" },
+        { "pos": [2, -58, 3], "kind": "chain", "facing": "south", "conditional": true, "command": "execute store result score observed chain run data get storage demo:chain value" },
+        { "pos": [2, -58, 4], "kind": "chain", "facing": "south", "command": "data get storage demo:chain missing" },
+        { "pos": [2, -58, 5], "kind": "chain", "facing": "south", "conditional": true, "command": "scoreboard players set skipped chain 1" },
+        { "pos": [2, -58, 6], "kind": "chain", "facing": "east", "command": "setblock ^ ^-1 ^1 minecraft:emerald_block" },
+        { "pos": [3, -58, 6], "kind": "chain", "facing": "east", "command": "execute if block ~ ~-1 ~ minecraft:emerald_block run setblock ~ ~-1 ~ minecraft:diamond_block" },
+        { "pos": [4, -58, 6], "kind": "chain", "facing": "east", "command": "scoreboard players add finished chain 1" }
+      ]
+    }
+  ],
+  "play": [
+    { "run": "setblock 2 -58 1 minecraft:redstone_block" },
+    { "ticks": 8 }
+  ],
+  "observe": { "scores": ["chain"], "blocks": [{ "from": [3, -59, 6] }] },
+  "requiredObservations": ["scores.chain", "blocks"]
+}

@@ -1,5 +1,5 @@
-import { deserializeCommandIR } from "../../core/src/command/ir-codec.ts";
-import type { RuntimeState } from "../../core/src/runtime/command.ts";
+import { deserializeCommandIR } from "../command/ir-codec.ts";
+import type { RuntimeState } from "./command.ts";
 
 type Pack = { functions: Record<string, string[]>; tags: Record<string, unknown> };
 export type Datapacks = { schemaVersion: 1; packs: Pack[] };

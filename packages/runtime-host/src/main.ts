@@ -4,17 +4,20 @@ import { scheduledFunctionCalls } from "../../core/src/runtime/command.ts";
 import { datapacks } from "./datapacks.js";
 import { initialize } from "./initialize.ts";
 import { RuntimeSession } from "./host.ts";
-import { loadDatapacks } from "./load-datapacks.ts";
+import { loadDatapacks } from "../../core/src/runtime/datapacks.ts";
 import { commitState, type Properties } from "./persistence.ts";
 import { storage } from "./storage.js";
 import * as data from "./data.js";
 import { registerLauncher } from "./launcher.ts";
+import { loadChains } from "./command-chains.ts";
 
 export let session: RuntimeSession | undefined;
-registerLauncher(() => session);
+let chains: ReturnType<typeof loadChains>;
+registerLauncher(() => session, () => chains);
 world.afterEvents.worldLoad.subscribe(() => {
   initialize(data.objectives, data.entities, storage).then(state => {
     loadDatapacks(state, datapacks);
+    chains = loadChains(data.chains);
     const commands = new Map(data.nativeCommands);
     const runtime = new RuntimeSession(state, source => {
       const command = commands.get(source);

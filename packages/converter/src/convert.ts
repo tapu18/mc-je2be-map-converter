@@ -7,9 +7,9 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { nbt, serializeStorage, readBedrockLevelDat, writeBedrockLevelDat, type MappingTables, type ObjectiveScores, type NbtTag } from "@je2be/core";
+import { nbt, serializeStorage, readBedrockLevelDat, writeBedrockLevelDat, type Datapacks, type MappingTables, type ObjectiveScores, type NbtTag, type RuntimeChain } from "@je2be/core";
 import { terrainCommandMappings } from "./chunker-block-mappings.ts";
-import { rewriteWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
+import { prepareWorldCommands, type CommandRewriteReport, type RewriteResources } from "./command-rewrite.ts";
 import { collectDatapacks } from "./datapacks.ts";
 import { JavaWorld } from "./java-world.ts";
 import { collectPlacedEntities, type PlacedEntity, type PlacedEntityReport } from "./placed-entities.ts";
@@ -77,10 +77,10 @@ function stableUuid(seed: string): string {
 }
 
 /** 初期化パックを BE ワールドの behavior_packs/ に置き、world_behavior_packs.json に足す */
-export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = [], datapackData = "", storageData = "[]", nativeCommands: [string, string][] = []): void {
+export function writeInitPack(worldDir: string, objectives: ObjectiveScores[], entities: PlacedEntity[] = [], datapackData = "", storageData = "[]", nativeCommands: [string, string][] = [], chains: Record<string, RuntimeChain> = {}): void {
   const chunk = (n: number) => Math.floor(n / 16);
   const sorted = [...entities].sort((a, b) => a.dimension.localeCompare(b.dimension) || chunk(a.pos.x) - chunk(b.pos.x) || chunk(a.pos.z) - chunk(b.pos.z));
-  const data = `export const objectives = ${JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]))};\nexport const entities = ${JSON.stringify(sorted)};\nexport const nativeCommands = ${JSON.stringify(nativeCommands)};\n`;
+  const data = `export const objectives = ${JSON.stringify(objectives.map((o) => [o.objective, o.scores.map((s) => [s.participant, s.score])]))};\nexport const entities = ${JSON.stringify(sorted)};\nexport const nativeCommands = ${JSON.stringify(nativeCommands)};\nexport const chains = ${JSON.stringify(chains)};\n`;
   const scriptsDir = fileURLToPath(new URL("../../runtime-host/pack/scripts/", import.meta.url));
   const files = ["main.js"];
   const script = files.map((file) => readFileSync(join(scriptsDir, file), "utf8")).join("\n") + data;
@@ -154,6 +154,7 @@ export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptio
   const tables = opts.rewrite && JSON.parse(readFileSync(opts.rewrite.mappingsJson, "utf8")) as MappingTables;
   const mappings = tables && terrainCommandMappings(tables, opts.chunkerJar, format);
   const datapacks = collectDatapacks(javaDir, mappings && opts.rewrite ? {mappings, blocksJson: opts.rewrite.blocksJson} : undefined);
+  const datapackData: Datapacks = { schemaVersion: 1, packs: datapacks.packs };
   const source = new JavaWorld(javaDir);
   const { storageEntries, storageErrors } = collectInitialStorage(source);
   const version = source.dataVersion();
@@ -167,19 +168,23 @@ export function convertWorld(javaDir: string, outDir: string, opts: ConvertOptio
   try {
     let input = javaDir;
     let commands: CommandRewriteReport | undefined;
+    let runtimeChains: Record<string, RuntimeChain> | undefined;
     if (work) {
       input = join(work, "java");
       cpSync(javaDir, input, { recursive: true, dereference: true });
       if (hasEntities) new JavaWorld(input).removeEntitiesFromChunkerCopy(legacy);
-      if (opts.rewrite) commands = rewriteWorldCommands(input, opts.rewrite, mappings);
+      if (opts.rewrite) {
+        const prepared = prepareWorldCommands(input, opts.rewrite, mappings, { datapacks: datapackData, nativeCommands: datapacks.nativeCommands });
+        commands = prepared.report;
+        runtimeChains = prepared.runtimeChains;
+      }
     }
     execFileSync(opts.java, ["-jar", opts.chunkerJar, "-i", input, "-f", format, "-o", outDir], {
       stdio: "pipe",
       timeout: 600_000,
     });
     if (!existsSync(join(outDir, "level.dat"))) throw new Error(`Chunker の出力に level.dat がない: ${outDir}`);
-    const datapackData = JSON.stringify({ schemaVersion: 1, packs: datapacks.packs });
-    writeInitPack(outDir, objectives, placed.entities, datapackData, JSON.stringify(storageEntries), datapacks.nativeCommands);
+    writeInitPack(outDir, objectives, placed.entities, JSON.stringify(datapackData), JSON.stringify(storageEntries), datapacks.nativeCommands, runtimeChains);
     configureOutputWorld(outDir);
     return {
       storage: { entries: storageEntries.length, errors: storageErrors },

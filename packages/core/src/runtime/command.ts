@@ -64,12 +64,13 @@ export type Frame<T = Outcome> = Generator<Request, T, Outcome>;
 type BeforeNative = () => Extract<ExecutionResult, {success: false}> | undefined;
 
 /** Execute supported commands using an explicit stack of suspended frames. */
-export function executeCommand(state: RuntimeState, ir: CommandIR, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext(), beforeNative?: BeforeNative): CommandResult {
+export function executeCommand(state: RuntimeState, ir: CommandIR, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext(), beforeNative?: BeforeNative, continueAfterUnknownNative = false): CommandResult {
   if (Object.values(budget).some(limit => !Number.isSafeInteger(limit) || limit < 0)) return {success: false, error: "invalid execution budget"};
   const frames: Frame[] = [];
   let instructions = 0, branches = 0;
   let request: Request = {kind: "command", ir, depth: 0, context: {...context, dimension: dimensionId(context.dimension)}};
   let value: Outcome = {success: true, result: 0};
+  let unknown = false;
   while (true) {
     if (request.kind === "command") {
       if (++instructions > budget.instructions) return {success: false, error: "instruction budget exceeded"};
@@ -79,8 +80,12 @@ export function executeCommand(state: RuntimeState, ir: CommandIR, budget: Execu
       const failure = beforeNative?.();
       if (failure) return failure;
       const native = state.host?.runNative?.(request.command, request.context, request.source);
-      if (native && "status" in native) return native;
-      value = native ?? fail("unsupported command");
+      if (native && "status" in native) {
+        if (!continueAfterUnknownNative) return native;
+        // The converter has ruled out consumers of this result. Keep evaluating independent branches and lines.
+        unknown = true;
+        value = fail("native command queued");
+      } else value = native ?? fail("unsupported command");
     } else if (++branches > budget.branches) return {success: false, error: "branch budget exceeded"};
     while (frames.length) {
       const next = frames[frames.length - 1]!.next(value);
@@ -88,7 +93,8 @@ export function executeCommand(state: RuntimeState, ir: CommandIR, budget: Execu
       value = next.value;
       frames.pop();
     }
-    if (!frames.length) return value.success ? {success: true, result: value.result} : {success: false, error: value.error};
+    if (!frames.length) return unknown ? {status: "unknown"}
+      : value.success ? {success: true, result: value.result} : {success: false, error: value.error};
   }
 }
 

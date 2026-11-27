@@ -13,6 +13,7 @@ const fixed = JSON.parse(readFileSync(join(root, "tools", "servers.json"), "utf8
   java: Omit<JavaGrammarSource, "functionDirectory"> & { dataVersion: number };
 };
 export const fixedJavaDataVersion = fixed.java.dataVersion;
+export const fixedJavaVersion = fixed.java.version;
 
 /** Preserve integer long bounds before JSON.parse can round them. */
 export function parseCommandTree(json: string): CommandTreeNode {
