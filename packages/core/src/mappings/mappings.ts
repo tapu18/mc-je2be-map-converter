@@ -64,6 +64,7 @@ export type ItemMappingResult =
 /** mapped は表に行があるという意味であり、挙動が等価という判定ではない。 */
 export class MappingLookup {
   private blocks = new Map<string, BlockMapping>();
+  /** 条件の照合に使う行（predicateBlocks で差し替えた後） */
   private rowsByJava = new Map<string, BlockMapping[]>();
   private rowsByBedrock = new Map<string, BlockMapping[]>();
   private properties = new Map<string, string[]>();
@@ -73,16 +74,22 @@ export class MappingLookup {
   private sounds: ReadonlyMap<string, string>;
   private particles: ReadonlyMap<string, string>;
 
-  constructor(tables: MappingTables) {
+  /**
+   * `predicateBlocks` は条件の照合だけに使う BE の状態（Java の状態ごとに差し替える）。
+   * 配置と照合で BE の見え方が違うブロック（BDS で流水の ID が観測されない水・溶岩、#340）に使う。
+   */
+  constructor(tables: MappingTables, options: { predicateBlocks?: BlockMapping[] } = {}) {
     if (tables.schemaVersion !== 1) throw new Error("unsupported mapping schema");
+    const predicate = new Map((options.predicateBlocks ?? []).map((row) => [blockStateKey(row.java), row]));
     this.sounds = new Map(Object.entries(tables.sounds ?? {}));
     this.particles = new Map(Object.entries(tables.particles ?? {}));
     for (const row of tables.blocks) {
       const key = blockStateKey(row.java);
       if (this.blocks.has(key)) throw new Error(`duplicate Java block state: ${key}`);
       this.blocks.set(key, row);
-      this.rowsByJava.set(row.java.id, [...(this.rowsByJava.get(row.java.id) ?? []), row]);
-      this.rowsByBedrock.set(row.bedrock.id, [...(this.rowsByBedrock.get(row.bedrock.id) ?? []), row]);
+      const match = predicate.get(key) ?? row;
+      this.rowsByJava.set(row.java.id, [...(this.rowsByJava.get(row.java.id) ?? []), match]);
+      this.rowsByBedrock.set(match.bedrock.id, [...(this.rowsByBedrock.get(match.bedrock.id) ?? []), match]);
       const props = Object.keys(row.java.states).sort();
       const previous = this.properties.get(row.java.id);
       if (previous && JSON.stringify(previous) !== JSON.stringify(props)) throw new Error(`inconsistent properties: ${row.java.id}`);

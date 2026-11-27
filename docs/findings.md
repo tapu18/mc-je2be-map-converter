@@ -560,3 +560,15 @@ BDS のカスタムコマンドの文字列引数では、`chain@0` を引用符
 - ネイティブの `scoreboard players add @e[...] held 10` の後の `syncScores` で、防具立ての値 15 がランタイムの ID 保持者に取り込まれた。ネイティブで消したプレイヤーのスコアはランタイムからも消えた。ランタイムでの削除後、BE の参加者一覧から防具立ては消えた。
 - 防具立てのスコアは再起動後も同じ `Entity.id` に付いていた。チャンクが読み込まれる前、その参加者の `ScoreboardIdentity.getEntity()` は例外を投げた（`Failed to call function 'getEntity'`）。起動時の投影はその ID の偽プレイヤーを作らず、読み込み後の変更と削除も実体に反映した。
 - 中核はセレクタの保持者への `scoreboard players add` と `reset` に対応していない（`assessScore`）。テストは `set`・`remove` と、ID の文字列による `reset` を使った。
+
+### 水・溶岩の流体状態（#340）
+
+[実サーバーテスト](../packages/bridge/src/chunker-fluid-states.servers.test.ts)（Java 26.3、Chunker 1.21.0 `BEDROCK_R26_60`、BDS 1.26.66.1、3 回連続成功）で確かめた。Java で tick を止め、ガラスで囲んだセルに、水源から横に流れる水 `level=0..7` と溶岩 `level=0,2,4,6`、水源の下に流れ落ちる `level=8` の列、水源につながらない水 `level=3,10` と溶岩 `level=4,10` を置いて保存した。
+
+- ロード直後の BDS では、全セルが Script API と `execute if block` の両方で `minecraft:water` / `minecraft:lava` と見え、`liquid_depth` は Java の `level` と同じ値だった。`flowing_water` / `flowing_lava` の条件は成立しなかった。何もせず 100 tick 待っても、水源につながらないセルを含めて変化しなかった。
+- 上のガラスを石に置き換えて隣のブロックを更新すると、安定した流れは ID も水位も変わらず、水源につながらないセルは消えた。横の壁を開けて BDS が新しく流した水 `liquid_depth=3` も `minecraft:water` と見えた。
+- 書き換えた `setblock` / `fill` は Geyser 表の `flowing_water ["liquid_depth"=N]` / `flowing_lava` を置く。水源の隣に置いた `level=1` は残り、水源につながらない水 `level=3` と溶岩 `level=4` は 200 tick 以内に消えた。同じ配置を Java で 200 tick 進めた結果と一致した。対照として静止の ID で置いた孤立した `water ["liquid_depth"=3]` は、200 tick 後も残り、隣の更新で消えた。水源の隣に `flowing_water` で置いたセルも、200 tick 後は `minecraft:water` と見えた。
+
+このため #340 では、条件だけ静止の ID に置き換えた。地形・BDS が流した水・書き換えた配置の全セルで、ID だけの条件、同じ水位の `if`、違う水位の `unless` が成立し、同じ水位の `unless` と違う水位の `if` は成立しなかった。後続のスコア加算回数も成功件数と一致した。Java の `level` 16 値は BE の `liquid_depth` 16 値に一対一で対応するので、条件で未対応にする区別はない。補正前の表では ID だけの条件が複数の BE ID になって未対応になり、水位付きの条件は `flowing_*` を指定して成立しなかった。
+
+残る差は地形の流体の更新で、Java で tick を止めて保存した水源につながらない流水は、BDS では隣が更新されるまで残る。
