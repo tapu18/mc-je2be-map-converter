@@ -111,9 +111,13 @@ it("matches Chunker's fluids and rewritten fluid commands in BDS", async () => {
       for (const c of terrain.slice(0, 3)) await exec(`execute if block ${at(c)} minecraft:flowing_${c.fluid} run say flowing`, 0);
 
       // 書き換えた setblock / fill。Java と同じく、水源の隣の流水は残り、孤立した流水は消える
+      // 対照: 静止の ID で置いた流水は更新が予約されず、孤立していても残る
+      const still = cell("water", 12, -59, 10, 3);
       for (const command of placement) await exec(bedrock(command), 1);
+      await exec(`setblock ${at(still)} minecraft:water ["liquid_depth"=3]`, 1);
       await waitBedrockTicks(bds, 200);
       expect(await read(placed)).toEqual(["minecraft:water[1]", "air", "air"]);
+      expect(await read([still])).toEqual(expected([still]));
 
       // 隣のブロックの更新。安定した流れは ID も水位も変わらず、孤立した流水は消える
       for (const command of [...[2, 6, 10].map(z => `fill 1 -58 ${z} 13 -58 ${z} minecraft:stone replace minecraft:glass`), `setblock ${at(spread)} minecraft:air`]) {
@@ -121,7 +125,7 @@ it("matches Chunker's fluids and rewritten fluid commands in BDS", async () => {
       }
       await waitBedrockTicks(bds, 200);
       expect(await read(stable)).toEqual(expected(stable));
-      expect(await read(isolated)).toEqual(isolated.map(() => "air"));
+      expect(await read([...isolated, still])).toEqual([...isolated, still].map(() => "air"));
       expect(await read([spread])).toEqual(expected([spread]));
       await checks(placedChecks);
 
