@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { blockStateKey, MappingLookup, type MappingTables } from "@je2be/core";
+import { blockStateKey, MappingLookup, type BlockMapping, type MappingTables } from "@je2be/core";
 import overrides from "./chunker-block-overrides.json" with { type: "json" };
 
 // #111 の実測を #323 で検証した組み合わせ。版を上げるときは再計測する。
@@ -25,5 +25,18 @@ export function terrainCommandMappings(tables: MappingTables, chunkerJar: string
     const bedrock = primary.get(blockStateKey(row.java));
     return bedrock ? { java: row.java, bedrock } : row;
   });
-  return new MappingLookup({ ...tables, blocks });
+  return new MappingLookup({ ...tables, blocks }, { predicateBlocks: fluidPredicateRows(tables.blocks) });
+}
+
+/**
+ * 水・溶岩の条件だけ、流水（`flowing_*`）を静止の ID に置き換えた行（#340）。
+ * BDS 1.26.66.1 では、Chunker の地形も `setblock` で置いた `flowing_*` も、条件と Script API に
+ * `water` / `lava` と `liquid_depth` で見える。配置は Geyser の `flowing_*` のまま（置いた後に流体が更新される）。
+ */
+export function fluidPredicateRows(blocks: readonly BlockMapping[]): BlockMapping[] {
+  return blocks.flatMap(row => {
+    const name = { "minecraft:water": "water", "minecraft:lava": "lava" }[row.java.id];
+    if (!name || row.bedrock.id !== `minecraft:flowing_${name}`) return [];
+    return [{ java: row.java, bedrock: { id: `minecraft:${name}`, states: row.bedrock.states } }];
+  });
 }

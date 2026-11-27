@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
-import type { MappingTables } from "@je2be/core";
-import { terrainCommandMappings } from "./chunker-block-mappings.ts";
+import { MappingLookup, type MappingTables } from "@je2be/core";
+import { fluidPredicateRows, terrainCommandMappings } from "./chunker-block-mappings.ts";
 import { GEYSER_SOURCE } from "./geyser-source.ts";
 
 it("keeps the Geyser state when the terrain conversion does not match the audit", () => {
@@ -17,4 +17,21 @@ it("keeps the Geyser state when the terrain conversion does not match the audit"
   ]) {
     expect(mappings.block(java.id, java.states)).toMatchObject({ status: "mapped", target: bedrock });
   }
+});
+
+it("matches fluid conditions by the still ID while placement keeps the flowing ID", () => {
+  const water = (level: number, id: string) => ({
+    java: { id: "minecraft:water", states: { level: String(level) } },
+    bedrock: { id, states: { liquid_depth: level } },
+  });
+  const blocks = [water(0, "minecraft:water"), ...[1, 2, 8].map(level => water(level, "minecraft:flowing_water"))];
+  const tables: MappingTables = { schemaVersion: 1, source: GEYSER_SOURCE, blocks, items: [] };
+  const rows = fluidPredicateRows(blocks);
+  expect(rows.map(row => row.bedrock.id)).toEqual(["minecraft:water", "minecraft:water", "minecraft:water"]);
+  const mappings = new MappingLookup(tables, { predicateBlocks: rows });
+
+  expect(mappings.block("minecraft:water", { level: "2" })).toMatchObject({ target: { id: "minecraft:flowing_water", states: { liquid_depth: 2 } } });
+  expect(mappings.blockPredicate("minecraft:water", { level: "2" })).toMatchObject({ status: "mapped", target: { id: "minecraft:water", states: { liquid_depth: 2 } } });
+  expect(mappings.blockPredicate("minecraft:water")).toMatchObject({ status: "mapped", target: { id: "minecraft:water", states: {} } });
+  expect(new MappingLookup(tables).blockPredicate("minecraft:water")).toEqual({ status: "inexact", reason: "multiple-ids" });
 });
