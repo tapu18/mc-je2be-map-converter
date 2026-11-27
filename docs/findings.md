@@ -550,3 +550,13 @@ BDS 1.26.66.1 で `scenarios/datapack/load-tick.json` の変換済みワール�
 [自作シナリオ](../scenarios/convert/runtime-command-chain.json) を Java 26.3 で生成し、Chunker 1.21.0 を通したワールドを BDS 1.26.66.1 で起動した。先頭のインパルスをレッドストーンで起動すると、storage から取得した値がスコア `observed = 42` になった。存在しないパスの取得の直後にある条件付きブロックはスキップされ、末尾の加算は1回だけ動いた。東向きに曲がる部分のローカル座標に従ってエメラルドブロックが置かれ、後続の BE への委譲がその位置で条件を満たしてダイヤモンドブロックに置き換えた。両版の観測値は [Java の正解データ](../scenarios/convert/runtime-command-chain.java.json) と一致した。
 
 BDS のカスタムコマンドの文字列引数では、`chain@0` を引用符なしで渡すと `@0` で構文エラーになった。引用符付きの `"chain@0"` は受理され、生成したワールドからの起動にも使えた。
+
+### エンティティとプレイヤーのスコア保持者（#331）
+
+`packages/runtime-host/src/holders.servers.test.ts`（BDS 1.26.66.1、各3回）で確かめた。
+
+- `ScoreboardObjective.setScore` に試験プレイヤーや防具立ての `Entity` を渡すと、参加者の種類はそれぞれ `Player` と `Entity` になり、同名の偽プレイヤーは作られない。名前の文字列を渡すと偽プレイヤーになる（#331 の本文）。試験プレイヤーと防具立ての `Entity.id` は `-8589934591` と `-8589934590` のような 32 ビットの範囲外の負の数字列だった。
+- 関数内で `execute as <プレイヤー> run scoreboard players set @s held 7` と、防具立てへの `set @s held 5` を実行して投影した直後、委譲した `tag @s[scores={held=7}]` と `tag @s[scores={held=5}]` はそれぞれ実体にタグを付けた。
+- ネイティブの `scoreboard players add @e[...] held 10` の後の `syncScores` で、防具立ての値 15 がランタイムの ID 保持者に取り込まれた。ネイティブで消したプレイヤーのスコアはランタイムからも消えた。ランタイムでの削除後、BE の参加者一覧から防具立ては消えた。
+- 防具立てのスコアは再起動後も同じ `Entity.id` に付いていた。チャンクが読み込まれる前、その参加者の `ScoreboardIdentity.getEntity()` は例外を投げた（`Failed to call function 'getEntity'`）。起動時の投影はその ID の偽プレイヤーを作らず、読み込み後の変更と削除も実体に反映した。
+- 中核はセレクタの保持者への `scoreboard players add` と `reset` に対応していない（`assessScore`）。テストは `set`・`remove` と、ID の文字列による `reset` を使った。

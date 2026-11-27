@@ -3,6 +3,7 @@ import { deserializeStorage } from "../../core/src/command/ir-codec.ts";
 import { RuntimeState } from "../../core/src/runtime/command.ts";
 import { restoreOrInitialize } from "./persistence.ts";
 import { restoreEntities } from "./restore.ts";
+import { projectAllScores } from "./holders.ts";
 import type { ObjectiveData, PlacedEntity } from "./types.ts";
 
 export const INIT_PROPERTY = "je2be:initialized";
@@ -19,10 +20,7 @@ export async function initialize(objectives: ObjectiveData, entities: PlacedEnti
     for (const entry of storage) initial.storage.values.set(entry.id, deserializeStorage(entry.chunks.join("")));
     return initial;
   });
-  for (const [id, scores] of state.scores.objectives) {
-    const objective = world.scoreboard.getObjective(id) ?? world.scoreboard.addObjective(id, id);
-    for (const [holder, score] of scores) objective.setScore(holder, score);
-  }
+  projectAllScores(state);
   if (world.getDynamicProperty(INIT_PROPERTY)) return state;
   const count = objectives.reduce((total, [, scores]) => total + scores.length, 0);
   if (world.getDynamicProperty(PROGRESS) === undefined) {
