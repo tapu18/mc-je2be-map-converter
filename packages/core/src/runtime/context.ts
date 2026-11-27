@@ -51,6 +51,8 @@ export interface ExecutionHost {
   /** Order a mutable candidate list using the host's random source. */
   shuffle?(entities: RuntimeEntity[]): void;
   runNative?(command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string): CommandResult | undefined;
+  /** Report a failure Java writes to the server log instead of the command result (e.g. macro instantiation). */
+  diagnostic?(message: string): void;
 }
 
 export function defaultExecutionContext(): ExecutionContext {

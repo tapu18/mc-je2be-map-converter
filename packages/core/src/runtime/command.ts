@@ -163,7 +163,10 @@ function* executeTerminal(state: RuntimeState, ir: CommandIR, depth: number, con
         for (const name of names) {
           yield {kind: "branch"};
           const expanded = instantiateFunction(state.functions.get(name)!, input.value);
-          if (!Array.isArray(expanded)) { single = expanded; continue; }
+          if (!Array.isArray(expanded)) {
+            state.host?.diagnostic?.(`function ${name}: ${expanded.error}`);
+            single = expanded; continue;
+          }
           let count = 0;
           let returned: Outcome | undefined;
           for (const line of expanded) {
