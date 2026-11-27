@@ -240,8 +240,12 @@ export class BedrockServer {
    * 同じワールドのまま再起動する（保存と復元の確認用）。戻り値の新しいインスタンスを使うこと。
    * このインスタンスはそれ以降使えない。
    */
-  async restart(): Promise<BedrockServer> {
-    await this.shutdown();
+  async restart(opts: { kill?: boolean } = {}): Promise<BedrockServer> {
+    // kill: SIGKILL でワールドを保存させずに止める（強制終了からの復元の確認用）
+    if (opts.kill) {
+      this.proc.kill();
+      await this.proc.exited;
+    } else await this.shutdown();
     try {
       return await BedrockServer.spawn(this.opts, this.lock);
     } catch (e) {
