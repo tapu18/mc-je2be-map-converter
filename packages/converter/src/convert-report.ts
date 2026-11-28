@@ -70,6 +70,8 @@ const RULES: Record<WarningArea, Rule[]> = {
     { code: "DP_MACRO_PLACEHOLDER", pattern: /^invalid macro placeholder$/, message: "マクロ行の $(…) の書き方が正しくない", remedy: "Java 側で $(名前) の書き方を直す" },
     { code: "DP_MACRO_SHAPE", pattern: /^(macro hole can change command shape|macro values produce different command shapes|cannot determine fixed command shape)/, message: "マクロの値によってコマンドの形が変わり得るため、事前に変換できない", remedy: "Java 側でマクロの値がコマンド名やサブコマンドを変えないようにする" },
     { code: "DP_MACRO_BOUNDARY", pattern: /^(macro hole crosses an argument boundary|macro values produce different argument boundaries|macro value changes argument boundaries)/, message: "マクロの値が引数の区切りをまたぐため、事前に変換できない", remedy: "Java 側でマクロの値を引数 1 個の中に収める" },
+    { code: "DP_NATIVE_UNSUPPORTED", pattern: /^native rewrite unsupported$/, message: "関数の行を BE のコマンドに書き換えられない。関数は同梱したが、この行は実行時に失敗する" },
+    { code: "DP_NATIVE_VERSION_CONFLICT", pattern: /^native rewrite differs across grammar versions$/, message: "同じ関数の行が、パックの版ごとに違う BE のコマンドになるため委譲しない。関数は同梱したが、この行は実行時に失敗する" },
     { code: "DP_MACRO_ARGUMENT_TYPE", pattern: /^macro argument type (\S+) is unsupported or requires an ID mapping/, message: (m) => `マクロの値が入る引数の型（${m[1]}）は、値を ID の対応表で変換する必要があるか未対応` },
     versionUpgrade,
     { code: "DP_UNSUPPORTED", pattern: JAPANESE, message: "関数の行を変換できず、この関数を同梱していない" },
