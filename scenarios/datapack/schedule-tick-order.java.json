@@ -1,0 +1,64 @@
+{
+  "java": "26.3",
+  "state": {
+    "scores": {
+      "order": {
+        "#tick": 3
+      }
+    },
+    "storage": {
+      "m2:order": {
+        "after_second": [
+          {
+            "source": "tick",
+            "tick": 1
+          },
+          {
+            "source": "from_load",
+            "tick": 1
+          },
+          {
+            "source": "tick",
+            "tick": 2
+          },
+          {
+            "source": "from_gap",
+            "tick": 2
+          }
+        ],
+        "trace": [
+          {
+            "source": "tick",
+            "tick": 1
+          },
+          {
+            "source": "from_load",
+            "tick": 1
+          },
+          {
+            "source": "tick",
+            "tick": 2
+          },
+          {
+            "source": "from_gap",
+            "tick": 2
+          },
+          {
+            "source": "tick",
+            "tick": 3
+          }
+        ],
+        "after_first": [
+          {
+            "source": "tick",
+            "tick": 1
+          },
+          {
+            "source": "from_load",
+            "tick": 1
+          }
+        ]
+      }
+    }
+  }
+}

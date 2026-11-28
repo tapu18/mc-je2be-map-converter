@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "mapId": "self-authored/gimmick-door",
+  "kind": "observed",
+  "scope": "server-scenario",
+  "staticReport": null,
+  "completion": {
+    "status": "unverified",
+    "evidence": []
+  },
+  "gimmicks": [
+    {
+      "id": "load-init",
+      "scenario": "datapack/gimmick-door",
+      "start": "scenarios/datapack/gimmick-door.json のデータパックを読み込んだ Java ワールド（tick 停止、load 前）",
+      "steps": [
+        "convertWorld で変換する",
+        "変換先を BDS で開き、ランタイムの load と tick 1〜8 を動かす"
+      ],
+      "successCriteria": [
+        "load で目的変数 door を作り、#limit=3・#loaded=1、storage の config を初期化する"
+      ],
+      "requiredFeatures": [
+        "load タグ",
+        "scoreboard objectives add",
+        "data modify storage set value"
+      ],
+      "required": true,
+      "status": "passed",
+      "evidence": [
+        "packages/bridge/src/scenario/scenarios.servers.test.ts: scenario datapack/gimmick-door（JE 26.3 / BDS 1.26.66.1、bedrockRuntime: load-tick）",
+        "scenarios/datapack/gimmick-door.java.json",
+        "docs/findings.md: データパックだけで動く仕掛けのランタイム照合（#361）",
+        "2026-11-28: 同シナリオの Java・BE テストを3回連続成功（BE 17.6 / 17.5 / 17.8 秒）。スコア 8 件は一致、storage は log だけが既知差分"
+      ],
+      "knownDiffs": [],
+      "incomparable": [],
+      "fixes": [],
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "undelegated-continue",
+      "scenario": "datapack/gimmick-door",
+      "start": "scenarios/datapack/gimmick-door.json のデータパックを読み込んだ Java ワールド（tick 停止、load 前）",
+      "steps": [
+        "convertWorld で変換する",
+        "変換先を BDS で開き、ランタイムの load と tick 1〜8 を動かす"
+      ],
+      "successCriteria": [
+        "委譲先のない advancement の行の後も、load の後続行（#loaded=1）と毎 tick の後続行（#after=8）が動く",
+        "BE では行ごとに警告が1回だけ出る"
+      ],
+      "requiredFeatures": [
+        "委譲先のない行の失敗扱い（#353）"
+      ],
+      "required": true,
+      "status": "passed",
+      "evidence": [
+        "packages/bridge/src/scenario/scenarios.servers.test.ts: scenario datapack/gimmick-door（JE 26.3 / BDS 1.26.66.1、bedrockRuntime: load-tick）",
+        "scenarios/datapack/gimmick-door.java.json",
+        "docs/findings.md: データパックだけで動く仕掛けのランタイム照合（#361）",
+        "2026-11-28: 同シナリオの Java・BE テストを3回連続成功（BE 17.6 / 17.5 / 17.8 秒）。スコア 8 件は一致、storage は log だけが既知差分"
+      ],
+      "knownDiffs": [],
+      "incomparable": [],
+      "fixes": [],
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "timer-open",
+      "scenario": "datapack/gimmick-door",
+      "start": "scenarios/datapack/gimmick-door.json のデータパックを読み込んだ Java ワールド（tick 停止、load 前）",
+      "steps": [
+        "convertWorld で変換する",
+        "変換先を BDS で開き、ランタイムの load と tick 1〜8 を動かす"
+      ],
+      "successCriteria": [
+        "tick 関数で #timer が 8 まで進み、storage の timer=8",
+        "#timer >= #limit で open が1回だけ動き、#phase が 1 を経て 2 になる、open の記録は tick 3",
+        "#delay=2 を storage から読む"
+      ],
+      "requiredFeatures": [
+        "tick タグ",
+        "execute if score matches / >=",
+        "execute store result storage/score",
+        "data get storage"
+      ],
+      "required": true,
+      "status": "passed",
+      "evidence": [
+        "packages/bridge/src/scenario/scenarios.servers.test.ts: scenario datapack/gimmick-door（JE 26.3 / BDS 1.26.66.1、bedrockRuntime: load-tick）",
+        "scenarios/datapack/gimmick-door.java.json",
+        "docs/findings.md: データパックだけで動く仕掛けのランタイム照合（#361）",
+        "2026-11-28: 同シナリオの Java・BE テストを3回連続成功（BE 17.6 / 17.5 / 17.8 秒）。スコア 8 件は一致、storage は log だけが既知差分"
+      ],
+      "knownDiffs": [
+        "storage.m2:door.log: 予約した関数の記録の順序と tick 番号（#440）"
+      ],
+      "incomparable": [],
+      "fixes": [],
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "close-schedule",
+      "scenario": "datapack/gimmick-door",
+      "start": "scenarios/datapack/gimmick-door.json のデータパックを読み込んだ Java ワールド（tick 停止、load 前）",
+      "steps": [
+        "convertWorld で変換する",
+        "変換先を BDS で開き、ランタイムの load と tick 1〜8 を動かす"
+      ],
+      "successCriteria": [
+        "open の 2 tick 後（tick 4）に close が動く",
+        "closed は config の写しから open を除いた {name:\"door\"}、#named=1、record が記録される"
+      ],
+      "requiredFeatures": [
+        "schedule function",
+        "data modify set from",
+        "data remove storage",
+        "execute if/unless data storage"
+      ],
+      "required": true,
+      "status": "passed",
+      "evidence": [
+        "packages/bridge/src/scenario/scenarios.servers.test.ts: scenario datapack/gimmick-door（JE 26.3 / BDS 1.26.66.1、bedrockRuntime: load-tick）",
+        "scenarios/datapack/gimmick-door.java.json",
+        "docs/findings.md: データパックだけで動く仕掛けのランタイム照合（#361）",
+        "2026-11-28: 同シナリオの Java・BE テストを3回連続成功（BE 17.6 / 17.5 / 17.8 秒）。スコア 8 件は一致、storage は log だけが既知差分"
+      ],
+      "knownDiffs": [
+        "storage.m2:door.log: 予約した関数の記録の順序と tick 番号（#440）"
+      ],
+      "incomparable": [],
+      "fixes": [],
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "pulse-schedule",
+      "scenario": "datapack/gimmick-door",
+      "start": "scenarios/datapack/gimmick-door.json のデータパックを読み込んだ Java ワールド（tick 停止、load 前）",
+      "steps": [
+        "convertWorld で変換する",
+        "変換先を BDS で開き、ランタイムの load と tick 1〜8 を動かす"
+      ],
+      "successCriteria": [
+        "load で 2t 後に予約した pulse が tick 2 の tick 関数の後に動き、3t 後に再予約した pulse が tick 5 に動く（#pulses=2）",
+        "load で予約し open で clear した never は動かない"
+      ],
+      "requiredFeatures": [
+        "schedule function（load から）",
+        "schedule clear",
+        "同じ tick の schedule と tick 関数の順序"
+      ],
+      "required": true,
+      "status": "failed",
+      "evidence": [
+        "packages/bridge/src/scenario/scenarios.servers.test.ts: scenario datapack/gimmick-door（JE 26.3 / BDS 1.26.66.1、bedrockRuntime: load-tick）",
+        "scenarios/datapack/gimmick-door.java.json",
+        "docs/findings.md: データパックだけで動く仕掛けのランタイム照合（#361）",
+        "2026-11-28: 同シナリオの Java・BE テストを3回連続成功（BE 17.6 / 17.5 / 17.8 秒）。スコア 8 件は一致、storage は log だけが既知差分"
+      ],
+      "knownDiffs": [
+        "storage.m2:door.log: 予約した関数の記録の順序と tick 番号（#440）"
+      ],
+      "incomparable": [],
+      "fixes": [],
+      "warnings": [],
+      "failures": [
+        {
+          "location": "m2:door/pulse（load からの schedule）",
+          "reason": "BE のランタイムは期限の来た schedule を tick 関数より前に動かし、pulse の記録が tick 1・4 になった（Java は 2・5）。#pulses=2 と never の未実行は一致（#440）",
+          "priorWarningIds": [],
+          "warningAssessment": "missed"
+        }
+      ]
+    }
+  ]
+}

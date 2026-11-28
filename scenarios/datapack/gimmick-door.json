@@ -1,0 +1,89 @@
+{
+  "description": "配布マップの関数で多い型だけで作った扉の仕掛け（#361）。load で目的変数と storage を用意し、tick でタイマーを進め、しきい値で関数を呼んで開き、schedule で閉じる。委譲先のない advancement の行を load と tick に混ぜ、後続の行と以後の tick が続くことも確かめる",
+  "setup": [],
+  "datapack": {
+    "functions": {
+      "m2:door/load": [
+        "scoreboard objectives add door dummy",
+        "scoreboard players set #phase door 0",
+        "scoreboard players set #timer door 0",
+        "scoreboard players set #limit door 3",
+        "data modify storage m2:door log set value []",
+        "data modify storage m2:door config set value {open:{delay:2},name:\"door\"}",
+        "advancement revoke @a only m2:door/none",
+        "scoreboard players set #loaded door 1",
+        "schedule function m2:door/pulse 2t",
+        "schedule function m2:door/never 6t"
+      ],
+      "m2:door/tick": [
+        "scoreboard players add #timer door 1",
+        "execute if score #phase door matches 0 if score #timer door >= #limit door run function m2:door/open",
+        "execute store result storage m2:door timer int 1 run scoreboard players get #timer door",
+        "advancement revoke @a only m2:door/none",
+        "scoreboard players add #after door 1"
+      ],
+      "m2:door/open": [
+        "scoreboard players set #phase door 1",
+        "data modify storage m2:door log append value {event:\"open\"}",
+        "execute store result storage m2:door log[-1].tick int 1 run scoreboard players get #timer door",
+        "execute store result score #delay door run data get storage m2:door config.open.delay",
+        "schedule function m2:door/close 2t",
+        "schedule clear m2:door/never"
+      ],
+      "m2:door/close": [
+        "scoreboard players set #phase door 2",
+        "data modify storage m2:door log append value {event:\"close\"}",
+        "execute store result storage m2:door log[-1].tick int 1 run scoreboard players get #timer door",
+        "data modify storage m2:door closed set from storage m2:door config",
+        "data remove storage m2:door closed.open",
+        "execute if data storage m2:door closed.name run scoreboard players set #named door 1",
+        "execute unless data storage m2:door closed.open run function m2:door/record"
+      ],
+      "m2:door/record": [
+        "data modify storage m2:door log append value {event:\"record\"}"
+      ],
+      "m2:door/pulse": [
+        "scoreboard players add #pulses door 1",
+        "data modify storage m2:door log append value {event:\"pulse\"}",
+        "execute store result storage m2:door log[-1].tick int 1 run scoreboard players get #timer door",
+        "execute if score #pulses door matches ..1 run schedule function m2:door/pulse 3t"
+      ],
+      "m2:door/never": [
+        "data modify storage m2:door log append value {event:\"never\"}"
+      ]
+    },
+    "functionTags": {
+      "minecraft:load": {
+        "values": [
+          "m2:door/load"
+        ]
+      },
+      "minecraft:tick": {
+        "values": [
+          "m2:door/tick"
+        ]
+      }
+    }
+  },
+  "actions": [
+    {
+      "ticks": 8
+    }
+  ],
+  "observe": {
+    "scores": [
+      "door"
+    ],
+    "storage": [
+      "m2:door"
+    ]
+  },
+  "bedrockRuntime": "load-tick",
+  "requiredObservations": [
+    "scores.door",
+    "storage.m2:door"
+  ],
+  "knownDiffs": {
+    "storage.m2:door.log": "BE のランタイムは期限の来た schedule を tick 関数より前に動かすが、Java は tick 関数の後に動かす。load で予約した pulse が1回分早い tick 関数の前に動き、記録の順序と tick 番号がずれる（#440）"
+  }
+}
