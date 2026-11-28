@@ -160,9 +160,8 @@ export function rewriteSelector(sel: EntitySelector): SelectorRewrite {
   }
   return { ok: true, value: out.length ? `@${variable}[${out.join(",")}]` : `@${variable}`, warnings };
 }
-
-/** 文字列のセレクタ（テキストの selector など）を読んで書き換える */
-function rewriteSelectorString(s: string): SelectorRewrite {
+/** 文字列のセレクタ（テキストの selector など）を読んで書き換える。集計（tools/text-components.ts）でも使う */
+export function rewriteSelectorString(s: string): SelectorRewrite {
   try {
     const r = new StringReader(s);
     const sel = readSelector(r);
