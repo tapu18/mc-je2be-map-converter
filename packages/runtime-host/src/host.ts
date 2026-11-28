@@ -2,7 +2,7 @@ import { BlockPermutation, GameMode, world, type Player, type Vector3 } from "@m
 import { onlinePlayers, projectHolder, readScores } from "./holders.ts";
 import { executeCommand, RuntimeState } from "../../core/src/runtime/command.ts";
 import type { CommandIR } from "../../core/src/command/parser.ts";
-import { dimensionId, type ExecutionContext, type ExecutionHost, type RuntimeEntity } from "../../core/src/runtime/context.ts";
+import { dimensionId, type ExecutionContext, type ExecutionHost, type FunctionLine, type RuntimeEntity } from "../../core/src/runtime/context.ts";
 import type { CommandResult } from "../../core/src/runtime/index.ts";
 
 export type HostError = { kind: "unloaded" | "out-of-bounds" | "absent" | "invalid" | "exception" | "unsupported"; message: string };
@@ -59,6 +59,17 @@ function runNative(source: () => { runCommand(command: string): {successCount: n
 
 export type NativeCommandResolver = (source: string) =>
   {command: string; completion: "synchronous" | "deferred"} | undefined;
+
+/** The failure of a function line that has neither a runtime family nor a BE rewrite (#353). */
+export const UNDELEGATED = "no BE command for this line";
+export type SessionOptions = {
+  /**
+   * Fail function lines without a native delegate like a Java command that fails at run time, instead of reporting
+   * `unsupported command`, which stops the function. Warns once per line. Command-block chains keep their own routing.
+   */
+  failUndelegated?: boolean;
+  warn?: (message: string) => void;
+};
 
 export const bedrockDimension = (id: string) => dimensionId(id) === "minecraft:the_nether" ? "nether" : dimensionId(id).replace(/^minecraft:/, "");
 const dimensions = ["overworld", "nether", "the_end"];
@@ -178,9 +189,12 @@ export class RuntimeSession {
   private pendingNative: { before: Scores; run: () => CommandResult; source: string }[] = [];
   /** Chains moved to the writable phase (#93 decision 2), in launch order. */
   private queuedChains: (() => void)[] = [];
-  constructor(state = new RuntimeState(), resolveNative?: NativeCommandResolver) {
+  /** Lines already warned about as undelegated: `function:line`, or the source outside functions. */
+  readonly undelegatedLines = new Set<string>();
+  constructor(state = new RuntimeState(), resolveNative?: NativeCommandResolver, options: SessionOptions = {}) {
     this.state = state;
-    state.host ??= executionHost((_command, context, source) => {
+    const warn = options.warn ?? (message => console.warn(message));
+    state.host ??= executionHost((_command, context, source, origin) => {
       if (this.chainCommands) {
         const command = this.chainCommands.get(source);
         if (command !== undefined) return this.restricted
@@ -190,6 +204,7 @@ export class RuntimeSession {
       }
       const native = resolveNative?.(source);
       if (native) return this.restricted ? {status: "unknown"} : executeNative(context, native);
+      if (options.failUndelegated && !this.chainCommands) return this.undelegated(source, origin, warn);
     });
   }
   get isConsistent(): boolean { return this.consistent; }
@@ -231,6 +246,15 @@ export class RuntimeSession {
     } catch (error) { this.consistent = false; throw error; }
   }
   halt(): void { this.consistent = false; }
+
+  private undelegated(source: string, origin: FunctionLine | undefined, warn: (message: string) => void): CommandResult {
+    const key = origin ? `${origin.function}:${origin.line}` : source;
+    if (!this.undelegatedLines.has(key)) {
+      this.undelegatedLines.add(key);
+      warn(`[je2be] ${origin ? `function ${origin.function} command ${origin.line}` : "command"} fails without a BE command: ${source}`);
+    }
+    return {success: false, error: UNDELEGATED};
+  }
 
   deferChainCommand(source: string, command: string, context: ExecutionContext): CommandResult {
     if (!this.consistent) return {success: false, error: "inconsistent session"};

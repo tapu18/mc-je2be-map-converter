@@ -54,10 +54,17 @@ export interface ExecutionHost {
   heightmapY?(dimension: string, x: number, z: number, heightmap: Heightmap): number | undefined;
   /** Order a mutable candidate list using the host's random source. */
   shuffle?(entities: RuntimeEntity[]): void;
-  runNative?(command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string): CommandResult | undefined;
+  /**
+   * Delegate a terminal command. `origin` is the innermost function line being executed, if any; undefined means the host has no
+   * delegate for the command, which the core reports as `unsupported command`.
+   */
+  runNative?(command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string, origin?: FunctionLine): CommandResult | undefined;
   /** Report a failure Java writes to the server log instead of the command result (e.g. macro instantiation). */
   diagnostic?(message: string): void;
 }
+
+/** A line of a loaded function: its ID and 1-based position among the function's commands (blank and comment lines excluded). */
+export type FunctionLine = { function: string; line: number };
 
 export function defaultExecutionContext(): ExecutionContext {
   return {position: [0, 0, 0], rotation: [0, 0], anchor: "feet", dimension: "minecraft:overworld"};
