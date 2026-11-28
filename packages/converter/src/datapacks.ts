@@ -11,7 +11,7 @@ export function collectDatapacks(world: string, rewrite?: {mappings: MappingLook
   const context = readJavaValidationContext(world);
   const grammars = loadJavaGrammars();
   const packs: { name: string; grammar?: string; functions: Record<string, string[]>; tags: Record<string, unknown> }[] = [];
-  const diagnostics: { pack: string; path: string; reason: string; start?: number; end?: number }[] = [];
+  const diagnostics: { pack: string; path: string; reason: string; start?: number; end?: number; command?: string; error?: string }[] = [];
   const omitted = new Set<string>();
   const nativeCommands = new Map<string, string | null>();
   for (const entry of context.packOrder) if ("builtin" in entry && entry.builtin !== "vanilla") diagnostics.push({ pack: entry.builtin, path: "", reason: "builtin pack not bundled" });
@@ -87,18 +87,18 @@ export function collectDatapacks(world: string, rewrite?: {mappings: MappingLook
                 lines.push(serializeCommandIR({ grammarVersion: grammar.version, textFormat: grammar.textFormat, ir: template.ir }));
               } else {
                 const indent = raw.length - raw.trimStart().length;
-                diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: template.reason, start: indent + template.start, end: indent + template.end });
+                diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: template.reason, start: indent + template.start, end: indent + template.end, command: line });
                 valid = false;
               }
               continue;
             }
             const parsed = parser.parse(line);
-            if (!parsed.ok) { diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: "command parse failed" }); valid = false; continue; }
+            if (!parsed.ok) { diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason: "command parse failed", command: line, error: `${parsed.error.message}（${parsed.error.position + 1}文字目）` }); valid = false; continue; }
             const normalized = normalizeCommandIR(toCommandIR(line, parsed.nodes), grammar.version);
             if (!normalized.ok) {
               const { reason, start, end } = normalized;
               const indent = raw.length - raw.trimStart().length;
-              diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason, start: indent + start, end: indent + end });
+              diagnostics.push({ pack: name, path: `${key}:${index + 1}`, reason, start: indent + start, end: indent + end, command: line });
               valid = false;
               continue;
             }

@@ -10,3 +10,5 @@ export { convertWorld, collectInitialStorage, selectScores, writeInitPack, DEFAU
 export * from "./command-rewrite.ts";
 export * from "./evaluation.ts";
 export * from "./static-coverage.ts";
+export { convertOutput } from "./convert-output.ts";
+export { classifyReason, collectWarnings, renderMarkdownReport, type ReportWarning } from "./convert-report.ts";
