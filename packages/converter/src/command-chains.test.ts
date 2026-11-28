@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { blockEntities, deserializeCommandIR, MappingLookup, nbt, nbtToPlain, writeNbt, type CommandBlockInfo, type CommandTreeNode } from "@je2be/core";
+import { blockEntities, deserializeCommandIR, nbtTextRuntimeReason, MappingLookup, nbt, nbtToPlain, writeNbt, type CommandBlockInfo, type CommandTreeNode } from "@je2be/core";
 import { expect, it } from "vitest";
 import { prepareWorldCommands } from "./command-rewrite.ts";
 import { fixedJavaDataVersion } from "./java-grammars.ts";
@@ -52,6 +52,8 @@ it("reports native, runtime and unsupported chains at their Java coordinates", (
     const tree: CommandTreeNode = { type: "root", children: {
       say: { type: "literal", children: { message: { type: "argument", parser: "minecraft:message", executable: true } } },
       return: { type: "literal", children: { value: { type: "argument", parser: "brigadier:integer", executable: true } } },
+      tellraw: { type: "literal", children: { targets: { type: "argument", parser: "minecraft:entity", properties: { type: "entities", amount: "multiple" },
+        children: { message: { type: "argument", parser: "minecraft:component", executable: true } } } } },
     } };
     const commandsJson = join(dir, "commands.json");
     const blocksJson = join(dir, "blocks.json");
@@ -62,6 +64,7 @@ it("reports native, runtime and unsupported chains at their Java coordinates", (
       { x: 2, z: 511, command: "say guarded", facing: "south" },
       { x: 4, z: 511, command: "say native", facing: "south" },
       { x: 6, z: 511, command: "return 1", facing: "south" },
+      { x: 8, z: 511, command: "return 1", facing: "south" },
     ]);
     writeRegion(region, 32, [
       { x: 0, z: 512, command: "say delegated", facing: "south", chain: true, conditional: true },
@@ -70,6 +73,7 @@ it("reports native, runtime and unsupported chains at their Java coordinates", (
       { x: 7, z: 512, command: "say second head", facing: "west" },
       { x: 10, z: 512, command: "say loop", facing: "east", chain: true },
       { x: 11, z: 512, command: "say loop", facing: "west", chain: true },
+      { x: 8, z: 512, command: "tellraw @a {nbt:'p',storage:'a:b'}", facing: "south", chain: true },
     ]);
     const mappings = new MappingLookup({
       schemaVersion: 1, source: { repository: "", revision: "", javaVersion: "", bedrockVersion: "", sha256: {} }, blocks: [], items: [],
@@ -85,6 +89,8 @@ it("reports native, runtime and unsupported chains at their Java coordinates", (
         reason: expect.stringContaining("#93 の判断待ち"), at: site(2, 511) },
       { head: site(4, 511), blocks: [[4, 0, 511]], status: "native", reason: expect.stringContaining("BE コマンド") },
       { head: site(6, 511), blocks: [[6, 0, 511], [6, 0, 512], [7, 0, 512]], status: "unsupported", reason: expect.stringContaining("合流") },
+      // nbt 成分のテキストは、ランタイムに回すべき理由をそのまま出す（#347）
+      { head: site(8, 511), blocks: [[8, 0, 511], [8, 0, 512]], status: "unsupported", reason: nbtTextRuntimeReason, at: site(8, 512) },
       { head: site(10, 512), blocks: [[10, 0, 512], [11, 0, 512]], status: "unsupported", reason: expect.stringContaining("ループ") },
     ]);
     const chain = runtimeChains["chain@0"]!;
