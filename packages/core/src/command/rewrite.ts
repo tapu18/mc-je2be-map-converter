@@ -6,6 +6,7 @@
 // 確度：出力する BE の書き方は BDS 1.26.63.1 が構文として受理することを実測した（rewrite.servers.test.ts）。
 // 意味が Java と一致することは、変換を通すシナリオ（scenarios/convert/）で確かめたものだけが実測で、残りは未確認。
 import { rewriteEffect } from "../features/effect/rewrite.ts";
+import { rewriteKill, rewriteTag, rewriteTeleport } from "../features/entity/rewrite.ts";
 import { rewriteGameRule } from "../features/game_rule/rewrite.ts";
 import { rewriteSound } from "../features/sound/rewrite.ts";
 import type { BlockDefaults } from "../java/world.ts";
@@ -351,25 +352,14 @@ const ok: CommandHandler = () => {};
 const COMMANDS: Record<string, CommandHandler> = {
   say: ok,
   tellraw: ok,
-  kill: ok,
-  tag: ok,
+  kill: (nodes, _head, _ctx, ed) => rewriteKill(nodes, ed),
+  tag: (nodes, _head, _ctx, ed) => rewriteTag(nodes, ed),
   title: (nodes, head, _ctx, ed) => {
     const sub = literals(nodes)[0];
     // テキストを出すものは BE では titleraw（times・clear・reset は title のまま）
     if (sub === "title" || sub === "subtitle" || sub === "actionbar") ed.replace(head.start, head.end, "titleraw");
   },
-  teleport: (nodes, _head, _ctx, ed) => {
-    const target = arg(nodes, "facingEntity");
-    if (!target) return;
-    const anchor = arg(nodes, "facingAnchor");
-    if (anchor?.value?.kind === "word" && anchor.value.value === "eyes") {
-      return ed.unsupported("tp の facing entity eyes は BE の tp にない");
-    }
-    const entity = nodes[nodes.indexOf(target) - 1]!;
-    const facing = nodes[nodes.indexOf(entity) - 1]!;
-    ed.replace(facing.end, entity.end, "");
-    if (anchor) ed.replace(target.end, anchor.end, "");
-  },
+  teleport: (nodes, _head, _ctx, ed) => rewriteTeleport(nodes, ed),
   setblock: (nodes, _head, _ctx, ed) => {
     if (literals(nodes).includes("strict")) ed.unsupported("setblock の strict は BE にない");
   },
