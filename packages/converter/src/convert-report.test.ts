@@ -58,7 +58,7 @@ const report: ConvertReport = {
     skipped: [{ type: "minecraft:marker", dimension: "minecraft:overworld", pos: { x: 1.5, y: 64, z: -2.25 }, field: "type", reason: "Java 専用。代替エンティティの移植対象" }],
     fields: [{ type: "minecraft:armor_stand", dimension: "minecraft:overworld", uuid: "u", pos: { x: 0, y: 64, z: 0 }, field: "NoGravity", reason: "保存値の復元は未対応" }],
   },
-  datapacks: { functions: 3, omitted: ["advancement"], diagnostics: [
+  datapacks: { functions: 3, omitted: ["advancement", "functions"], diagnostics: [
     { pack: "file/demo", path: "data/demo/function/a.mcfunction:2", reason: "command parse failed", command: "sya hi", error: "不明なコマンドかサブコマンド 'sya'（1文字目）" },
     { pack: "file/demo", path: "data/demo/function/m.mcfunction:1", reason: "macro hole can change command shape", start: 1, end: 9, command: "$$(cmd) hi" },
     { pack: "file/demo", path: "data/demo/tags/function/load.json", reason: "invalid tag JSON" },
@@ -86,7 +86,7 @@ describe("Markdown のレポート", () => {
   it("全項目に警告コードが付き、分類できないものがない", () => {
     expect(warnings.map(w => w.code)).not.toContain("UNCLASSIFIED");
     expect(warnings.map(w => w.code).sort()).toEqual([
-      "CHAIN_ENTITY_NBT", "CHAIN_RUNTIME", "CMD_INVALID", "CMD_NOT_NATIVE", "CMD_NOT_NATIVE", "DP_MACRO_SHAPE", "DP_OMITTED", "DP_PARSE_FAILED", "DP_TAG_JSON",
+      "CHAIN_ENTITY_NBT", "CHAIN_RUNTIME", "CMD_INVALID", "CMD_NOT_NATIVE", "CMD_NOT_NATIVE", "DP_FUNCTION_DIRECTORY", "DP_MACRO_SHAPE", "DP_OMITTED", "DP_PARSE_FAILED", "DP_TAG_JSON",
       "ENTITY_FIELD_NOT_RESTORED", "ENTITY_JAVA_ONLY", "SCORE_ENTITY_MISSING", "STORAGE_UNREADABLE",
     ]);
     // ランタイムで動くチェーンのブロックの書き換えの結果は要対応にしない。
@@ -97,6 +97,8 @@ describe("Markdown のレポート", () => {
     expect(md).toContain("| minecraft:overworld (10, 64, 3) | `say \\| hi` | BE のコマンド 1 個に書き換えられない（詳細: BE にチームはない（team=）） |");
     expect(md).toContain("file/demo data/demo/function/a.mcfunction:2");
     expect(md).toContain("`sya hi`");
+    expect(md).toContain("| minecraft:overworld (10, 64, 3) | `say \\| hi` | エンティティの NBT の読み書きのうち");
+    expect(describeScope(report, ctx).notChecked).toContain("データパックの関数・関数タグ以外の内容（advancement）");
     expect(md).toContain("不明なコマンドかサブコマンド 'sya'");
     expect(md).toContain("file/demo data/demo/function/m.mcfunction:1（2〜9 文字目）");
     expect(md).toContain("| minecraft:overworld (1.50, 64, -2.25) | `minecraft:marker` | Java 専用のエンティティで、BE に同じものがない");
@@ -112,7 +114,7 @@ describe("Markdown のレポート", () => {
   it("概要に版・範囲・件数を書き、警告がないことを保証と書かない", () => {
     expect(md).toContain("入力の版: DataVersion 4790");
     expect(md).toContain("変換器の版: git test（地形変換器 Chunker 1.21.0、ID の対応表 Java 26.3）");
-    expect(md).toMatch(/要対応: 8 件、注意: 3 件、情報: 2 件/);
+    expect(md).toMatch(/要対応: 8 件、注意: 4 件、情報: 2 件/);
     expect(md).toContain("### 検査していない範囲");
     expect(md).toContain("ランタイムで実行するチェーンの BE 上の動作");
     expect(md).toContain("保証するものではありません");

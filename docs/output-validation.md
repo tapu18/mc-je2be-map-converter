@@ -61,7 +61,8 @@ npm run convert:world -- <Javaワールド> --out <出力.mcworld>   # ディレ
 - 必要な資材（JRE・Chunker・版別文法・blocks.json・固定Geyser対応表と表示）がなければエラーにする。`setup:servers`・`setup:mappings`・`setup:grammars` を実行する
 - .mcworld はワールド直下（level.dat・db・behavior_packs・world_behavior_packs.json 等）をアーカイブの直下に置く
 - Geyser の出典・MIT表示（`LICENSE.geyser.txt`・`NOTICE.geyser.txt`）をワールド直下と初期化パックに同梱する
-- レポート（既定は `<出力>.report.json`）は常に `status: "partial"`、`clientVerification: "not-performed"`、`clearConfirmed: false` で、未対応・省略したコマンドの件数と未実装の範囲（`limitations`）を載せる
+- レポート（既定は `<出力>.report.json`）は常に `status: "partial"`、`clientVerification: "not-performed"`、`clearConfirmed: false` で、未対応・省略したコマンドの件数、行った処理（`processed`）と検査していない範囲（`limitations`）、警告コード付きの一覧（`warnings`）を載せる。`processed` と `limitations` は固定文ではなく、その変換で行った処理から作る
+- 作者が読む Markdown（`<出力>.report.md`。`--report x.json` を指定したときは `x.md`）を JSON と並べて出す。概要（入力の DataVersion、変換器のコミット、検査した範囲・していない範囲、要対応・注意・情報の件数）と、「どこが・何が・なぜ・対処・コード」の詳細を載せる。形式と警告コードは [design.md 5.11](design.md#511-変換レポート)
 
 自動検査は `packages/bridge/src/convert-cli.servers.test.ts`。自作の検証ワールドをCLIで変換し、原本が変わらないこと、上書きを拒否すること、アーカイブの構成、
 展開したワールドを設定補助・tickingareaなしでBDSで開きスコア42が復元されることを確かめる。
@@ -74,7 +75,7 @@ JE2BE_ACCEPTANCE_ARTIFACTS=$HOME/je2be-acceptance-$(date +%Y%m%d-%H%M%S) \
   npx vitest run --config vitest.servers.config.ts packages/bridge/src/convert-cli.servers.test.ts
 ```
 
-20秒ほどで、指定したディレクトリに `fixture.mcworld` と `fixture.report.json` ができる。既にあるファイルは上書きしないので、毎回新しいディレクトリを指定する。
+20秒ほどで、指定したディレクトリに `fixture.mcworld`、`fixture.report.json`、`fixture.report.md` ができる。既にあるファイルは上書きしないので、毎回新しいディレクトリを指定する。
 中身はスーパーフラットのワールドに、スコア `t` の偽プレイヤー `kept`＝42と、未対応コマンド（`data get storage`）のコマンドブロック1つ。操作するギミックは入っていない。
 `sha256sum` で成果物のハッシュを、`git rev-parse --short HEAD` で対象コミットを控える。
 WSL では Windows のエクスプローラーから `\\wsl$\<ディストリビューション名>\home\<ユーザー>\...` で開ける。

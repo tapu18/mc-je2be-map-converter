@@ -35,7 +35,7 @@ it("converts through the CLI to a directory and importable archive without chang
   cpSync(join(paths.javaServer, "je2be-test"), source, { recursive: true });
   const before = digest(source);
   const cli = join(repoRoot, "packages/converter/src/cli.ts");
-  const invoke = (output: string) => JSON.parse(execFileSync(process.execPath, [cli, "convert", source, "--out", output], { encoding: "utf8", timeout: 600_000 })) as { status: string; report: string; clearConfirmed: boolean };
+  const invoke = (output: string) => JSON.parse(execFileSync(process.execPath, [cli, "convert", source, "--out", output], { encoding: "utf8", timeout: 600_000 })) as { status: string; report: string; markdown: string; clearConfirmed: boolean };
   try {
     const directory = join(work, "directory");
     const dirResult = invoke(directory);
@@ -53,6 +53,8 @@ it("converts through the CLI to a directory and importable archive without chang
     const report = JSON.parse(readFileSync(zipResult.report, "utf8")) as { commands: { counts: { unsupported: number } }; limitations: string[] };
     expect(report.commands.counts.unsupported).toBe(1);
     expect(report.limitations.length).toBeGreaterThan(0);
+    expect(zipResult.markdown).toBe(`${archive}.report.md`);
+    expect(readFileSync(zipResult.markdown, "utf8")).toContain("CMD_NOT_NATIVE");
     const archiveHash = createHash("sha256").update(readFileSync(archive)).digest("hex");
     expect(() => invoke(archive)).toThrow();
     expect(createHash("sha256").update(readFileSync(archive)).digest("hex")).toBe(archiveHash);
@@ -70,6 +72,7 @@ it("converts through the CLI to a directory and importable archive without chang
       mkdirSync(target, { recursive: true });
       cpSync(archive, join(target, "fixture.mcworld"), { force: false, errorOnExist: true });
       cpSync(zipResult.report, join(target, "fixture.report.json"), { force: false, errorOnExist: true });
+      cpSync(zipResult.markdown, join(target, "fixture.report.md"), { force: false, errorOnExist: true });
     }
   } finally { rmSync(work, { recursive: true, force: true }); }
 });

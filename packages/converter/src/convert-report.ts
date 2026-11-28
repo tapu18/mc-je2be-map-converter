@@ -107,6 +107,7 @@ export function classifyReason(area: WarningArea, reason: string): { code: strin
   return undefined;
 }
 
+const FUNCTION_DIRECTORY = /^(tags\/)?functions?$/;
 const fmt = (n: number): string => Number.isInteger(n) ? String(n) : n.toFixed(2);
 const site = (dimension: string, pos: readonly number[]): string => `${dimension} (${pos.map(fmt).join(", ")})`;
 
@@ -143,13 +144,15 @@ export function collectWarnings(report: ConvertReport): ReportWarning[] {
         else add("command_block", severity, where, issue.message, block.java);
       }
     }
+    const javaAt = new Map(commands.commandBlocks.map(block => [site(block.dimension, block.pos), block.java]));
     for (const chain of commands.chains) {
       if (chain.status === "native") continue;
-      const where = `${site(chain.head.dimension, chain.head.pos)} から ${chain.blocks.length} 個`;
-      const at = chain.at ? `（${site(chain.at.dimension, chain.at.pos)}）` : "";
-      if (chain.status === "runtime") add("chain", "info", where, "", `起点 ${chain.launcherId ?? ""}${at}`.trim(),
+      const head = site(chain.head.dimension, chain.head.pos);
+      const at = chain.at ? site(chain.at.dimension, chain.at.pos) : head;
+      const where = (chain.blocks.length > 1 ? `${head} から ${chain.blocks.length} 個のチェーン` : head) + (at === head ? "" : `（該当: ${at}）`);
+      if (chain.status === "runtime") add("chain", "info", where, "", javaAt.get(at),
         { code: "CHAIN_RUNTIME", message: "BE のコマンド 1 個にできない命令があり、チェーン全体をランタイムで実行する（BE での動作は確認していない）" });
-      else add("chain", "action", where + at, chain.reason);
+      else add("chain", "action", where, chain.reason, javaAt.get(at));
     }
   }
   for (const d of report.datapacks.diagnostics) {
@@ -158,8 +161,9 @@ export function collectWarnings(report: ConvertReport): ReportWarning[] {
     if (d.error) warnings[warnings.length - 1]!.detail = d.error;
   }
   for (const dir of report.datapacks.omitted) {
-    add("datapack", "caution", "有効なデータパック全体", "", `data/<名前空間>/${dir}/`,
-      { code: "DP_OMITTED", message: `${dir} は移植の対象外で、BE ワールドに入れていない` });
+    add("datapack", "caution", "有効なデータパック全体", "", `data/<名前空間>/${dir}/`, FUNCTION_DIRECTORY.test(dir)
+      ? { code: "DP_FUNCTION_DIRECTORY", message: `パックの版では読まれないディレクトリ名（${dir}）の関数・タグは同梱していない`, remedy: "Java 側で、パックの版に合うディレクトリ名（1.21 以降は function、それより前は functions）か確かめる" }
+      : { code: "DP_OMITTED", message: `${dir} は移植の対象外で、BE ワールドに入れていない` });
   }
   const entity = (e: ReportEntity): string => e.pos ? site(e.dimension, [e.pos.x, e.pos.y, e.pos.z]) : `${e.dimension}（位置不明）`;
   const label = (e: ReportEntity, field?: string): string => `${e.type}${e.uuid ? `（UUID ${e.uuid}）` : ""}${field ? ` の ${field}` : ""}`;
@@ -200,7 +204,8 @@ export function describeScope(report: ConvertReport, ctx: ReportContext): { proc
   processed.push(report.datapacks.functions || report.datapacks.diagnostics.length
     ? `データパックの関数 ${report.datapacks.functions} 個をランタイムパックに同梱した`
     : "有効なデータパックの関数はなかった");
-  if (report.datapacks.omitted.length) notChecked.push(`データパックの関数・関数タグ以外（${report.datapacks.omitted.join("、")}）`);
+  const omitted = report.datapacks.omitted.filter(dir => !FUNCTION_DIRECTORY.test(dir));
+  if (omitted.length) notChecked.push(`データパックの関数・関数タグ以外の内容（${omitted.join("、")}）`);
   processed.push(`エンティティ ${report.entities.scheduled} 体を BE の初回読み込み時に再配置する（省いたもの ${report.entities.skipped.length} 体）`);
   if (report.entities.scheduled) notChecked.push("エンティティの再配置の成否（失敗はワールドのコンテンツログに出る）");
   processed.push(`スコアの目的 ${report.scores.objectives} 個・値 ${report.scores.participants} 件と storage ${report.storage.entries} 件を初期化パックに入れた`);
