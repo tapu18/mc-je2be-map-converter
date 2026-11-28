@@ -1,0 +1,584 @@
+{
+  "description": "変換したコマンドブロックで kill・tag・teleport を実行し、エンティティの存否・タグ・小数の座標と向き、各コマンドの成否（条件付きチェーンのスコア）を比べる（#346）。対象はプレイヤー以外の防具立てと豚。tp_pitch_late は 40 tick 後に 2 つ目の起動で ^ ^ ^ で動かし、防具立てのピッチが残るかを見る",
+  "setup": [
+    "gamerule spawn_mobs false",
+    "scoreboard objectives add ok dummy",
+    "summon minecraft:armor_stand 4.5 -60 56.5 {Tags:[\"probe\",\"k_stand\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 7.5 -60 56.5 {Tags:[\"probe\",\"k_self\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 10.5 -60 56.5 {Tags:[\"probe\",\"keep\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 13.5 -60 56.5 {Tags:[\"probe\",\"g1\",\"g_group\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 16.5 -60 56.5 {Tags:[\"probe\",\"g2\",\"g_group\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 19.5 -60 56.5 {Tags:[\"probe\",\"g_dup\",\"dup\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 22.5 -60 56.5 {Tags:[\"probe\",\"g_rem\",\"gone\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 25.5 -60 56.5 {Tags:[\"probe\",\"tp_abs\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 28.5 -60 56.5 {Tags:[\"probe\",\"tp_rel_cb\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 31.5 -60 56.5 {Tags:[\"probe\",\"tp_rel_self\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 34.5 -60 56.5 {Tags:[\"probe\",\"tp_rot\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 37.5 -60 56.5 {Tags:[\"probe\",\"tp_rot_rel\"],Rotation:[30f,10f]}",
+    "summon minecraft:armor_stand 40.5 -60 56.5 {Tags:[\"probe\",\"tp_facing\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 43.5 -60 56.5 {Tags:[\"probe\",\"tp_facing_entity\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 46.5 -60 56.5 {Tags:[\"probe\",\"tp_facing_feet\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 49.5 -60 56.5 {Tags:[\"probe\",\"tp_to_entity\"],Rotation:[-60f,0f]}",
+    "summon minecraft:armor_stand 52.5 -60 56.5 {Tags:[\"probe\",\"anchor\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 55.5 -60 56.5 {Tags:[\"probe\",\"dest\"],Rotation:[135f,-20f]}",
+    "summon minecraft:armor_stand 58.5 -60 56.5 {Tags:[\"probe\",\"tp_pitch_local\"],Rotation:[0f,0f]}",
+    "summon minecraft:armor_stand 61.5 -60 56.5 {Tags:[\"probe\",\"tp_pitch_late\"],Rotation:[0f,0f]}",
+    "summon minecraft:pig 58.5 -60 8.5 {Tags:[\"probe\",\"k_pig\"],PersistenceRequired:1b}"
+  ],
+  "actions": [
+    {
+      "commandBlocks": [
+        {
+          "pos": [
+            2,
+            -60,
+            2
+          ],
+          "kind": "impulse",
+          "facing": "south",
+          "command": "kill @e[tag=k_stand]",
+          "alwaysActive": false
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            3
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #kill_stand ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            4
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "kill @e[tag=k_pig]"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            5
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #kill_pig ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            6
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "execute as @e[tag=k_self] run kill"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            7
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #kill_self ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            8
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "kill @e[tag=nobody]"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            9
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #kill_miss ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            10
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tag @e[tag=g_group] add added"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            11
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tag_add ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            12
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tag @e[tag=g_dup] add dup"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            13
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tag_dup ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            14
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tag @e[tag=g_rem] remove gone"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            15
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tag_rem ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            16
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tag @e[tag=g_rem] remove never"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            17
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tag_rem_miss ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            18
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tag @e[tag=nobody] add added"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            19
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tag_miss ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            20
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=tp_abs] 20.25 -60 40.75"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            21
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_abs ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            22
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=tp_rel_cb] ~10 ~ ~"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            23
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_rel_cb ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            24
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "execute as @e[tag=tp_rel_self] at @s run tp @s ~1.5 ~ ~-3"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            25
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_rel_self ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            26
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=tp_rot] 24.5 -60 40.5 90 -30"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            27
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_rot ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            28
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "execute as @e[tag=tp_rot_rel] at @s run tp @s ~ ~ ~ ~45 ~10"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            29
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_rot_rel ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            30
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=tp_facing] 28.5 -60 40.5 facing 32.5 -58 44.5"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            31
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_facing ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            32
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=tp_facing_entity] 36.5 -60 40.5 facing entity @e[tag=anchor,limit=1]"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            33
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_facing_entity ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            34
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "teleport @e[tag=tp_facing_feet] 40.5 -60 40.5 facing entity @e[tag=anchor,limit=1] feet"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            35
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_facing_feet ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            36
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=tp_to_entity] @e[tag=dest,limit=1]"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            37
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_to_entity ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            38
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=nobody] 1 -60 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            39
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_miss ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            40
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=tp_pitch_local] 44.5 -60 40.5 0 -60"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            41
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_pitch_local ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            42
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "execute as @e[tag=tp_pitch_local] at @s run tp @s ^ ^ ^4"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            43
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_pitch_local_move ok 1"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            44
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "command": "tp @e[tag=tp_pitch_late] 48.5 -60 40.5 0 -60"
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            45
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_pitch_late ok 1"
+        },
+        {
+          "pos": [
+            6,
+            -60,
+            2
+          ],
+          "kind": "impulse",
+          "facing": "south",
+          "alwaysActive": false,
+          "command": "execute as @e[tag=tp_pitch_late] at @s run tp @s ^ ^ ^4"
+        },
+        {
+          "pos": [
+            6,
+            -60,
+            3
+          ],
+          "kind": "chain",
+          "facing": "south",
+          "conditional": true,
+          "command": "scoreboard players set #tp_pitch_late_move ok 1"
+        }
+      ]
+    }
+  ],
+  "play": [
+    {
+      "run": "setblock 2 -60 1 minecraft:redstone_block"
+    },
+    {
+      "ticks": 40
+    },
+    {
+      "run": "setblock 6 -60 1 minecraft:redstone_block"
+    },
+    {
+      "ticks": 40
+    }
+  ],
+  "observe": {
+    "scores": [
+      "ok"
+    ],
+    "entityTags": [
+      "probe"
+    ],
+    "entityPoses": [
+      "tp_abs",
+      "tp_rel_cb",
+      "tp_rel_self",
+      "tp_rot",
+      "tp_rot_rel",
+      "tp_facing",
+      "tp_facing_entity",
+      "tp_facing_feet",
+      "tp_to_entity",
+      "k_stand",
+      "k_self",
+      "keep",
+      "tp_pitch_local",
+      "tp_pitch_late"
+    ]
+  },
+  "requiredObservations": [
+    "scores.ok",
+    "entities",
+    "entityPoses.tp_abs",
+    "entityPoses.tp_rel_cb",
+    "entityPoses.tp_rel_self",
+    "entityPoses.tp_rot",
+    "entityPoses.tp_rot_rel",
+    "entityPoses.tp_facing",
+    "entityPoses.tp_facing_entity",
+    "entityPoses.tp_facing_feet",
+    "entityPoses.tp_to_entity",
+    "entityPoses.k_stand",
+    "entityPoses.k_self",
+    "entityPoses.keep",
+    "entityPoses.tp_pitch_local",
+    "entityPoses.tp_pitch_late"
+  ],
+  "knownDiffs": {
+    "entityPoses.tp_rot.rot": "BDS 1.26.66.1 の防具立てはピッチを保たず、数 tick で 0 に戻る（ヨーは一致）。同じ tick の ^ ^ ^ は傾いた向きで動く（tp_pitch_local の座標は一致）",
+    "entityPoses.tp_rot_rel.rot": "BDS 1.26.66.1 の防具立てはピッチを保たず、数 tick で 0 に戻る（ヨーは一致）。同じ tick の ^ ^ ^ は傾いた向きで動く（tp_pitch_local の座標は一致）",
+    "entityPoses.tp_facing.rot": "BDS 1.26.66.1 の防具立てはピッチを保たず、数 tick で 0 に戻る（ヨーは一致）。同じ tick の ^ ^ ^ は傾いた向きで動く（tp_pitch_local の座標は一致）",
+    "entityPoses.tp_to_entity.rot": "BDS 1.26.66.1 の防具立てはピッチを保たず、数 tick で 0 に戻る（ヨーは一致）。同じ tick の ^ ^ ^ は傾いた向きで動く（tp_pitch_local の座標は一致）",
+    "entityPoses.tp_pitch_local.rot": "BDS 1.26.66.1 の防具立てはピッチを保たず、数 tick で 0 に戻る（ヨーは一致）。同じ tick の ^ ^ ^ は傾いた向きで動く（tp_pitch_local の座標は一致）",
+    "entityPoses.tp_pitch_late.rot": "BDS 1.26.66.1 の防具立てはピッチを保たず、数 tick で 0 に戻る（ヨーは一致）。同じ tick の ^ ^ ^ は傾いた向きで動く（tp_pitch_local の座標は一致）",
+    "entityPoses.tp_pitch_late.pos": "40 tick 後の ^ ^ ^4 が、BE では防具立てのピッチが 0 に戻っているため水平に 4 進む（Java は -60 度のまま 2 進む）"
+  }
+}

@@ -74,6 +74,7 @@ Java版サーバーで実行した結果を正解として記録し、BE で実�
 - `entityScores` に目的変数名を列挙すると、Java はエンティティの UUID、BE はエンティティのスコアボード ID から値を取得し、`entityDetails` 内で比較する。配置だけを確かめる `play: []` の例は `convert/placed-entities`。防具立ての小数座標と向きは `placed-entities.servers.test.ts` で別に確認する。
 
 - `entityEffects` は一意に付けたエンティティタグから、観測する Java の効果 ID の配列への対応。Java は `data get entity`、BE は `getEffect` を使う。効果なしは `null` として比較し、対象が見つからなければ失敗する。増幅度と無期限（`-1`）は完全一致を求め、有限の残り時間は BE の観測時刻のずれとして10 tick まで許容する。
+- `entityPoses` は一意に付けたエンティティタグの配列。各エンティティの小数の座標と向き（`[ピッチ, ヨー]`、ヨーは -180 以上 180 未満にそろえる）を小数第3位に丸めて比べる。座標と向きは 0.01 まで許容し、ヨーは 360 度の回り込みを考慮する。見つからなければ `null`（存否を比べる）、同じタグが複数あれば失敗する。例は `convert/entity-commands`
 
 ## 実行と記録
 

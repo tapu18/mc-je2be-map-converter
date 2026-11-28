@@ -67,6 +67,23 @@ const tree: CommandTreeNode = {
   children: {
     say: lit({ children: { message: arg("minecraft:message", { executable: true }) } }),
     kill: lit({ executable: true, children: { targets: arg("minecraft:entity", { executable: true, properties: entities }) } }),
+    tag: lit({ children: { targets: arg("minecraft:entity", { properties: entities, children: {
+      add: lit({ children: { name: arg("brigadier:string", { executable: true, properties: { type: "word" } }) } }),
+      remove: lit({ children: { name: arg("brigadier:string", { executable: true, properties: { type: "word" } }) } }),
+    } }) } }),
+    tp: lit({ redirect: ["teleport"] }),
+    teleport: lit({ children: { targets: arg("minecraft:entity", { properties: entities, children: {
+      destination: arg("minecraft:entity", { executable: true, properties: { type: "entities", amount: "single" } }),
+      location: arg("minecraft:vec3", { executable: true, children: {
+        rotation: arg("minecraft:rotation", { executable: true }),
+        facing: lit({ children: {
+          entity: lit({ children: { facingEntity: arg("minecraft:entity", { executable: true, properties: { type: "entities", amount: "single" }, children: {
+            facingAnchor: arg("minecraft:entity_anchor", { executable: true }),
+          } }) } }),
+          facingLocation: arg("minecraft:vec3", { executable: true }),
+        } }),
+      } }),
+    } }) } }),
     tellraw: lit({ children: { targets: arg("minecraft:entity", { children: { message: arg("minecraft:component", { executable: true }) } }) } }),
     title: lit({
       children: {
@@ -150,6 +167,17 @@ describe("command rewrite", () => {
     expect(rw("give @a stone 2")).toMatchObject({ status: "unchanged", command: "give @a stone 2" });
     expect(rw("scoreboard objectives add t dummy {\"text\":\"Time\"}")).toMatchObject({ command: 'scoreboard objectives add t dummy "Time"' });
     expect(rw('scoreboard objectives add t dummy {"text":"Time","color":"red"}')).toMatchObject({ command: "scoreboard objectives add t dummy", issues: [{ severity: "warning" }] });
+  });
+
+  it("keeps kill, tag and teleport, and drops entity and feet from tp facing entity (features/entity)", () => {
+    expect(rw("tag @e[tag=a] add b")).toMatchObject({ status: "unchanged" });
+    expect(rw("tag @e[tag=a] remove b")).toMatchObject({ status: "unchanged" });
+    expect(rw("tp @e[tag=a] ~1 ~ ~ ~45 ~10")).toMatchObject({ status: "unchanged" });
+    expect(rw("teleport @e[tag=a] @e[tag=b,limit=1]")).toMatchObject({ command: "teleport @e[tag=a] @e[tag=b,c=1]" });
+    expect(rw("tp @e[tag=a] 1 2 3 facing 4 5 6")).toMatchObject({ status: "unchanged" });
+    expect(rw("tp @e[tag=a] 1 2 3 facing entity @e[tag=b,limit=1]")).toMatchObject({ status: "rewritten", command: "tp @e[tag=a] 1 2 3 facing @e[tag=b,c=1]" });
+    expect(rw("teleport @s 1 2 3 facing entity @e[tag=b,limit=1] feet")).toMatchObject({ command: "teleport @s 1 2 3 facing @e[tag=b,c=1]" });
+    expect(rw("tp @s 1 2 3 facing entity @e[tag=b,limit=1] eyes")).toMatchObject({ status: "unsupported", issues: [{ message: expect.stringContaining("eyes") }] });
   });
 
   it("reports commands that need the runtime or have no BE form", () => {

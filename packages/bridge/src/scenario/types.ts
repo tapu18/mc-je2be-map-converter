@@ -41,6 +41,8 @@ export interface Observe {
   entityScores?: string[];
   /** 一意に付けたエンティティタグ → 観測する Java の効果 ID */
   entityEffects?: Record<string, string[]>;
+  /** 一意に付けたエンティティタグ。小数の座標と向き（ピッチ・ヨー）を比べる。見つからなければ null */
+  entityPoses?: string[];
 }
 
 export interface EditionSteps {
@@ -103,6 +105,13 @@ export interface NormalizedState {
   entities?: Record<string, number>;
   entityEffects?: ObservedEffects;
   entityDetails?: Record<string, { name: string; block: Vec3; scores: Record<string, number> }[]>;
+  /** タグ → 座標と向き。向きは [ピッチ, ヨー]、ヨーは -180〜180 にそろえる */
+  entityPoses?: Record<string, EntityPose | null>;
+}
+
+export interface EntityPose {
+  pos: Vec3;
+  rot: [number, number];
 }
 
 export interface Diff {

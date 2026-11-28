@@ -37,6 +37,26 @@ function compareEffects(java: NormalizedState["entityEffects"], bedrock: Normali
   }
 }
 
+// BE は座標を float で持つ。向きも float で、Java の保存値と小数の端数がずれる
+const POSE_TOLERANCE = 0.01;
+
+function comparePoses(java: NormalizedState["entityPoses"], bedrock: NormalizedState["entityPoses"], diffs: Diff[]): void {
+  for (const tag of [...new Set([...Object.keys(java ?? {}), ...Object.keys(bedrock ?? {})])].sort()) {
+    const j = java?.[tag];
+    const b = bedrock?.[tag];
+    const path = `entityPoses.${tag}`;
+    if (!j || !b) {
+      if (j !== b) diffs.push({ path, java: j, bedrock: b });
+      continue;
+    }
+    if (j.pos.some((v, i) => Math.abs(v - b.pos[i]!) > POSE_TOLERANCE)) diffs.push({ path: `${path}.pos`, java: j.pos, bedrock: b.pos });
+    const yaw = Math.abs(j.rot[1] - b.rot[1]) % 360;
+    if (Math.abs(j.rot[0] - b.rot[0]) > POSE_TOLERANCE || Math.min(yaw, 360 - yaw) > POSE_TOLERANCE) {
+      diffs.push({ path: `${path}.rot`, java: j.rot, bedrock: b.rot });
+    }
+  }
+}
+
 export function compareStates(java: NormalizedState, bedrock: NormalizedState): CompareResult {
   const diffs: Diff[] = [];
   const incomparable: string[] = [];
@@ -52,6 +72,7 @@ export function compareStates(java: NormalizedState, bedrock: NormalizedState): 
   compareMaps("entities", java.entities, bedrock.entities, diffs);
   compareMaps("entityDetails", java.entityDetails, bedrock.entityDetails, diffs);
   compareEffects(java.entityEffects, bedrock.entityEffects, diffs);
+  comparePoses(java.entityPoses, bedrock.entityPoses, diffs);
   return { diffs, incomparable };
 }
 

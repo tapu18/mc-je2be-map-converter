@@ -1,0 +1,183 @@
+{
+  "java": "26.3",
+  "state": {
+    "scores": {
+      "ok": {
+        "#tp_pitch_late_move": 1,
+        "#tp_pitch_late": 1,
+        "#tp_rot_rel": 1,
+        "#tag_rem": 1,
+        "#tp_abs": 1,
+        "#kill_pig": 1,
+        "#tp_rot": 1,
+        "#tp_rel_self": 1,
+        "#kill_self": 1,
+        "#tp_facing": 1,
+        "#tp_rel_cb": 1,
+        "#kill_stand": 1,
+        "#tp_pitch_local_move": 1,
+        "#tp_facing_feet": 1,
+        "#tp_pitch_local": 1,
+        "#tp_to_entity": 1,
+        "#tp_facing_entity": 1,
+        "#tag_add": 1
+      }
+    },
+    "entities": {
+      "minecraft:armor_stand probe,tp_rel_cb": 1,
+      "minecraft:armor_stand probe,tp_abs": 1,
+      "minecraft:armor_stand probe,tp_rot": 1,
+      "minecraft:armor_stand probe,tp_facing": 1,
+      "minecraft:armor_stand probe,tp_facing_entity": 1,
+      "minecraft:armor_stand probe,tp_facing_feet": 1,
+      "minecraft:armor_stand probe,tp_pitch_local": 1,
+      "minecraft:armor_stand probe,tp_pitch_late": 1,
+      "minecraft:armor_stand keep,probe": 1,
+      "minecraft:armor_stand added,g1,g_group,probe": 1,
+      "minecraft:armor_stand added,g2,g_group,probe": 1,
+      "minecraft:armor_stand dup,g_dup,probe": 1,
+      "minecraft:armor_stand g_rem,probe": 1,
+      "minecraft:armor_stand probe,tp_rot_rel": 1,
+      "minecraft:armor_stand probe,tp_rel_self": 1,
+      "minecraft:armor_stand probe,tp_to_entity": 1,
+      "minecraft:armor_stand anchor,probe": 1,
+      "minecraft:armor_stand dest,probe": 1
+    },
+    "entityPoses": {
+      "tp_abs": {
+        "pos": [
+          20.25,
+          -60,
+          40.75
+        ],
+        "rot": [
+          0,
+          0
+        ]
+      },
+      "tp_rel_cb": {
+        "pos": [
+          12.5,
+          -60,
+          22.5
+        ],
+        "rot": [
+          0,
+          0
+        ]
+      },
+      "tp_rel_self": {
+        "pos": [
+          33,
+          -60,
+          53.5
+        ],
+        "rot": [
+          0,
+          0
+        ]
+      },
+      "tp_rot": {
+        "pos": [
+          24.5,
+          -60,
+          40.5
+        ],
+        "rot": [
+          -30,
+          90
+        ]
+      },
+      "tp_rot_rel": {
+        "pos": [
+          37.5,
+          -60,
+          56.5
+        ],
+        "rot": [
+          20,
+          75
+        ]
+      },
+      "tp_facing": {
+        "pos": [
+          28.5,
+          -60,
+          40.5
+        ],
+        "rot": [
+          -19.471,
+          -45
+        ]
+      },
+      "tp_facing_entity": {
+        "pos": [
+          36.5,
+          -60,
+          40.5
+        ],
+        "rot": [
+          0,
+          -45
+        ]
+      },
+      "tp_facing_feet": {
+        "pos": [
+          40.5,
+          -60,
+          40.5
+        ],
+        "rot": [
+          0,
+          -36.87
+        ]
+      },
+      "tp_to_entity": {
+        "pos": [
+          55.5,
+          -60,
+          56.5
+        ],
+        "rot": [
+          -20,
+          135
+        ]
+      },
+      "k_stand": null,
+      "k_self": null,
+      "keep": {
+        "pos": [
+          10.5,
+          -60,
+          56.5
+        ],
+        "rot": [
+          0,
+          0
+        ]
+      },
+      "tp_pitch_local": {
+        "pos": [
+          44.5,
+          -60,
+          42.5
+        ],
+        "rot": [
+          -60,
+          0
+        ]
+      },
+      "tp_pitch_late": {
+        "pos": [
+          48.5,
+          -60,
+          42.5
+        ],
+        "rot": [
+          -60,
+          0
+        ]
+      }
+    }
+  }
+}

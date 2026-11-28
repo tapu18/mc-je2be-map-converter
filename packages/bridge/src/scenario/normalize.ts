@@ -1,5 +1,5 @@
 // 両エディションの観測結果を、比較できる同じ形（NormalizedState）にそろえる。サーバーに依存しない純粋な関数。
-import type { NormalizedState, Observe } from "./types.ts";
+import type { EntityPose, NormalizedState, Observe } from "./types.ts";
 
 export interface RawScores {
   objective: string;
@@ -16,6 +16,8 @@ export interface RawEntity {
   type: string;
   tags: string[];
   pos?: number[];
+  /** [ピッチ, ヨー] */
+  rot?: number[];
   nameTag?: string;
   scores?: Record<string, number>;
 }
@@ -78,6 +80,24 @@ function normalizeEntityDetails(raw: RawEntity[], observe: Observe): NonNullable
   return out;
 }
 
+const round = (v: number): number => Math.round(v * 1000) / 1000 + 0;
+/** ヨーを -180 以上 180 未満にそろえる */
+export const wrapYaw = (yaw: number): number => {
+  const w = ((yaw + 180) % 360 + 360) % 360 - 180;
+  return round(w);
+};
+
+function normalizePoses(raw: RawEntity[], tags: string[]): Record<string, EntityPose | null> {
+  return Object.fromEntries(tags.map((tag) => {
+    const found = raw.filter((e) => e.tags.includes(tag));
+    if (found.length > 1) throw new Error(`entityPoses: タグ ${tag} のエンティティが ${found.length} 体ある（1体にする）`);
+    const e = found[0];
+    if (!e) return [tag, null];
+    if (e.pos?.length !== 3 || e.rot?.length !== 2) throw new Error(`entityPoses: タグ ${tag} の座標か向きがない`);
+    return [tag, { pos: e.pos.map(round) as [number, number, number], rot: [round(e.rot[0]!), wrapYaw(e.rot[1]!)] }];
+  }));
+}
+
 export function normalizeJava(
   observe: Observe,
   raw: { scores?: RawScores[]; blocks?: { pos: number[]; type: string; states: Record<string, string> }[]; entities?: RawEntity[]; storage?: Record<string, unknown> },
@@ -91,6 +111,7 @@ export function normalizeJava(
   if (observe.blocks) out.blocks = Object.fromEntries((raw.blocks ?? []).map((b) => [posKey(b.pos), javaBlockString(b.type, b.states)]));
   if (observe.entityTags) out.entities = normalizeEntities(raw.entities ?? [], observe);
   if (observe.entityDetails) out.entityDetails = normalizeEntityDetails(raw.entities ?? [], observe);
+  if (observe.entityPoses) out.entityPoses = normalizePoses(raw.entities ?? [], observe.entityPoses);
   return out;
 }
 
@@ -122,5 +143,6 @@ export function normalizeBedrock(
   const entities = (raw.entities ?? []).map(javaEntityType);
   if (observe.entityTags) out.entities = normalizeEntities(entities, observe);
   if (observe.entityDetails) out.entityDetails = normalizeEntityDetails(entities, observe);
+  if (observe.entityPoses) out.entityPoses = normalizePoses(entities, observe.entityPoses);
   return out;
 }
