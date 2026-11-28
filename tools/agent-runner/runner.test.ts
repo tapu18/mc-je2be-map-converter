@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from 'vitest';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtemp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -9,6 +9,7 @@ import type { Issue, PullRequest } from './policy.ts';
 
 const exec = promisify(execFile);
 const runner = fileURLToPath(new URL('../agent-runner.ts', import.meta.url));
+const supervisor = fileURLToPath(new URL('./supervisor.ts', import.meta.url));
 const temporary: string[] = [];
 afterEach(async () => { await Promise.all(temporary.splice(0).map(path => rm(path, { recursive: true, force: true }))); });
 
@@ -19,7 +20,7 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(bin);
   const dataPath = join(root, 'fixture.json');
-  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; remoteHead?: string; pushHead?: string; workerFails?: boolean; managerLog?: string[]; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
+  const initial: { issues: Issue[]; prs: PullRequest[]; calls: string[][]; tree?: string; branch?: string; baseCode?: string; headCode?: string; checkoutBranch?: string; dirty?: boolean; ffFails?: boolean; lockChanged?: boolean; remoteHead?: string; pushHead?: string; workerFails?: boolean; managerLog?: string[]; launchFails?: boolean; managerFails?: boolean; managerPrompts?: string[]; workerPrompts?: string[]; workerLog?: string[]; runs?: { headSha: string; event: string; status: string; conclusion: string | null }[] } = {
     issues: [{ number: 7, title: 'Task', body: '### 完了条件\n- [ ] Tested', state: 'OPEN', labels: [{ name: 'status:ready' }], comments: [] }],
     prs: [], calls: [],
   };
@@ -49,7 +50,12 @@ const has = (item, name) => item.labels.some(l => l.name === name);
 if (tool === 'git') {
   if (args[1] === '--show-toplevel') out(process.env.RUNNER_ROOT);
   else if (args[1] === '--git-common-dir') out('.git');
-  else if (args[0] === 'rev-parse' && args[1].includes(':tools/agent-runner.ts')) out(args[1].startsWith('HEAD:') ? 'file\ntree' : (d.baseCode ?? 'file\ntree'));
+  else if (args[0] === 'rev-parse' && args[1].includes(':tools/agent-runner.ts')) out(args[1].startsWith('HEAD:') ? (d.headCode ?? 'file\ntree') : (d.baseCode ?? 'file\ntree'));
+  else if (args[0] === 'symbolic-ref') out(d.checkoutBranch ?? 'main');
+  else if (args[0] === 'status') out(d.dirty ? ' M tools/agent-runner.ts' : '');
+  else if (args[0] === 'merge-base' && args[2] === 'HEAD') { if (d.ffFails) { save(d); process.exit(1); } }
+  else if (args[0] === 'diff' && args[1] === '--quiet') { if (d.lockChanged) { save(d); process.exit(1); } }
+  else if (args[0] === 'merge' && args[1] === '--ff-only') d.headCode = d.baseCode;
   else if (args[0] === 'rev-parse' && args[1].startsWith('origin/')) out(args[1] === 'origin/main' ? 'base' : 'abc');
   else if (args[0] === 'merge-base') out('base');
   else if (args[0] === 'diff') {}
@@ -110,8 +116,11 @@ if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode =
   await writeFile(config, JSON.stringify({ repo: 'owner/repo', maxAttempts: 2 }));
   const load = async () => JSON.parse(await readFile(dataPath, 'utf8')) as typeof initial;
   const update = async (fn: (d: typeof initial) => void) => { const d = await load(); fn(d); await writeFile(dataPath, JSON.stringify(d)); };
-  const run = (...args: string[]) => exec(process.execPath, [runner, '--config', config, '--once', ...args], {
-    cwd: root, env: { ...process.env, PATH: bin + delimiter + process.env.PATH, RUNNER_ROOT: root, RUNNER_FIXTURE: dataPath }, timeout: 15_000,
+  // Tests opt in to running as if started by the supervisor (`npm run agents`).
+  const env: Record<string, string> = {};
+  const run = (...args: string[]) => execEntry(runner, ...args);
+  const execEntry = (entry: string, ...args: string[]) => exec(process.execPath, [entry, '--config', config, '--once', ...args], {
+    cwd: root, env: { ...process.env, PATH: bin + delimiter + process.env.PATH, RUNNER_ROOT: root, RUNNER_FIXTURE: dataPath, ...env }, timeout: 15_000,
   }).catch(async (error: { message: string; stdout: string; stderr: string; signal: string; code: unknown }) => {
     throw new Error(`${error.message}\nstdout: ${error.stdout}\nstderr: ${error.stderr}\nsignal: ${error.signal}; code: ${error.code}`);
   });
@@ -120,7 +129,11 @@ if ((tool === 'codex' || tool === 'claude') && d.workerFails) process.exitCode =
     const d = await state(); fn(d);
     await writeFile(join(root, '.git', 'agent-runner', 'state.json'), JSON.stringify(d));
   };
-  return { root, config, run, load, update, state, updateState };
+  /** Runs once and resolves with the exit code instead of rejecting on a non-zero exit. */
+  const runCode = (...args: string[]) => run(...args).then(result => ({ ...result, code: 0 }),
+    (error: Error) => ({ stdout: error.message, stderr: '', code: Number(/code: (\d+)/.exec(error.message)?.[1]) }));
+  const supervise = (...args: string[]) => execEntry(supervisor, ...args);
+  return { root, config, env, run, runCode, supervise, load, update, state, updateState };
 }
 
 it('refunds pushed progress but counts idle runs and enforces the total limit', async () => {
@@ -141,18 +154,102 @@ it('refunds pushed progress but counts idle runs and enforces the total limit', 
   expect((await f.load()).workerPrompts).toHaveLength(3);
 }, 20_000);
 
-it('warns in the terminal, state, and PM prompt when base code changes', async () => {
+it('warns in the terminal, state, and PM prompt when base code changes but cannot be swapped in', async () => {
   const f = await fixture();
   await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', manager: { enabled: true } }));
   await f.update(d => { d.baseCode = 'new-file\ntree'; });
-  const warning = '管理プログラムのコードが更新された。再起動が必要';
-  expect((await f.run()).stdout).toContain(warning);
-  expect((await f.state()).codeWarning).toBe(warning);
-  expect((await f.load()).managerPrompts?.[0]).toContain(warning);
+  const reason = '監視プロセス';
+  expect((await f.run()).stdout).toContain(reason);
+  const { codeWarning } = await f.state();
+  expect(codeWarning).toContain(reason);
+  // The PM must keep patrolling and report the restart to the owner, not stop.
+  expect(codeWarning).toContain('巡回を中止する指示ではない');
+  expect(codeWarning).toContain('巡回は通常どおり最後まで続け');
+  expect(codeWarning).toContain('所有者への報告に「管理プログラムの再起動が必要');
+  expect((await f.load()).managerPrompts?.[0]).toContain(codeWarning);
+  expect((await f.load()).calls.some(call => call[1] === 'merge')).toBe(false);
   await f.update(d => { d.baseCode = 'file\ntree'; });
-  expect((await f.run()).stdout).not.toContain(warning);
+  expect((await f.run()).stdout).not.toContain(reason);
   expect((await f.state()).codeWarning).toBeUndefined();
+  expect((await f.state()).selfUpdate).toBeUndefined();
 });
+
+it('swaps itself in when base code changes and no CLI runs, but not while a CLI runs', async () => {
+  const f = await fixture();
+  f.env.JE2BE_AGENT_RUNNER_SUPERVISED = '1';
+  await f.run(); // Claim #7.
+  await f.update(d => { d.baseCode = 'new-file\ntree'; });
+  // A live process group recorded as an unfinished launch stands for a running worker CLI.
+  const sleeper = spawn('sleep', ['30'], { detached: true, stdio: 'ignore' });
+  try {
+    await f.updateState(s => { s.tasks[0].launches = [{ agent: 'codex', args: [], startedAt: Date.now(), pid: sleeper.pid, counted: true }]; });
+    const busy = await f.runCode();
+    expect(busy.code).toBe(0);
+    expect(busy.stdout).toContain('CLI が実行中');
+    expect((await f.state()).selfUpdate.blocked).toEqual([expect.stringContaining(`pid ${sleeper.pid}`)]);
+    expect((await f.state()).codeWarning).toContain('CLI が実行中');
+    expect((await f.load()).calls.some(call => call[1] === 'merge')).toBe(false);
+  } finally { process.kill(-sleeper.pid!, 'SIGKILL'); }
+  await new Promise(resolve => sleeper.once('exit', resolve));
+  const { calls: { length: calls }, workerPrompts: { length: prompts } = [] } = await f.load();
+  const swapped = await f.runCode();
+  expect(swapped.code).toBe(75);
+  const after = await f.load();
+  expect(after.calls.slice(calls)).toContainEqual(['git', 'merge', '--ff-only', 'origin/main']);
+  expect(after.workerPrompts ?? []).toHaveLength(prompts); // Exits before starting any work.
+  expect(after.headCode).toBe('new-file\ntree');
+  const state = await f.state();
+  expect(state.selfUpdate).toMatchObject({ from: ['file', 'tree'], to: ['new-file', 'tree'] });
+  expect(state.codeWarning).toBeUndefined();
+  await expect(access(join(f.root, '.git', 'agent-runner', 'lock'))).rejects.toThrow();
+});
+
+it('does not swap itself in from a dirty, other-branch, diverged or npm-install-needing checkout, or when disabled', async () => {
+  const f = await fixture();
+  f.env.JE2BE_AGENT_RUNNER_SUPERVISED = '1';
+  await f.update(d => { d.baseCode = 'new-file\ntree'; });
+  const cases: [string, (d: Awaited<ReturnType<typeof f.load>>) => void, string][] = [
+    ['dirty', d => { d.dirty = true; }, '未コミットの変更がある'],
+    ['branch', d => { d.checkoutBranch = 'topic'; }, 'main ではなく topic にいる'],
+    ['diverged', d => { d.ffFails = true; }, 'fast-forward できない'],
+    ['package-lock', d => { d.lockChanged = true; }, 'npm install が要る'],
+  ];
+  for (const [name, setup, reason] of cases) {
+    await f.update(d => { delete d.dirty; delete d.checkoutBranch; delete d.ffFails; delete d.lockChanged; setup(d); });
+    const result = await f.runCode();
+    expect(result.code, name).toBe(0);
+    expect(result.stdout, name).toContain(reason);
+    expect((await f.state()).selfUpdate.blocked, name).toEqual([expect.stringContaining(reason)]);
+    expect((await f.state()).codeWarning, name).toContain(reason);
+  }
+  await f.update(d => { delete d.lockChanged; });
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', selfUpdate: false }));
+  expect((await f.runCode()).stdout).toContain('selfUpdate が false');
+  expect((await f.load()).calls.some(call => call[1] === 'merge')).toBe(false);
+}, 20_000);
+
+it('continues the same claim, attempt count and worktree after swapping itself in', async () => {
+  const f = await fixture();
+  f.env.JE2BE_AGENT_RUNNER_SUPERVISED = '1';
+  await f.update(d => { d.workerFails = true; });
+  await f.run(); // Claim.
+  await f.run(); // First worker run fails without progress.
+  const before = (await f.state()).tasks[0];
+  expect(before).toMatchObject({ attempts: 1, phase: 'working' });
+  expect(before.launches[0].pid).toEqual(expect.any(Number));
+  await f.update(d => { d.baseCode = 'new-file\ntree'; });
+  expect((await f.runCode()).code).toBe(75);
+  // The supervisor starts the runner again; HEAD now has the new code.
+  const next = await f.runCode();
+  expect(next.code).toBe(0);
+  const after = (await f.state()).tasks;
+  expect(after).toHaveLength(1);
+  expect(after[0]).toMatchObject({ issue: 7, claim: before.claim, branch: before.branch, worktree: before.worktree, attempts: 2 });
+  const data = await f.load();
+  expect(data.workerPrompts).toHaveLength(2);
+  expect(data.workerPrompts![1]).toContain(before.worktree);
+  expect(data.issues[0]!.comments.filter(c => c.body.startsWith('claim:'))).toHaveLength(1);
+}, 20_000);
 
 it('dry-run only reads; excludes other claims and unclosed dependencies', async () => {
   const f = await fixture();
@@ -594,3 +691,15 @@ it('retains default worker invocation without overrides', async () => {
   await f.run(); await f.run();
   expect((await f.load()).calls.some(call => call[0] === 'codex' && call.includes('exec'))).toBe(true);
 });
+
+it('npm run agents restarts the runner after it swaps itself in, then stops with the runner', async () => {
+  const f = await fixture();
+  await f.supervise(); // Claim #7.
+  await f.update(d => { d.baseCode = 'new-file\ntree'; d.workerFails = true; });
+  const { stdout } = await f.supervise();
+  expect(stdout).toContain('新しいコードで起動し直します');
+  const data = await f.load();
+  expect(data.calls.filter(call => call[1] === 'merge')).toHaveLength(1);
+  expect(data.workerPrompts).toHaveLength(1); // The restarted runner did the tick's work.
+  expect((await f.state()).tasks[0]).toMatchObject({ attempts: 1 });
+}, 20_000);

@@ -18,6 +18,8 @@ export interface ManagerState {
   runs: number;
   lastStartedAt: number;
   lastFinishedAt?: number;
+  /** Process group of the running PM CLI; used to tell whether a CLI is still alive. */
+  pid?: number;
   error?: string;
 }
 
