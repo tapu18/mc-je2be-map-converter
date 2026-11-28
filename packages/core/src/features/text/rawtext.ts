@@ -1,7 +1,9 @@
 // Java のテキスト（JSON / SNBT の text component）を BE の rawtext に変える（design.md 5.3、#62）。
 // 書式は BE の § コードで表す。クリック・ホバーは BE にないため落とし、警告にする（UI の再設計は 5.9）。
-// BE が rawtext を受理することは BDS 1.26.63.1 で実測した（rewrite.servers.test.ts）。見た目の一致は未確認（実クライアントで確かめる）。
-import type { NbtTag } from "../nbt/nbt.ts";
+// BE が rawtext を受理することは BDS で実測した（rewrite.servers.test.ts、成分の種類ごとの成功件数は text.servers.test.ts、#347）。
+// 見た目の一致は未確認（層4、#114）。成分の頻度は docs/text-components.md。
+import type { NbtTag } from "../../nbt/nbt.ts";
+import { nbtTextRuntimeReason } from "./capability.ts";
 
 export interface RawTextPart {
   text?: string;
@@ -94,8 +96,10 @@ export function toRawText(value: NbtTag, opts: RawTextOptions): { rawtext: RawTe
     }
     if (tag.type === "list") {
       // 配列は、先頭の要素を親にして残りをその extra とみなす（Java の決まり）
-      const [head, ...rest] = tag.value;
-      if (!head) return;
+      const [first, ...rest] = tag.value;
+      if (!first) return;
+      // 型の混ざったリストの要素はキーが空の compound に包まれるため、先頭は包みを外してから親にする
+      const head = first.type === "compound" && first.value.size === 1 && first.value.has("") ? first.value.get("")! : first;
       if (head.type === "compound") {
         const extra = head.value.get("extra");
         const merged = new Map(head.value);
@@ -179,7 +183,7 @@ export function toRawText(value: NbtTag, opts: RawTextOptions): { rawtext: RawTe
     } else if (c.has("keybind")) {
       note("unsupported", "keybind は BE にない");
     } else if (c.has("nbt")) {
-      note("unsupported", "nbt のテキストはランタイムで評価する（未実装）");
+      note("unsupported", nbtTextRuntimeReason);
     } else if (c.has("object")) {
       note("unsupported", "object のテキストは BE にない");
     } else if (!c.has("extra")) {

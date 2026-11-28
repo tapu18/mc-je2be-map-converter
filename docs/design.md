@@ -147,12 +147,12 @@ flowchart TD
 
 - ID対応（ブロックとブロックステート、アイテム、エンティティ、サウンド、パーティクル、エフェクト、エンチャント）。対応表の入手元は Geyser mappings を採用する（#14、2026-11-15 所有者承認）。ID・状態の対応と変換に必要な情報を使い、MIT の著作権表示・許諾文を変換器と表を含む生成パックに同梱する。出典は `THIRD_PARTY_NOTICES.md`、種類ごとの不足と実機検証案は `docs/id-mapping-sources.md` を参照。ゲームから抽出した既定コンポーネント・形状等のデータ一式の同梱は採用範囲に含めない。
 - セレクタ変換（`distance` → `r` / `rm`、`limit` / `sort` → `c` など）。`nbt=`、`predicate`、`advancements=` はランタイムで評価する。
-- テキストコンポーネント → rawtext。クリックとホバーはBEにないため、UI再設計（5.9）へ回す。
+- テキストコンポーネント → rawtext。クリックとホバーはBEにないため、UI再設計（5.9）へ回す。`nbt` 成分は値の読み出しが要るため、ランタイムに回す理由として報告する（実行は #345 の後）。`keybind`・`object` は unsupported。成分の頻度と BDS での確認範囲は [text-components.md](text-components.md)（#347）。
 - マクロの実行時処理は 5.2 の型紙に従う。動的な ID に対する対応表の適用は #316 の範囲外。
 
 - 座標：整数座標の中心寄せ、セレクタの `x=,y=,z=`、`~` の扱いは BE と Java で一致するため、書き換えない（#10）。ただしブロック座標に小数を直接書いたコマンドは、Java では構文エラーで動かないが BE では動く。そのまま移さず、レポートに出す
 - ディメンションIDの対応（`the_nether` → `nether`）。`execute in` での座標の 1/8 換算は両エディションで同じ（#8）
-- 実装（#62、`packages/core/src/command/rewrite.ts`・`rawtext.ts`）：
+- 実装（#62、`packages/core/src/command/rewrite.ts`、テキストは `packages/core/src/features/text/`（#347））：
   - パースした節の位置を使い、元の文字列のうち変える部分（セレクタ、ブロック、テキスト、ディメンション、時間、偽プレイヤーの名前）だけを差し替える。結果は `rewritten` / `unchanged` / `unsupported`（BE のコマンド1個にできない。理由つき）/ `invalid`（Java の文法で読めない）
   - 書き換えるコマンドの形は `packages/core/src/command/rewrite.ts` の `COMMANDS` と `EXECUTE_STEPS` に列挙する。対応できない形は `unsupported` にする。
   - `playsound` と `particle` の ID は Geyser の固定表を使う（#90）。音のカテゴリは省略して警告し、位置を省いた音には実行位置 `~ ~ ~` を明示する。粒子のオプション、拡散・方向、速度、複数個の指定、`force`、明示した表示対象はレポートに未対応として記録する。未登録 ID も未対応として記録する。

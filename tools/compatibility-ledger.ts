@@ -142,7 +142,7 @@ const jar = join(root, "servers", `java-${java}`, "versions", java, `server-${ja
 for (const [family, kind] of [["click", "Click"], ["hover", "Hover"]] as const) {
   for (const id of textActions(jar, kind)) {
     add(family, id, `${kind}Event$Action`, { method: "uninvestigated", implementation: "loss-only", loss: [`${family} action`], issue: null,
-      evidence: { confidence: "unconfirmed", source: "packages/core/src/command/rawtext.ts", scope: "Rawtext conversion drops the event with a warning; UI replacement uninvestigated" } });
+      evidence: { confidence: "unconfirmed", source: "packages/core/src/features/text/rawtext.ts", scope: "Rawtext conversion drops the event with a warning; UI replacement uninvestigated" } });
   }
 }
 

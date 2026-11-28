@@ -16,7 +16,8 @@ import { readSelector } from "./arguments.ts";
 import { bedrockEntityType } from "./bedrock-command-ids.ts";
 import { isEarlierJavaRelease, normalizeCommandIR } from "./normalize-command.ts";
 import { toCommandIR, type CommandIR, type CommandParser, type ParsedNode } from "./parser.ts";
-import { formatRawText, plainText, toRawText } from "./rawtext.ts";
+import { plainText, toRawText } from "../features/text/rawtext.ts";
+import { rewriteTextNode, rewriteTitleHead } from "../features/text/rewrite.ts";
 import { CommandSyntaxError, StringReader } from "./reader.ts";
 
 export interface RewriteContext {
@@ -159,9 +160,8 @@ export function rewriteSelector(sel: EntitySelector): SelectorRewrite {
   }
   return { ok: true, value: out.length ? `@${variable}[${out.join(",")}]` : `@${variable}`, warnings };
 }
-
-/** 文字列のセレクタ（テキストの selector など）を読んで書き換える */
-function rewriteSelectorString(s: string): SelectorRewrite {
+/** 文字列のセレクタ（テキストの selector など）を読んで書き換える。集計（tools/text-components.ts）でも使う */
+export function rewriteSelectorString(s: string): SelectorRewrite {
   try {
     const r = new StringReader(s);
     const sel = readSelector(r);
@@ -311,12 +311,8 @@ function rewriteNode(n: ParsedNode, ctx: RewriteContext, ed: Editor): void {
       if (text !== undefined) ed.replace(n.start, n.end, text);
       return;
     }
-    case "text": {
-      const r = toRawText(v.value, { selector: rewriteSelectorString });
-      for (const i of r.issues) (i.severity === "unsupported" ? ed.unsupported(i.message) : ed.warn(i.message));
-      ed.replace(n.start, n.end, formatRawText(r.rawtext));
-      return;
-    }
+    case "text":
+      return rewriteTextNode(n, v.value, { selector: rewriteSelectorString }, ed);
     case "time":
       ed.replace(n.start, n.end, String(v.ticks));
       return;
@@ -354,11 +350,7 @@ const COMMANDS: Record<string, CommandHandler> = {
   tellraw: ok,
   kill: (nodes, _head, _ctx, ed) => rewriteKill(nodes, ed),
   tag: (nodes, _head, _ctx, ed) => rewriteTag(nodes, ed),
-  title: (nodes, head, _ctx, ed) => {
-    const sub = literals(nodes)[0];
-    // テキストを出すものは BE では titleraw（times・clear・reset は title のまま）
-    if (sub === "title" || sub === "subtitle" || sub === "actionbar") ed.replace(head.start, head.end, "titleraw");
-  },
+  title: (nodes, head, _ctx, ed) => rewriteTitleHead(literals(nodes)[0], head, ed),
   teleport: (nodes, _head, _ctx, ed) => rewriteTeleport(nodes, ed),
   setblock: (nodes, _head, _ctx, ed) => {
     if (literals(nodes).includes("strict")) ed.unsupported("setblock の strict は BE にない");

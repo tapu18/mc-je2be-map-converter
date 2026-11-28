@@ -615,3 +615,11 @@ Java 26.3 と BDS 1.26.66.1 で、変換を通す `scenarios/convert/entity-comm
 - `tp` の絶対座標（小数）、`~` の相対座標、`execute … at @s run tp @s ~ ~ ~`、`<位置> <向き>`、`~45 ~10` の相対の向き、`facing <位置>`、`facing entity`（`feet` あり・なし、`entity` と `feet` を除いて BE の `facing <対象>` に書き換え）、`tp <対象> <対象>` で、座標とヨーが 0.01 以内で一致した。コマンドブロックからの `~` は両エディションとも、ブロックの x・z の中央を起点にした
 - **防具立てのピッチ**：BE の防具立ては `tp` で付けたピッチを保たず、40 tick 後の観測では 0 だった（ヨーは一致）。同じ tick の `execute as … at @s run tp @s ^ ^ ^4` はピッチ -60 度の向きに動いた（座標が Java と一致）。40 tick 後の同じ操作は水平に 4 進んだ（Java は -60 度のまま 2 進む）。Java は `tp` で付けたピッチを保ち続ける。0 に戻るまでの tick 数は測っていない
 - 防具立てのピッチが 40 tick 後に 0 になるため、`facing entity` の `feet`（Java の既定）と目の高さの違いは、このシナリオでは区別できていない。ヨーだけが一致を示す
+
+### tellraw・titleraw の成分と successCount（#347）
+
+Java 26.3 / BDS 1.26.66.1。`packages/bridge/src/text.servers.test.ts`（3 回連続で通過）。GameTest の試験用プレイヤー 1 人を置いて測った。コーパスの頻度と成分ごとの扱いは [text-components.md](text-components.md)。
+
+- text・translate（`with`・`fallback` 付き）・score（名前、`*`、`@s`、`@p`、偽プレイヤー、値のない名前、ない目的）・selector（一致なしを含む）と、色・16 進の色・太字などの書式、`extra` の深さ 2 を書き換えた `tellraw`・`titleraw title/subtitle/actionbar` は、どれも successCount 1 だった
+- successCount は受け取ったプレイヤーの数で、rawtext の中身では変わらない。BE の rawtext に未知のキー（`keybind`、`nbt`・`storage`、部分の `color`）を書いても、空の `rawtext` でも 1。`rawtext` を持たない Java 形式の JSON（`{"text":"x"}`）は 0、対象がいない `tellraw` は失敗した。表示されたかどうかは successCount では区別できない
+- Java 26.3 のサーバーは `tellraw @a 12`（数だけのテキスト）と `color:"reset"` のテキストを拒否した（同テストの `uses inputs that Java 26.3 accepts`）

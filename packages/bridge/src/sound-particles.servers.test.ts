@@ -1,50 +1,14 @@
-import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildMcstructure, type MappingTables } from "@je2be/core";
+import type { MappingTables } from "@je2be/core";
 import { BedrockServer } from "./bedrock.ts";
-import { paths } from "./paths.ts";
-import { createDataPack } from "./poc-kit.ts";
+import { withSimulatedPlayer } from "./simulated-player.ts";
 import { rewriteResources } from "./rewrite-resources.ts";
 import { loadScenarios } from "./scenario/load.ts";
 import { buildConvertedWorld } from "./scenario/run.ts";
 
 // GameTest の試験用プレイヤーを対象にし、playsound の成功件数を観測する。
-async function withListener(
-  run: (bds: BedrockServer) => Promise<void>,
-  world?: string,
-): Promise<void> {
-  const pack = createDataPack({ empty: buildMcstructure({ size: [1, 2, 1], blocks: [] }) });
-  let bds: BedrockServer | undefined;
-  try {
-    const manifest = JSON.parse(readFileSync(join(paths.bridgePack, "manifest.json"), "utf8"));
-    manifest.header.name = "je2be sound test";
-    manifest.header.uuid = randomUUID();
-    manifest.modules[0].uuid = randomUUID();
-    manifest.dependencies.push({ module_name: "@minecraft/server-gametest", version: "1.0.0-beta" });
-    writeFileSync(join(pack, "manifest.json"), JSON.stringify(manifest));
-    mkdirSync(join(pack, "scripts"));
-    writeFileSync(join(pack, manifest.modules[0].entry), `
-import { register } from "@minecraft/server-gametest";
-register("je2be", "sound_listener", (test) => {
-  test.spawnSimulatedPlayer({ x: 0, y: 0, z: 0 }, "Listener");
-  console.log("JE2BE_SOUND_LISTENER_READY");
-}).structureName("je2be:empty").maxTicks(5000);
-`);
-    bds = await BedrockServer.start({ behaviorPacks: [pack], ...(world ? { world, worldSettings: "preserve" } : {}) });
-    expect(await bds.exec("gametest run je2be:sound_listener")).toMatchObject({ ok: true, result: { successCount: 1 } });
-    await bds.waitForLog((line) => line.includes("JE2BE_SOUND_LISTENER_READY"), 10_000, "sound listener");
-    expect(await bds.exec("tp Listener 8.5 -59 8.5")).toMatchObject({ ok: true, result: { successCount: 1 } });
-    await run(bds);
-  } finally {
-    try {
-      await bds?.stop();
-    } finally {
-      rmSync(pack, { recursive: true, force: true });
-    }
-  }
-}
+const withListener = (run: (bds: BedrockServer) => Promise<void>, world?: string) => withSimulatedPlayer("Listener", run, world);
 
 describe("sound and particle output", () => {
   it("checks every distinct mapped ID and compares nonexistent IDs with syntax errors", async () => {
