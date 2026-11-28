@@ -7,6 +7,7 @@ import { StorageState } from "../features/storage/runtime.ts";
 import { storageRuntime } from "../features/storage/registration.ts";
 import { scheduleRuntime } from "../features/schedule/registration.ts";
 import { ScheduleState } from "../features/schedule/runtime.ts";
+import { entityNbtRejection, entityNbtRuntime } from "../features/entity_nbt/registration.ts";
 
 import { defaultExecutionContext, dimensionId, type ExecutionContext, type ExecutionHost } from "./context.ts";
 import { applyStores, compileModifier, type ExecuteBranch } from "./execute-steps.ts";
@@ -17,7 +18,7 @@ import { readFunctionArguments } from "./function-arguments.ts";
 export type { ExecutionContext } from "./context.ts";
 export { defaultExecutionContext } from "./context.ts";
 
-export const runtimeFamilies = [scoreRuntime, storageRuntime, scheduleRuntime] as const;
+export const runtimeFamilies = [scoreRuntime, storageRuntime, scheduleRuntime, entityNbtRuntime] as const;
 
 /**
  * Whether the runtime evaluates this line's terminal itself rather than delegating it to `ExecutionHost.runNative`.
@@ -200,7 +201,10 @@ function* executeTerminal(state: RuntimeState, ir: CommandIR, depth: number, con
     }
   } else {
     const family = runtimeFamilies.find(entry => entry.assess({status: "parsed", ir}).status === "runtime");
+    const rejection = family ? undefined : entityNbtRejection(ir);
+    // Entity NBT has no native BE counterpart: report why instead of delegating it.
     outcome = family ? family.execute(state, ir, context)
+      : rejection ? fail(rejection)
       : (yield* executeWorldCommand(state, command, context, ir.source)) ?? fail("unsupported command");
   }
   return outcome;

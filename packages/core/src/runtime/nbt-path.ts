@@ -32,6 +32,11 @@ export function getNbtPath(root: NbtTag, path: readonly NbtPathNode[]): NbtTag[]
       } else if (node.kind === "index" && tag.type === "list") {
         const child = tag.value.at(node.index);
         if (child !== undefined) next.push(child);
+      } else if (node.kind === "index" && (tag.type === "byteArray" || tag.type === "intArray" || tag.type === "longArray")) {
+        // Java indexes numeric arrays like lists (e.g. UUID[0]).
+        const child = tag.value.at(node.index);
+        if (typeof child === "bigint") next.push({type: "long", value: child});
+        else if (child !== undefined) next.push({type: tag.type === "byteArray" ? "byte" : "int", value: child});
       } else if (node.kind === "all" && tag.type === "list") next.push(...tag.value);
       else if (node.kind === "filter") {
         if (tag.type === "list") next.push(...tag.value.filter(child => matchesNbt(child, node.filter)));

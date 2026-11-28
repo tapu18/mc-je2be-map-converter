@@ -15,6 +15,7 @@ export { gameRuleByJavaName, gameRules } from "./features/game_rule/rules.ts";
 export * from "./features/score/runtime.ts";
 export * from "./runtime/command.ts";
 export * from "./features/storage/runtime.ts";
+export { entityNbtRejection } from "./features/entity_nbt/registration.ts";
 export type { Block, ExecutionHost, Heightmap, Position, Rotation, RuntimeEntity } from "./runtime/context.ts";
 export { entityTarget, resolvePosition, selectEntities } from "./runtime/context.ts";
 export * from "./runtime/datapacks.ts";

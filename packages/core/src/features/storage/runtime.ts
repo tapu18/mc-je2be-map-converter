@@ -20,6 +20,16 @@ export class StorageState {
   writable(id: string): NbtCompound { let v = this.values.get(id); if (!v) { v = {type: "compound", value: new Map()}; this.values.set(id, v); } return v; }
 }
 
+/** The result of `data get` for one selected tag: a floored numeric value, or the size of a compound, list, array or string. */
+export function dataGetResult(tag: NbtTag, scale?: number): ExecutionResult {
+  if (scale !== undefined && typeof tag.value !== "number" && typeof tag.value !== "bigint") return fail("scaled data must be numeric");
+  let n: number;
+  if (typeof tag.value === "number" || typeof tag.value === "bigint") n = Number(tag.value);
+  else if (tag.type === "compound") n = tag.value.size;
+  else n = tag.value.length;
+  return {success: true, result: Math.floor(n * (scale ?? 1))};
+}
+
 /** Execute supported storage commands, rejecting other sources and operations. */
 export function executeStorageCommand(storage: StorageState, command: NonNullable<CommandIR["command"]>): ExecutionResult {
   const nodes = command.nodes;
@@ -30,12 +40,7 @@ export function executeStorageCommand(storage: StorageState, command: NonNullabl
   if (op === "get") {
     const p = path(nodes, "path"); const matches = p ? getNbtPath(storage.get(id), p) : [storage.get(id)];
     if (matches.length !== 1) return fail("expected one value");
-    const tag = matches[0]!; let n: number;
-    if (number(nodes, "scale") !== undefined && typeof tag.value !== "number" && typeof tag.value !== "bigint") return fail("scaled data must be numeric");
-    if (typeof tag.value === "number" || typeof tag.value === "bigint") n = Number(tag.value);
-    else if (tag.type === "compound") n = tag.value.size;
-    else n = tag.value.length;
-    return {success: true, result: Math.floor(n * (number(nodes, "scale") ?? 1))};
+    return dataGetResult(matches[0]!, number(nodes, "scale"));
   }
   if (op === "merge") {
     const nbt = value(nodes, "nbt");
