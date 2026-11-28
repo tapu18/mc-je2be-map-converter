@@ -153,9 +153,9 @@ gh run list --workflow version-canary.yml --limit 10
 
 ## サーバー・API の版上げ
 
-`Version canary` は毎週月曜に公式 BDS Linux 配布 API、Mojang の Java 安定版マニフェスト、npm の `@minecraft/*` beta、Chunker の最新リリースを照合する。Actions の `workflow_dispatch` でも起動できる。使い捨て checkout で候補版に差し替え、型・Node テスト、実サーバー、Java 正解データの再記録、互換性台帳の再生成を順に試す。main の固定版は更新しない。候補は BDS と同じ安定版系列の beta API を選び、npm の beta タグも記録する。配布元が期待した形式を返さない場合は失敗として扱う。
+`Version canary` は毎週月曜に公式 BDS Linux 配布 API、Mojang の Java 安定版マニフェスト、npm の `@minecraft/*` beta、Chunker の最新リリース、GeyserMC/mappings の既定ブランチの最新 revision を照合する。Actions の `workflow_dispatch` でも起動できる。使い捨て checkout で候補版に差し替え、型・Node テスト、実サーバー、Java 正解データの再記録、互換性台帳の再生成を順に試す。main の固定版は更新しない。候補は BDS と同じ安定版系列の beta API を選び、npm の beta タグも記録する。配布元が期待した形式を返さない場合は失敗として扱う。
 
-Actions の `version-canary` artifact の `versions.json` に固定版・候補版・npm の beta タグ、`outcomes.txt` に各段階の結果がある。`api-*.log` は API と型、`setup.log` と `mappings.log` は配布物と ID 対応、`servers.log` は文法・保存形式・実サーバーの失敗を調べる入口。`record.log` と `scenarios.diff` は Java の再記録結果、`ledger/compatibility-diff.json` は ID と文法の台帳差分を示す。失敗箇所はログから個別に判断し、差分を自動的に正解とはしない。配布マップは CI に持ち込まず、台帳の頻度は未計数となる。検出に失敗した場合は Actions の検出ステップのログを見る。
+Actions の `version-canary` artifact の `versions.json` に固定版・候補版・npm の beta タグと、`geyser`（固定 revision と最新 revision、使っている `blocks.nbt`・`items.json`・`sounds.json`・`particles.json`・`LICENSE` の SHA-256 の変化 `files.*.changed`・`usedFilesChanged`、候補版との系列のずれ `seriesMismatches`）、`outcomes.txt` に各段階の結果がある。`api-*.log` は API と型、`setup.log` と `mappings.log` は配布物と ID 対応、`servers.log` は文法・保存形式・実サーバーの失敗を調べる入口。`record.log` と `scenarios.diff` は Java の再記録結果、`ledger/compatibility-diff.json` は ID と文法の台帳差分を示す。失敗箇所はログから個別に判断し、差分を自動的に正解とはしない。配布マップは CI に持ち込まず、台帳の頻度は未計数となる。検出に失敗した場合は Actions の検出ステップのログを見る。
 
 版を正式に上げる際は別の作業ブランチで次を行う。
 
@@ -163,3 +163,21 @@ Actions の `version-canary` artifact の `versions.json` に固定版・候補�
 2. `npm ci && npm run setup:servers && npm run setup:mappings && npm run build:pack && npm run check && npm run test:servers` を実行する。新しい版に必要な JRE や対応表があれば、出典・版を確認して更新する。
 3. `npm run scenarios:record` で Java の正解を再記録し、差分の意味を実機で確認する。`docs/compatibility-ledger.md` の手順で台帳を再生成し、差分と根拠を確認して反映する。配布マップを使う場合は同文書の非公開入力の扱いに従う。
 4. API、ID、文法、保存形式の失敗をそれぞれ調査して修正し、実測と根拠を記録する。CI と関連する実機テストが通ることを確認して PR にする。
+
+### Geyser 対応表の版上げ
+
+ID とブロック状態の対応表は GeyserMC/mappings の固定 revision から作る（`packages/converter/src/geyser-source.ts`）。canary は revision を上げない。`npm run check` の `tools/version-series.test.ts` は、`GEYSER_SOURCE` の `javaVersion`・`bedrockVersion` と `tools/servers.json` の版の系列を比べ、ずれていれば失敗する。BDS や Java サーバーを上げてこのテストが落ちたら、次の手順で対応表も上げる。
+
+系列の規則（#362）:
+
+- BE: `1.A.B` の 10 の位までを系列とする（`1.26.66.1` → `1.26.60`）。npm の `@minecraft/server` の stable 版（2026-11-28 に `npm view @minecraft/server versions` で確認）は `1.26.60`・`1.26.61`…`1.26.66`、`1.21.100`…`1.21.102`、`1.21.111`…`1.21.114` のように、機能版が 10 の倍数、修正版が 1 の位だけ進み、修正版が次の 10 の位に届いた例はない。Geyser も機能版ごとに「Update mappings for Minecraft BE 26.60」の形で更新している。
+- JE: 年番号の版 `YY.N[.P]` は `YY.N` を系列とする（`26.1`・`26.1.1`・`26.1.2` は同じ系列）。旧来の `1.X.Y` は 3 つ目まで別の系列とする（`1.21.4` と `1.21.5` はブロックが違う）。根拠は Mojang の版マニフェストの release の並び（`26.1`→`26.1.1`→`26.1.2`→`26.2`→`26.3`）。
+- 修正版でブロック状態が変わらないことは確かめていない（推定）。JE はこれに加えて `setup:mappings` が JE のブロック報告の SHA-256（`java-blocks.json`）で止まる。BE の修正版は実サーバーテスト（`mappings.servers.test.ts` など）だけが頼り。
+
+手順:
+
+1. 新しい revision を選ぶ。GeyserMC/mappings の既定ブランチで、上げる版の「Update mappings for Minecraft BE/JE …」を含む最新のコミットを選ぶ。canary の artifact の `geyser.latest` が候補で、`files.*.changed` が使っているファイルの変化を示す。使っているファイルが変わらないコミット（例：`6e7d6c5` は `map_decorations.json` の追加だけ）のために revision を上げる必要はない。
+2. `geyser-source.ts` の `revision`・`javaVersion`・`bedrockVersion` と `sha256` を同時に更新する。`blocks.nbt`・`items.json`・`sounds.json`・`particles.json`・`LICENSE` は artifact の `latestSha256`、または `curl -sL https://raw.githubusercontent.com/GeyserMC/mappings/<revision>/<file> | sha256sum` の値を使う。JE を上げたときは `java-blocks.json` に、新しい Java サーバーで生成した `servers/reports-<版>/reports/blocks.json` の SHA-256 を入れる。`javaVersion`・`bedrockVersion` は、その revision が対応したと Geyser のコミットが示す版を書く（表の中には版がない）。
+3. `npm run setup:mappings` で `servers/mappings/` を作り直し、`NOTICE.txt` の revision と `LICENSE.geyser.txt` を確認する。`LICENSE` が変わったら許諾の条件（MIT のままか、著作権表示）を読み、条件が変わったなら権利の判断として所有者に回す。`NOTICE.txt` の著作権の年は `geyser.ts` に書いてあるので、`LICENSE` に合わせて直す。
+4. `npm run check` と `npm run test:servers` を通す。状態の名前が変わったブロックは、`mappings.servers.test.ts` と台帳の差分で確かめる。
+5. Geyser が追いつく前に BE だけを上げることはしない。系列のテストが落ちるので、その版上げの PR はマージせず、Issue に Geyser の対応待ちと書いて `status:blocked` にする。古い表のまま出力先を上げると、`setblock`・`fill`・`execute if block` の書き換えが古い状態の名前を出し得る。BDS の旧版が配布されなくなるなど、待てない事情があれば、BE 側の状態の名前の差を実機で確かめた結果を Issue に書き、PM がテストの扱いを決める。
