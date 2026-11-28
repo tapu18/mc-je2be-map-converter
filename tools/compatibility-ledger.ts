@@ -2,11 +2,12 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { rewriteCommand, runtimeFamilies, textFormatFor, toCommandIR, type MappingTables } from "@je2be/core";
+import { evaluatesInRuntime, rewriteCommand, textFormatFor, toCommandIR, type MappingTables } from "@je2be/core";
 import { loadRewriteContext } from "@je2be/converter";
 import { applyVerdicts } from "./compatibility-verdicts.ts";
 import { attachCorpus } from "./compatibility-corpus.ts";
-import { executableShapes, executeModifiers, methods, probeShape, registries, rowKey, terminalShape, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
+import { runtimeScenarioLines } from "./compatibility-runtime.ts";
+import { executableShapes, executeModifiers, matchedModifiers, methods, probeShape, registries, rowKey, terminalShape, textActions, unknown, type Family, type Row, type Verdict } from "./compatibility-inventory.ts";
 
 const { values } = parseArgs({ options: {
   out: { type: "string" },
@@ -100,32 +101,37 @@ const modifiers = executeModifiers(context.parser.root);
 for (const [id, path] of executableShapes(context.parser.root)) {
   add("command", id, "commands.json", modifiers.has(id) ? unknown("commands.json") : probeShape(context, id, path));
 }
-// Only the exact grammar shapes exercised by the runtime-vs-Java scenario tests
-// receive runtime evidence. A matching registration must accept each concrete input.
-const runtimeScenarios = [
-  { id: "score-operations", test: "runtime-score-ir.servers.test.ts" },
-  { id: "storage-paths", test: "runtime-storage-ir.servers.test.ts" },
-];
-for (const { id, test } of runtimeScenarios) {
-  const scenario = readJson<{setup: string[]; actions: {run: string}[]; datapack?: {functions?: Record<string, string[]>}}>(join(root, `scenarios/datapack/${id}.json`));
-  const lines = id === "score-operations" ? [...scenario.setup, ...scenario.datapack!.functions!["m2:scores/operations"]!] : [...scenario.setup, ...scenario.actions.map(action => action.run)];
+for (const id of modifiers.keys()) {
+  if (!rows.has(rowKey("command", id))) add("command", id, "commands.json", unknown("commands.json"));
+}
+// Only the exact grammar shapes exercised by the runtime-vs-Java scenario tests receive runtime
+// evidence: execute modifiers of every scenario line, and terminals the runtime evaluates itself
+// rather than delegating to the fake host's native commands.
+const runtimeEvidence = new Map<string, Set<string>>();
+for (const { id, source, lines } of runtimeScenarioLines(root)) {
   for (const line of lines) {
     const parsed = context.parser.parse(line);
     if (!parsed.ok) throw new Error(`Scenario ${id}: cannot parse ${line}`);
-    const ir = toCommandIR(line, parsed.nodes);
-    if (!runtimeFamilies.some(family => family.assess({status: "parsed", ir}).status === "runtime")) continue;
-    const shape = terminalShape(context.parser.root, parsed.nodes);
-    const row = shape && rows.get(rowKey("command", shape));
-    if (!row) throw new Error(`Scenario ${id}: missing command shape for ${line}`);
-    row.method = "runtime";
-    row.implementation = "partial";
-    row.loss = null;
-    row.issue = null;
-    row.evidence = { confidence: "measured", source: `scenarios/datapack/${id}.json; packages/bridge/src/${test}`, scope: "Concrete scenario inputs executed by the registered runtime and compared with Java; other values and contexts unverified" };
+    const shapes = matchedModifiers(context.parser.root, parsed.nodes);
+    if (evaluatesInRuntime(toCommandIR(line, parsed.nodes))) {
+      const shape = terminalShape(context.parser.root, parsed.nodes);
+      if (!shape) throw new Error(`Scenario ${id}: missing command shape for ${line}`);
+      shapes.push(shape);
+    }
+    for (const shape of shapes) {
+      if (!rows.has(rowKey("command", shape))) throw new Error(`Scenario ${id}: shape ${shape} is not in the ledger`);
+      runtimeEvidence.set(shape, (runtimeEvidence.get(shape) ?? new Set()).add(source));
+    }
   }
 }
-for (const id of modifiers.keys()) {
-  if (!rows.has(rowKey("command", id))) add("command", id, "commands.json", unknown("commands.json"));
+for (const [shape, sources] of runtimeEvidence) {
+  const row = rows.get(rowKey("command", shape))!;
+  row.method = "runtime";
+  row.implementation = "partial";
+  row.loss = null;
+  row.issue = null;
+  row.evidence = { confidence: "measured", source: [...sources].sort().join(" / "),
+    scope: "Compared with Java on a fake host (フェイクホストでの照合): concrete scenario inputs executed by the runtime and compared with Java's recorded state. BDS (#200, #102), other values and contexts unverified" };
 }
 for (const [family, registry] of Object.entries(registries) as [keyof typeof registries, string][]) {
   const entries = registryData["minecraft:" + registry]?.entries;

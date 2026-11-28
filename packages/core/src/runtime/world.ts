@@ -36,14 +36,20 @@ export function compareBlockRegions(host: ExecutionHost, dimension: string, star
   return count;
 }
 
+/** Whether `setblock` is written through the host's block API instead of being delegated as a native command. */
+export function isRuntimeSetblock(command: NonNullable<CommandIR["command"]>): boolean {
+  if (command.name !== "setblock") return false;
+  const [position, block, mode] = command.nodes;
+  const value = block?.value;
+  return position?.value?.kind === "coordinates" && position.value.coordinates.length === 3 && value?.kind === "block"
+    && !value.nbt && !value.tag && (!mode || mode.name === "replace") && command.nodes.length <= 3;
+}
+
 export function* executeWorldCommand(state: RuntimeState, command: NonNullable<CommandIR["command"]>, context: ExecutionContext, source: string): Frame<ExecutionResult | undefined> {
-  if (command.name === "setblock" && state.host?.writeBlock) {
-    const [position, block, mode] = command.nodes;
-    const value = block?.value;
-    if (position?.value?.kind === "coordinates" && position.value.coordinates.length === 3 && value?.kind === "block"
-      && !value.nbt && !value.tag && (!mode || mode.name === "replace") && command.nodes.length <= 3) {
-      return state.host.writeBlock(context.dimension, blockPosition(position, source, context, state.host), value);
-    }
+  if (state.host?.writeBlock && isRuntimeSetblock(command)) {
+    const [position, block] = command.nodes;
+    const value = block!.value;
+    if (value?.kind === "block") return state.host.writeBlock(context.dimension, blockPosition(position!, source, context, state.host), value);
   }
   if (state.host?.runNative) return yield {kind: "native", command, context, source};
 }

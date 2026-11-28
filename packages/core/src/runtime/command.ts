@@ -10,7 +10,7 @@ import { ScheduleState } from "../features/schedule/runtime.ts";
 
 import { defaultExecutionContext, dimensionId, type ExecutionContext, type ExecutionHost } from "./context.ts";
 import { applyStores, compileModifier, type ExecuteBranch } from "./execute-steps.ts";
-import { executeWorldCommand } from "./world.ts";
+import { executeWorldCommand, isRuntimeSetblock } from "./world.ts";
 import { expandMacro } from "../command/macro-arguments.ts";
 import { readFunctionArguments } from "./function-arguments.ts";
 
@@ -18,6 +18,21 @@ export type { ExecutionContext } from "./context.ts";
 export { defaultExecutionContext } from "./context.ts";
 
 export const runtimeFamilies = [scoreRuntime, storageRuntime, scheduleRuntime] as const;
+
+/**
+ * Whether the runtime evaluates this line's terminal itself rather than delegating it to `ExecutionHost.runNative`.
+ * Execute modifiers are always runtime-evaluated; this only classifies the command after them.
+ */
+export function evaluatesInRuntime(ir: CommandIR): boolean {
+  const command = ir.command;
+  if (!command) return ir.context.length > 0;
+  if (command.name === "return") {
+    if (command.run) return evaluatesInRuntime(command.run);
+    return command.nodes[0]?.value?.kind === "number" || command.nodes[0]?.name === "fail";
+  }
+  if (command.name === "function") return command.nodes[0]?.value?.kind === "resource";
+  return runtimeFamilies.some(family => family.assess({status: "parsed", ir}).status === "runtime") || isRuntimeSetblock(command);
+}
 
 /** Runtime state shared across commands. */
 export class RuntimeState {
