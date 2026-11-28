@@ -100,7 +100,7 @@ const table = (title: string, header: string, tally: Tally, order?: readonly str
   return out.join("\n");
 };
 console.log([
-  `対象：パースでき、テキストを持つ \`tellraw\`・\`title\`（\`execute … run\` の末尾を含む）${totals.lines} 行・${maps.size} 作品。版が選べない・版で結果が異なる行 ${totals.skipped} 行は除いた。`,
+  `対象：パースでき、テキストを持つ \`tellraw\`・\`title\`（\`execute … run\`・\`return run\` の先を含む）${totals.lines} 行・${maps.size} 作品。版が選べない・版で結果が異なる行 ${totals.skipped} 行は除いた。`,
   "1行に複数の種類・書式があれば、それぞれに1回数える。",
   "",
   table("コマンドの形", "形", tallies.shape),
