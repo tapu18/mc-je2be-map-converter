@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "je2be poc summon nbt",
+    "description": "NBT 付き summon の上位キーを召喚直後に Script API で設定し、読み戻す PoC（#357）",
+    "uuid": "b418434c-437f-4740-8af4-9f2ccf3bb495",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 60]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "5a78530c-fc74-4142-a808-b04f104c838c",
+      "version": [0, 1, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "2.12.0-beta" }
+  ]
+}
