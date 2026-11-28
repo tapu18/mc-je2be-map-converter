@@ -9,6 +9,9 @@ import type { NormalizedState, Scenario } from "./types.ts";
 
 const SNAPSHOT = "JE2BE_LOAD_TICK ";
 type Snapshot = { scores: NonNullable<NormalizedState["scores"]>; storage: Record<string, NbtTag> };
+/** Diagnostics that leave a function out. Lines without a BE command stay bundled and fail at run time (#353, #354). */
+const NATIVE_REASONS = new Set(["native rewrite unsupported", "native rewrite differs across grammar versions"]);
+const bundlingErrors = (diagnostics: { reason: string }[]) => diagnostics.filter(d => !NATIVE_REASONS.has(d.reason));
 
 /** BDS keeps ticking between bridge requests. Sample the committed state in the server at the requested tick. */
 export async function runBedrockLoadTick(scenario: Scenario, javaVersion: string): Promise<{ state: NormalizedState; log: string[] }> {
@@ -20,7 +23,7 @@ export async function runBedrockLoadTick(scenario: Scenario, javaVersion: string
   await setupJavaGrammar(grammar);
   const converted = await buildConvertedWorld({...scenario, actions: scenario.actions.slice(0, -1)}, log);
   try {
-    if (converted.report.datapacks.diagnostics.length) throw Error(log.join("\n"));
+    if (bundlingErrors(converted.report.datapacks.diagnostics).length) throw Error(log.join("\n"));
     const scripts = join(converted.world, "behavior_packs", "je2be_init", "scripts");
     const main = join(scripts, "main.js");
     // Observe inside the converter's pack so the probe can access its session and dynamic properties.
@@ -88,7 +91,7 @@ export async function runBedrockRuntimeActions(scenario: Scenario, javaVersion: 
     datapack: {...scenario.datapack, functions: {...scenario.datapack?.functions, ...functions}},
   }, log);
   try {
-    if (converted.report.datapacks.diagnostics.length) throw Error(log.join("\n"));
+    if (bundlingErrors(converted.report.datapacks.diagnostics).length) throw Error(log.join("\n"));
     const scripts = join(converted.world, "behavior_packs", "je2be_init", "scripts");
     const main = join(scripts, "main.js");
     writeFileSync(join(scripts, "runtime.js"), readFileSync(main));
