@@ -1,6 +1,4 @@
 import { world, system } from "@minecraft/server";
-import type { CommandIR } from "../../core/src/command/parser.ts";
-import { scheduledFunctionCalls } from "../../core/src/runtime/command.ts";
 import { datapacks } from "./datapacks.js";
 import { initialize } from "./initialize.ts";
 import { RuntimeSession } from "./host.ts";
@@ -10,6 +8,7 @@ import { storage } from "./storage.js";
 import * as data from "./data.js";
 import { registerLauncher } from "./launcher.ts";
 import { loadChains } from "./command-chains.ts";
+import { runFunctionTag, startTicking } from "./loop.ts";
 
 export let session: RuntimeSession | undefined;
 let chains: ReturnType<typeof loadChains>;
@@ -22,42 +21,12 @@ world.afterEvents.worldLoad.subscribe(() => {
     const runtime = new RuntimeSession(state, source => {
       const command = commands.get(source);
       if (command !== undefined) return {command, completion: "synchronous"};
-    });
+    }, {failUndelegated: true});
     const properties: Properties = {get: key => world.getDynamicProperty(key), set: (key, value) => world.setDynamicProperty(key, value)};
-    const execute = (ir: CommandIR) => {
-      const result = runtime.execute(ir);
-      if (result.status !== "executed" || !result.projection.ok || "status" in result.core) {
-        throw Error(`${ir.source}: ${JSON.stringify(result)}`);
-      }
-      if (!result.core.success && (result.core.error.startsWith("unsupported") || result.core.error.endsWith("budget exceeded"))) {
-        throw Error(`${ir.source}: ${result.core.error}`);
-      }
-    };
-    const runTag = (id: string) => {
-      if (!state.functionTags.has(id)) return;
-      const source = `function #${id}`;
-      execute({source, context: [], command: {name: "function", nodes: [
-        {kind: "argument", name: "name", start: 9, end: source.length, value: {kind: "resource", id, tag: true}},
-      ]}});
-    };
-    runTag("minecraft:load");
+    runFunctionTag(runtime, "minecraft:load");
     commitState(properties, state);
     session = runtime;
-    const interval = system.runInterval(() => {
-      try {
-        // Project pending launcher scores, then run chains moved after this tick's command blocks
-        // (#93 decision 2), before schedule and the tick tag.
-        runtime.syncScores();
-        runtime.runQueuedChains();
-        if (state.functions.size) for (const {ir} of scheduledFunctionCalls(state)) execute(ir);
-        runTag("minecraft:tick");
-        commitState(properties, state);
-      } catch (error) {
-        runtime.halt();
-        system.clearRun(interval);
-        console.warn("[je2be] tick stopped: " + error);
-      }
-    }, 1);
+    startTicking(runtime, () => commitState(properties, state), system, message => console.warn(message));
   }).catch((error: unknown) => console.warn("[je2be] initialization failed: " + error));
 });
 

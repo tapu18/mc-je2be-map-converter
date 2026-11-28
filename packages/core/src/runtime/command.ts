@@ -9,13 +9,13 @@ import { scheduleRuntime } from "../features/schedule/registration.ts";
 import { ScheduleState } from "../features/schedule/runtime.ts";
 import { entityNbtRejection, entityNbtRuntime } from "../features/entity_nbt/registration.ts";
 
-import { defaultExecutionContext, dimensionId, type ExecutionContext, type ExecutionHost } from "./context.ts";
+import { defaultExecutionContext, dimensionId, type ExecutionContext, type ExecutionHost, type FunctionLine } from "./context.ts";
 import { applyStores, compileModifier, type ExecuteBranch } from "./execute-steps.ts";
 import { executeWorldCommand, isRuntimeSetblock } from "./world.ts";
 import { expandMacro } from "../command/macro-arguments.ts";
 import { readFunctionArguments } from "./function-arguments.ts";
 
-export type { ExecutionContext } from "./context.ts";
+export type { ExecutionContext, FunctionLine } from "./context.ts";
 export { defaultExecutionContext } from "./context.ts";
 
 export const runtimeFamilies = [scoreRuntime, storageRuntime, scheduleRuntime, entityNbtRuntime] as const;
@@ -75,7 +75,7 @@ export interface ExecutionBudget { instructions: number; depth: number; branches
 export const defaultExecutionBudget: ExecutionBudget = {instructions: 100000, depth: 128, branches: 10000};
 export type Outcome = ExecutionResult & {returned?: boolean; explicitReturn?: boolean};
 type NativeRequest = {kind: "native"; command: NonNullable<CommandIR["command"]>; context: ExecutionContext; source: string};
-type Request = {kind: "command"; ir: CommandIR; depth: number; context: ExecutionContext} | {kind: "branch"} | NativeRequest;
+type Request = {kind: "command"; ir: CommandIR; depth: number; context: ExecutionContext; origin?: FunctionLine} | {kind: "branch"} | NativeRequest;
 export type Frame<T = Outcome> = Generator<Request, T, Outcome>;
 type BeforeNative = () => Extract<ExecutionResult, {success: false}> | undefined;
 
@@ -83,6 +83,8 @@ type BeforeNative = () => Extract<ExecutionResult, {success: false}> | undefined
 export function executeCommand(state: RuntimeState, ir: CommandIR, budget: ExecutionBudget = defaultExecutionBudget, context: ExecutionContext = defaultExecutionContext(), beforeNative?: BeforeNative, continueAfterUnknownNative = false): CommandResult {
   if (Object.values(budget).some(limit => !Number.isSafeInteger(limit) || limit < 0)) return {success: false, error: "invalid execution budget"};
   const frames: Frame[] = [];
+  // The function line each frame belongs to, so delegated commands can name where they came from.
+  const origins: (FunctionLine | undefined)[] = [];
   let instructions = 0, branches = 0;
   let request: Request = {kind: "command", ir, depth: 0, context: {...context, dimension: dimensionId(context.dimension)}};
   let value: Outcome = {success: true, result: 0};
@@ -91,11 +93,12 @@ export function executeCommand(state: RuntimeState, ir: CommandIR, budget: Execu
     if (request.kind === "command") {
       if (++instructions > budget.instructions) return {success: false, error: "instruction budget exceeded"};
       if (request.depth > budget.depth) return {success: false, error: "depth budget exceeded"};
+      origins.push(request.origin ?? origins[origins.length - 1]);
       frames.push(execute(state, request.ir, request.depth, request.context));
     } else if (request.kind === "native") {
       const failure = beforeNative?.();
       if (failure) return failure;
-      const native = state.host?.runNative?.(request.command, request.context, request.source);
+      const native = state.host?.runNative?.(request.command, request.context, request.source, origins[origins.length - 1]);
       if (native && "status" in native) {
         if (!continueAfterUnknownNative) return native;
         // The converter has ruled out consumers of this result. Keep evaluating independent branches and lines.
@@ -108,6 +111,7 @@ export function executeCommand(state: RuntimeState, ir: CommandIR, budget: Execu
       if (!next.done) { request = next.value; break; }
       value = next.value;
       frames.pop();
+      origins.pop();
     }
     if (!frames.length) return unknown ? {status: "unknown"}
       : value.success ? {success: true, result: value.result} : {success: false, error: value.error};
@@ -186,7 +190,7 @@ function* executeTerminal(state: RuntimeState, ir: CommandIR, depth: number, con
           let count = 0;
           let returned: Outcome | undefined;
           for (const line of expanded) {
-            const result = yield {kind: "command", ir: line, depth: depth + 1, context};
+            const result = yield {kind: "command", ir: line, depth: depth + 1, context, origin: {function: name, line: count + 1}};
             count++;
             if (!result.success && result.error.startsWith("unsupported")) { returned = result; break; }
             if (result.returned) { returned = result; break; }
