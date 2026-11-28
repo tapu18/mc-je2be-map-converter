@@ -525,6 +525,10 @@ BDS の照合には `BedrockServer.start({ world: "<scratch>/run/bedrock", ticki
 
 Java 26.3 の実サーバーで `macro-arguments`・`storage-macro` の記録を再現した（`scenarios.servers.test.ts`）。直接渡した double は型接尾辞なしの文字列に展開され、空白を含む文字列は引用符内の値として保持された。entity のパスから取得した値と block entity のルートから取得した座標が展開され、キーが欠けた呼び出しの成功値は 0 だった。storage から渡した2つの複合値によるスコア・storage の更新も正解 JSON に一致した。`macro.data.test.ts` では同じ観測項目を Node のフェイクホストで突き合わせた。
 
+### マクロ行の型紙化と穴を埋める時間（#349）
+
+2026-11-28 の非公開コーパスのマクロ 3,630 行（10 作品）を `tools/macro-template-corpus.ts` で `compileMacroTemplate` に通した。文法は pack.mcmeta の範囲で選んだ。型紙になったのは 1,247 行（34.4%、8 作品）だった。落ちた行の最多は entity 型の穴の 2,009 行（4 作品）で、うち 1,837 行は 1 作品の同じ形だった。型紙を保存形式に通して `expandMacro` で埋めると、Node v24.13.1 で 1 行あたり中央値 7.0〜8.4 µs（4 回）だった。同じ引数の繰り返しと違う引数の差は 0.5 µs 以下だった。うち約 3.6 µs は版の正規化だった。理由ごとの内訳・形・測定条件は [docs/research/macro-template-coverage.md](research/macro-template-coverage.md)。BE のスクリプトエンジンでの時間は測っていない。
+
 ### ランタイムのカスタムコマンド起動口（#317）
 
 BDS 1.26.66.1 の `packages/runtime-host/src/launcher.servers.test.ts` で、オーバーワールドのコマンドブロックから渡した実行者・位置・向きを中核が使い、ネザーの指定位置にある対象を選んだ。成功した関数は `return 0` でも後続の条件付きブロックを動かし、比較器を点灯させた。`return fail` の行では、失敗前に設定したスコアは反映され、条件付きブロックは動かず、比較器は消灯したままだった。成否の伝わり方は M0 の `poc/launcher/launcher.servers.test.ts` と一致した。
