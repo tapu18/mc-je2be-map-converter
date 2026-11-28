@@ -111,6 +111,11 @@ function executionHost(runNative: NonNullable<ExecutionHost["runNative"]>): Exec
         position: [x, y, z], rotation: [yaw, pitch], dimension: dimensionId(dimension),
         eyeHeight: entity.getHeadLocation().y - y, ...(player && {name: player.name, gamemode: gameModes[player.getGameMode()]})};
     })),
+    // Virtual NBT Motion (#345). Whether BE velocity matches Java's blocks per tick is unmeasured; UUID awaits a runtime-held value.
+    entityMotion: id => {
+      const velocity = attempt(() => world.getEntity(id)?.getVelocity());
+      return velocity.ok && velocity.value ? [velocity.value.x, velocity.value.y, velocity.value.z] : undefined;
+    },
     // Core block conditions need Java IDs and states, including block entity data.
     readBlock: () => undefined,
     runNative,

@@ -29,7 +29,7 @@ export const runtimeScenarios: readonly RuntimeScenario[] = [
     lines: scenario => [...scenario.setup, ...scenario.datapack!.functions!["m2:scores/operations"]!] },
   // The test loads no datapack, so m2:probe/noop is not exercised.
   { id: "storage-paths", test: "packages/bridge/src/runtime-storage-ir.data.test.ts", lines: scenario => [...scenario.setup, ...actions(scenario)] },
-  ...["execute-context", "execute-anchor", "execute-dimension", "calls", "execute-order", "execute-order-reload", "execute-extra", "score-selector-conditions"]
+  ...["execute-context", "execute-anchor", "execute-dimension", "calls", "execute-order", "execute-order-reload", "execute-extra", "score-selector-conditions", "entity-nbt-read"]
     .map(id => ({ id, test: contextTest, lines: whole })),
   ...["schedule", "schedule-units", "schedule-day", "schedule-restart"].map(id => ({ id, test: scheduleTest, lines: whole })),
   // Macro templates ($ lines) are compiled, not parsed as a fixed shape. The test supplies

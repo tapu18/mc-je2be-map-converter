@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { deserialize, serialize } from "node:v8";
 import { expect, it } from "vitest";
 import {
-  CommandParser, defaultExecutionContext, entityTarget, executeCommand, executeStorageCommand,
-  MappingLookup, nbt, nbtToPlain, resolvePosition, rewriteNativeCommand, RuntimeState, selectEntities, toCommandIR,
+  CommandParser, defaultExecutionContext, entityTarget, evaluatesInRuntime, executeCommand,
+  MappingLookup, nbtToPlain, resolvePosition, rewriteNativeCommand, RuntimeState, selectEntities, toCommandIR,
   type Block, type CommandTreeNode, type ExecutionContext, type ExecutionHost, type Position, type Rotation, type RuntimeEntity,
 } from "@je2be/core";
 import { paths } from "./paths.ts";
@@ -25,8 +25,10 @@ const air: Block = {kind: "block", id: "minecraft:air", tag: false, states: {}};
 
 const chunkKey = (dimension: string, x: number, z: number) => `${dimension}:${Math.floor(x / 16)},${Math.floor(z / 16)}`;
 
+type FakeEntity = RuntimeEntity & {motion?: Position; uuid?: [number, number, number, number]};
+
 class FakeHost implements ExecutionHost {
-  readonly candidates: RuntimeEntity[];
+  readonly candidates: FakeEntity[];
   readonly blocks: Map<string, Block>;
   readonly forcedChunks: Set<string>;
   readonly state = new RuntimeState(this);
@@ -35,7 +37,7 @@ class FakeHost implements ExecutionHost {
   private readonly teams = new Set<string>();
   private nextEntityId: number;
 
-  constructor(candidates: RuntimeEntity[] = [], blocks = new Map<string, Block>(), forcedChunks = new Set<string>()) {
+  constructor(candidates: FakeEntity[] = [], blocks = new Map<string, Block>(), forcedChunks = new Set<string>()) {
     this.candidates = candidates;
     this.blocks = blocks;
     this.forcedChunks = forcedChunks;
@@ -43,6 +45,11 @@ class FakeHost implements ExecutionHost {
   }
 
   entities() { return this.candidates; }
+
+  // Java gives every entity a Motion; summoned fixtures default to rest.
+  entityMotion(id: string) { const entity = this.candidates.find(entity => entity.id === id); return entity && (entity.motion ?? [0, 0, 0]); }
+
+  entityUuid(id: string) { return this.candidates.find(entity => entity.id === id)?.uuid; }
 
   isLoaded(dimension: string, [x, , z]: Position) {
     const spawnArea = dimension === overworld && x >= 0 && x < 48 && z >= 0 && z < 48;
@@ -121,30 +128,16 @@ class FakeHost implements ExecutionHost {
       }
       return {success: true, result: entities.length} as const;
     }
-    if (command.name === "data" && command.nodes[6]?.name === "entity") {
-      const [, , , , operation, mode, , target, path] = command.nodes;
-      const selector = entityTarget(target?.value);
-      const entities = selector && selectEntities(this, context, selector, this.state.scores);
-      if (operation?.name !== "set" || mode?.name !== "from" || entities?.length !== 1
-        || path?.value?.kind !== "nbtPath" || path.value.path.length !== 1) throw new Error("Invalid entity storage fixture");
-      const [field] = path.value.path;
-      const [entity] = entities;
-      const key = field?.kind === "key" && field.key;
-      const value = key === "Pos" ? nbt.list("double", entity!.position.map(nbt.double))
-        : key === "Rotation" ? nbt.list("float", entity!.rotation.map(angle => nbt.float(Math.fround(angle) || 0))) : undefined;
-      if (!value) throw new Error("Unexpected entity storage fixture path");
-      return executeStorageCommand(this.state.storage, {
-        ...command, nodes: [...command.nodes.slice(0, 5), {...path, name: "value", value: {kind: "nbt", value}}],
-      });
-    }
     if (command.name !== "summon") return;
     const [type, position, dataNode] = command.nodes;
     if (type?.value?.kind !== "resource" || position?.value?.kind !== "coordinates") throw new Error("Invalid summon fixture");
     const id = type.value.id;
     if (id !== "minecraft:marker" && id !== "minecraft:armor_stand") throw new Error(`Unsupported fixture entity ${id}`);
-    const data = dataNode?.value?.kind === "nbt" ? nbtToPlain(dataNode.value.value) as {Tags?: string[]; Rotation?: Rotation} : {};
+    const data = dataNode?.value?.kind === "nbt"
+      ? nbtToPlain(dataNode.value.value) as {Tags?: string[]; Rotation?: Rotation; Motion?: Position; UUID?: [number, number, number, number]} : {};
     this.candidates.push({
       id: `entity-${this.nextEntityId++}`, type: id, tags: data.Tags ?? [], rotation: data.Rotation ?? [0, 0],
+      ...(data.Motion && {motion: data.Motion}), ...(data.UUID && {uuid: data.UUID}),
       position: resolvePosition(position, source, context), dimension: context.dimension,
       eyeHeight: id === "minecraft:armor_stand" ? 1.7775 : 0,
     });
@@ -206,7 +199,7 @@ it("propagates an unknown native result through function and store without writi
   expect(host.state.scores.get("outcome", "t")).toBeUndefined();
 });
 
-const scenarioIds = ["execute-context", "execute-anchor", "execute-dimension", "calls", "execute-order", "execute-order-reload", "execute-extra", "score-selector-conditions"];
+const scenarioIds = ["execute-context", "execute-anchor", "execute-dimension", "calls", "execute-order", "execute-order-reload", "execute-extra", "score-selector-conditions", "entity-nbt-read"];
 const scenarios = loadScenarios();
 
 const knownDiffs = {
@@ -380,4 +373,54 @@ it("resets the eyes anchor after resolving positioned and validates before execu
   state.functions.set("test:condition", [parse("data modify storage test:probe touched set value 1"), parse("return 1")]);
   expect(run("execute if function test:condition if biome ~ ~ ~ plains run setblock ~ ~ ~ minecraft:stone")).toEqual({success: false, error: "unsupported execute step"});
   expect(state.storage.values.size).toBe(0);
+});
+
+it("rejects entity NBT outside the virtual layer with a reason instead of delegating it", () => {
+  const host = new FakeHost();
+  const {state} = host;
+  const run = (line: string) => executeCommand(state, parse(line));
+  expect(run("summon marker 8 -60 8 {Tags:[\"probe\"],UUID:[I;1,2,3,4]}").success).toBe(true);
+  const delegated: string[] = [];
+  host.delegate = (_command, _context, source) => { delegated.push(source); return {success: true, result: 1}; };
+  const rejected = {
+    "data get entity @e[tag=probe,limit=1] Health": "entity NBT path Health is not supported",
+    "data get entity @e[tag=probe,limit=1] Pos[0].x": "entity NBT path Pos[0].x is not supported",
+    "data get entity @e[tag=probe,limit=1] Pos[]": "entity NBT path Pos[] is not supported",
+    "data get entity @e[tag=probe,limit=1] {Pos:[0d]}": "entity NBT path {Pos:[0d]} is not supported",
+    "data get entity @e[tag=probe,limit=1]": "reading an entity's whole NBT is not supported",
+    "data get entity @e[tag=probe,limit=1,nbt={OnGround:1b}] Pos": "entity selector @e[tag=probe,limit=1,nbt={OnGround:1b}] is not supported",
+    "data modify entity @e[tag=probe,limit=1] Pos set value [0d,0d,0d]": "writing entity NBT (data modify entity) is not supported",
+    "data merge entity @e[tag=probe,limit=1] {Invisible:1b}": "writing entity NBT (data merge entity) is not supported",
+    "data remove entity @e[tag=probe,limit=1] Tags": "writing entity NBT (data remove entity) is not supported",
+    "data modify storage test:nbt x set from entity @e[tag=probe,limit=1] Health": "entity NBT path Health is not supported",
+    "data modify storage test:nbt x set string entity @e[tag=probe,limit=1] UUID": "data modify ... string entity is not supported",
+    "data modify block 0 -60 0 Items set from entity @e[tag=probe,limit=1] Pos": "copying entity NBT into data modify block is not supported",
+  };
+  for (const [line, reason] of Object.entries(rejected)) {
+    const result = run(line);
+    expect(result, line).toMatchObject({success: false});
+    expect("error" in result && result.error, line).toBe(`unsupported entity NBT: ${reason}${reason.includes("path") && !reason.includes("whole") ? "; readable paths are Pos, Pos[n], Rotation, Rotation[n], Motion, Motion[n], UUID, UUID[n]" : ""}`);
+    expect(evaluatesInRuntime(parse(line)), line).toBe(false);
+  }
+  // A rejected line stops its function like other unsupported commands.
+  state.functions.set("test:entity", [parse("data get entity @e[tag=probe,limit=1] Health"), parse("data modify storage test:nbt after set value 1")]);
+  expect(run("function test:entity")).toMatchObject({success: false, error: expect.stringMatching(/^unsupported entity NBT: /)});
+  expect(state.storage.values.size).toBe(0);
+  expect(delegated).toEqual([]);
+});
+
+it("reads the virtual layer only for exactly one entity with host-supplied values", () => {
+  const host = new FakeHost();
+  const {state} = host;
+  const run = (line: string) => executeCommand(state, parse(line));
+  expect(run("summon marker 8 -60 8 {Tags:[\"probe\"]}").success).toBe(true);
+  expect(run("summon marker 9 -60 8 {Tags:[\"probe\"]}").success).toBe(true);
+  expect(evaluatesInRuntime(parse("data get entity @e[tag=probe,limit=1] Pos[0]"))).toBe(true);
+  // The parser already rejects selectors that may match several entities, as Java does.
+  expect(parser.parse("data get entity @e[tag=probe] Pos[0]").ok).toBe(false);
+  expect(run("data get entity @e[tag=missing,limit=1] Pos[0]")).toEqual({success: false, error: "no entity was found"});
+  expect(run("data get entity @e[tag=probe,limit=1] Pos[3]")).toEqual({success: false, error: "no elements match the path"});
+  expect(run("data get entity @e[tag=probe,limit=1] Pos[0] 2")).toEqual({success: true, result: 17});
+  // The summoned fixture has no Java UUID: the host cannot supply one.
+  expect(run("data get entity @e[tag=probe,limit=1] UUID")).toEqual({success: false, error: "unsupported entity NBT: the host holds no Java UUID for the entity"});
 });

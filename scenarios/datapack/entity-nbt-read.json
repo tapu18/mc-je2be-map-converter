@@ -1,0 +1,46 @@
+{
+  "description": "仮想 NBT 層の読み取り（#345）。data get entity の Pos・Rotation・Motion・UUID（添字・倍率・負の添字・リストの長さ）と、execute store と storage へのコピーの読み取り元",
+  "setup": [
+    "scoreboard objectives add nbt dummy",
+    "summon minecraft:armor_stand 1.25 -60 2.75 {Tags:[\"probe\"],NoGravity:1b,Rotation:[45.5f,-30.25f],Motion:[0.25d,0.5d,-0.125d],UUID:[I;1,2,3,4]}",
+    "summon minecraft:marker 3.5 -59.875 -0.5 {Tags:[\"probe2\"],Rotation:[33.3f,12.7f],UUID:[I;-1,0,5,-2147483648]}"
+  ],
+  "actions": [
+    { "run": "execute store result score #x nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Pos[0] 1000" },
+    { "run": "execute store result score #y nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Pos[1]" },
+    { "run": "execute store result score #z nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Pos[2]" },
+    { "run": "execute store result score #z_last nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Pos[-1] 100" },
+    { "run": "execute store result score #pos_size nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Pos" },
+    { "run": "execute store result score #yaw nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Rotation[0] 10" },
+    { "run": "execute store result score #pitch nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Rotation[1]" },
+    { "run": "execute store result score #mx nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Motion[0] 1000" },
+    { "run": "execute store result score #my nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Motion[1] 1000" },
+    { "run": "execute store result score #mz nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Motion[2] 1000" },
+    { "run": "execute store result score #mz_floor nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Motion[2]" },
+    { "run": "execute store result score #uuid_size nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] UUID" },
+    { "run": "execute store result score #uuid3 nbt run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] UUID[3]" },
+    { "run": "execute store result score #marker_yaw nbt run data get entity @e[type=minecraft:marker,tag=probe2,limit=1] Rotation[0] 10" },
+    { "run": "execute store result score #marker_pitch nbt run data get entity @e[type=minecraft:marker,tag=probe2,limit=1] Rotation[1] 10" },
+    { "run": "execute store result score #marker_y nbt run data get entity @e[type=minecraft:marker,tag=probe2,limit=1] Pos[1] 8" },
+    { "run": "execute store result score #marker_uuid0 nbt run data get entity @e[type=minecraft:marker,tag=probe2,limit=1] UUID[0]" },
+    { "run": "execute store result score #marker_uuid3 nbt run data get entity @e[type=minecraft:marker,tag=probe2,limit=1] UUID[-1]" },
+    { "run": "execute as @e[type=minecraft:marker,tag=probe2] store result score #self_x nbt run data get entity @s Pos[0] 2" },
+    { "run": "execute store result storage m2:nbt scaled.x double 0.001 run data get entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Pos[0] 1000" },
+    { "run": "data modify storage m2:nbt pos set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Pos" },
+    { "run": "data modify storage m2:nbt rotation set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Rotation" },
+    { "run": "data modify storage m2:nbt motion set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Motion" },
+    { "run": "data modify storage m2:nbt uuid set from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] UUID" },
+    { "run": "data modify storage m2:nbt marker.rotation set from entity @e[type=minecraft:marker,tag=probe2,limit=1] Rotation" },
+    { "run": "data modify storage m2:nbt marker.motion set from entity @e[type=minecraft:marker,tag=probe2,limit=1] Motion" },
+    { "run": "data modify storage m2:nbt marker.uuid set from entity @e[type=minecraft:marker,tag=probe2,limit=1] UUID" },
+    { "run": "data modify storage m2:nbt marker.y set from entity @e[type=minecraft:marker,tag=probe2,limit=1] Pos[1]" },
+    { "run": "data modify storage m2:nbt list set value []" },
+    { "run": "data modify storage m2:nbt list append from entity @e[type=minecraft:armor_stand,tag=probe,limit=1] Rotation[0]" },
+    { "run": "data modify storage m2:nbt list append from entity @e[type=minecraft:marker,tag=probe2,limit=1] Rotation[0]" }
+  ],
+  "observe": {
+    "scores": ["nbt"],
+    "storage": ["m2:nbt"]
+  },
+  "bedrockPending": "BE のホスト層（#102）が未接続で、UUID のランタイム保持値（動的プロパティ）も未設計"
+}

@@ -7,7 +7,7 @@ Java 26.3 / BDS 1.26.66.1 / Geyser `e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`。
 | advancement_trigger | 58 | uninvestigated 58 | — 行・714 定義 | 0.00% | — | 8 |
 | attribute | 40 | uninvestigated 40 | 22 行・— 定義 | 0.00% | 0.00% | 4 |
 | click | 8 | uninvestigated 8 | 331 行・— 定義 | 0.00% | 23.26% | 4 |
-| command | 1489 | native 58 / rewrite 129 / runtime 63 / approximation 74 / uninvestigated 1165 | 198030 行・— 定義 | 64.75% | — | 18 |
+| command | 1489 | native 58 / rewrite 129 / runtime 68 / approximation 74 / uninvestigated 1160 | 198030 行・— 定義 | 65.01% | — | 18 |
 | component | 122 | uninvestigated 122 | 1702 行・— 定義 | 0.00% | 0.00% | 12 |
 | effect | 40 | rewrite 36 / impossible 4 | 594 行・— 定義 | 96.63% | 87.54% | 16 |
 | entity | 161 | rewrite 126 / asset 5 / uninvestigated 30 | 8987 行・— 定義 | 31.59% | 7.27% | 17 |
@@ -23,11 +23,11 @@ Java 26.3 / BDS 1.26.66.1 / Geyser `e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`。
 | --- | ---: |
 | native | 59 |
 | rewrite | 318 |
-| runtime | 63 |
+| runtime | 68 |
 | asset | 5 |
 | approximation | 2083 |
 | impossible | 35 |
-| uninvestigated | 1607 |
+| uninvestigated | 1602 |
 | 合計 | 4170 |
 
 入力があったアーカイブ 19 本、進捗・predicate・ルートテーブル定義 1325 ファイル。

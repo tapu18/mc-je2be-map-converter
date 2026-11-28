@@ -228,7 +228,15 @@ M0 の結論（#11、2026-11-15 確定）。根拠は 7章のチェックリス�
 - **Script APIから取れる値**：位置、向き、タグ、体力、所持品、名前など。
 - **ランタイムが保持する値**：代替エンティティの表示設定、BEに対応する項目がないNBT。
 
-対応するNBTパスは、コーパスでの使用頻度順に決める（頻度の集計は未実施、#15）。
+対応するNBTパスは、コーパスでの使用頻度順に決める。頻度の集計は [corpus-survey.md の「NBTパス」](corpus-survey.md#nbtパス)にある。`{…}` のルート照合と `transformation`・`start_interpolation` の 5 万行台は 1 作品の表示用エンティティのアニメーションと推定し（件数が台帳の `data modify entity … merge value` と同規模であることが前提、#345）、5.8 の専用経路で扱う。残りは数百行の規模で、位置・向き・速度・UUID の読み取りが上位にある。
+
+最初の形（#345、読み取りだけ）：
+
+- **置き場所**：機能の族として `packages/core/src/features/entity_nbt/` に置く（`virtual.ts` が値の組み立て、`capability.ts` が対応判定、`registration.ts` が実行）。中核の `runtimeFamilies` に登録し、ほかの族と同じく変換器の振り分けとランタイムの実行で同じ判定を使う。
+- **ホストのインターフェース**：`Pos` と `Rotation` は候補エンティティ（`RuntimeEntity` の `position`・`rotation`）から作る。`ExecutionHost` に任意の読み取り `entityMotion(id)`（ブロック/tick の `[x, y, z]`）と `entityUuid(id)`（Java の符号付き int 4 つ）を足した。ホストが値を返さなければ理由付きの `unsupported` にする。BE ホストの `entityMotion` は `Entity.getVelocity()` を返す（Java の Motion と単位・値が一致するかは未確認、BDS での確認はホスト層 #102 の後）。
+- **ランタイムが持つ値との合わせ方**：今は Script API で取れる値だけを使う。BE の `Entity.id` は Java の UUID と別物のため、`UUID` はランタイムが保持する値（変換時の UUID をエンティティの動的プロパティに持つなど）が要る。保持の形式は書き込みと合わせて後続の子で決め、それまで BE ホストは `entityUuid` を持たない。
+- **対応範囲**：`data get entity <対象> <パス> [倍率]`、その `execute store result|success … run`、`data modify storage … set|merge|insert|prepend|append from entity <対象> <パス>` の読み取り元。パスは `Pos`・`Rotation`・`Motion`・`UUID` と、それぞれに添字を1つ付けたもの（負の添字、int 配列の添字を含む）。対象は1体に限り、0 体は失敗とする。値は Java の型に合わせる（`Rotation` は float に丸めるため、`12.7f` の 10 倍は 126 になる）。正解データは `scenarios/datapack/entity-nbt-read`。
+- **対応しないもの**：ほかのパス、パスなし（NBT 全体）、`nbt=` を含むセレクタ、書き込み（`data modify|merge|remove entity`）、`string entity`、storage 以外への `from entity` は、変換器の判定とランタイムの実行の両方で `unsupported entity NBT: <理由>` とし、BE への委譲に回さない。`execute if data entity`、`nbt=`、NBT 付きの `summon`、`execute store … entity` は後続の子（#182）。
 
 ### 5.8 代替エンティティ
 

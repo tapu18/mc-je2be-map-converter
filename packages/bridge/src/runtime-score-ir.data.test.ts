@@ -25,7 +25,9 @@ it("rejects unsupported score and storage forms before runtime dispatch", () => 
   for (const line of ["scoreboard objectives add test trigger", "scoreboard players set @a test 1", "data get entity @s foo", "data modify storage test:x a set from entity @s foo"]) {
     const parsed = parser.parse(line);
     if (!parsed.ok) throw new Error(`${line}: ${parsed.error.message}`);
-    expect(executeCommand(state, toCommandIR(line, parsed.nodes)), line).toMatchObject({success: false, error: "unsupported command"});
+    // Entity NBT outside the virtual layer is rejected with its reason (#345).
+    const error = line.includes("entity") ? expect.stringMatching(/^unsupported entity NBT: entity NBT path foo is not supported/) : "unsupported command";
+    expect(executeCommand(state, toCommandIR(line, parsed.nodes)), line).toMatchObject({success: false, error});
   }
   expect(state.scores.objectives.size).toBe(0);
   expect(state.storage.values.size).toBe(0);

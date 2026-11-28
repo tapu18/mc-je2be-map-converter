@@ -1,5 +1,5 @@
 import {
-  commandBlockBehind, commandBlockLinks, compileModifier, normalizeCommandIR, rewriteCommand, rewriteNativeCommand, runtimeFamilies, serializeCommandIR, toCommandIR,
+  commandBlockBehind, commandBlockLinks, compileModifier, entityNbtRejection, normalizeCommandIR, rewriteCommand, rewriteNativeCommand, runtimeFamilies, serializeCommandIR, toCommandIR,
   type CommandBlockInfo, type CommandIR, type RewriteContext, type RuntimeChain, type RuntimeState, type TextFormat,
 } from "@je2be/core";
 
@@ -110,6 +110,8 @@ export function compileRuntimeChain(
     if (command.name === "return") return command.run && assess(command.run, consumes, resolve, stack);
     if (runtimeFamilies.some(family => family.assess({ status: "parsed", ir }).status === "runtime")) return;
 
+    const rejection = entityNbtRejection(ir);
+    if (rejection) return rejection;
     const native = resolve(ir.source);
     if (native === undefined) return `ランタイム実行・BE への委譲ともに未対応: ${command.name}`;
     if (consumes) return pendingDecision;

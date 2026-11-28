@@ -41,6 +41,10 @@ export interface ExecutionHost {
   entities(): readonly RuntimeEntity[];
   /** Read the current Java-format NBT for a selected entity, when available. */
   readEntityNbt?(id: string): NbtCompound | undefined;
+  /** Virtual NBT `Motion` in blocks per tick, or undefined when the host cannot read it (#345). */
+  entityMotion?(id: string): Position | undefined;
+  /** Virtual NBT `UUID` as Java's four signed ints, or undefined when the host holds no Java UUID for the entity (#345). */
+  entityUuid?(id: string): readonly [number, number, number, number] | undefined;
   /** Return the full block state, including air in loaded positions and block entity data without coordinates. */
   readBlock(dimension: string, position: Position): Block | undefined;
   writeBlock?(dimension: string, position: Position, block: Block): ExecutionResult;

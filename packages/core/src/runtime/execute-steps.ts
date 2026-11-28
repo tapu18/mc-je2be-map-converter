@@ -9,6 +9,7 @@ import { getNbtPath } from "./nbt-path.ts";
 import { setNbtPath } from "./nbt-mutation.ts";
 import type { Frame, Outcome, RuntimeState } from "./command.ts";
 import type { ExecutionResult } from "./index.ts";
+import type { NbtTag } from "../nbt/nbt.ts";
 
 type Store = (outcome: ExecutionResult) => void;
 export interface ExecuteBranch {
@@ -170,16 +171,27 @@ const stores = new Map<string, Compile>([
   }],
   ["storage", step => {
     const [mode, , id, path, type, scale] = step.nodes;
-    if (id?.value?.kind !== "resource" || path?.value?.kind !== "nbtPath" || type?.name !== "int" || scale?.value?.kind !== "number") return;
+    const convert = storedNumbers.get(type?.name ?? "");
+    if (id?.value?.kind !== "resource" || path?.value?.kind !== "nbtPath" || !convert || scale?.value?.kind !== "number") return;
     const storageId = id.value.id, nbtPath = path.value.path, multiplier = scale.value.value;
     return function* (state, branch) {
       const store: Store = outcome => {
-        const n = Math.trunc(storeValue(mode?.name === "success", outcome) * multiplier);
-        setNbtPath(state.storage.writable(storageId), nbtPath, {type: "int", value: Math.max(-2147483648, Math.min(2147483647, n))});
+        setNbtPath(state.storage.writable(storageId), nbtPath, convert(storeValue(mode?.name === "success", outcome) * multiplier));
       };
       return [{...branch, stores: [...branch.stores, store]}];
     };
   }],
+]);
+
+// Java's casts of the scaled double: narrowing to int saturates, then byte and short wrap.
+const saturatedInt = (value: number) => Math.max(-2147483648, Math.min(2147483647, Math.trunc(value))) || 0;
+const storedNumbers = new Map<string, (value: number) => NbtTag>([
+  ["byte", value => ({type: "byte", value: (saturatedInt(value) << 24) >> 24})],
+  ["short", value => ({type: "short", value: (saturatedInt(value) << 16) >> 16})],
+  ["int", value => ({type: "int", value: saturatedInt(value)})],
+  ["long", value => ({type: "long", value: BigInt.asIntN(64, BigInt(Math.trunc(Math.max(-(2 ** 63), Math.min(2 ** 63 - 1, value)))))})],
+  ["float", value => ({type: "float", value: Math.fround(value)})],
+  ["double", value => ({type: "double", value})],
 ]);
 
 const compileCondition: Compile = (step, host) => conditions.get(step.nodes[0]?.name ?? "")?.(step, host);
