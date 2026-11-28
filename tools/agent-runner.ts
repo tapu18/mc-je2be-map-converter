@@ -47,8 +47,8 @@ interface State {
   runs: number;
   tasks: Task[];
   manager?: ManagerState;
-  /** Provider quota per CLI: launches of that CLI wait until the reset time. */
-  limits?: Partial<Record<Agent, { until: number; message: string }>>;
+  /** Holds per CLI: launches of that CLI wait until `until`. A `failure` hold is a launch that failed before work. */
+  limits?: Partial<Record<Agent, { until: number; message: string; kind?: 'quota' | 'failure' }>>;
   codeWarning?: string;
   startupCode?: string[];
 }
@@ -212,14 +212,23 @@ async function main() {
       const reset = limitResetAt(message, now);
       // One minute of slack: reset clocks are minute-rounded.
       const until = reset !== undefined && reset > now ? reset + 60_000 : now + config.limitWaitSeconds * 1000;
-      (state.limits ??= {})[agent] = { until, message: message.slice(0, 500) };
+      (state.limits ??= {})[agent] = { until, message: message.slice(0, 500), kind: 'quota' };
       await save();
       log(`${agent} の使用量の上限: ${new Date(until).toISOString()} まで ${agent} の起動を見送ります`);
       return true;
     };
+    // An unrecognized failure before work may be an unknown quota message or an outage:
+    // wait instead of exiting, so the runner survives until the condition clears.
+    const holdAfterFailure = async (agent: Agent, message: string) => {
+      const until = Date.now() + config.limitWaitSeconds * 1000;
+      (state.limits ??= {})[agent] = { until, message: message.slice(0, 500), kind: 'failure' };
+      await save();
+      log(`${agent} が作業前に失敗: ${new Date(until).toISOString()} まで ${agent} の起動を見送ります。続く場合は設定とログを確認してください`);
+    };
+    const holdReason = (agent: Agent) => limited(agent)?.kind === 'failure' ? '起動失敗のため' : '使用量の上限で';
     const runManager = async (idle: boolean): Promise<boolean> => {
       if (!managerDue(config.manager, state.manager, Date.now(), idle)) return false;
-      if (limited(config.manager.agent)) { log(`[PM] ${config.manager.agent} は使用量の上限で見送り中`); return false; }
+      if (limited(config.manager.agent)) { log(`[PM] ${config.manager.agent} は${holdReason(config.manager.agent)}見送り中`); return false; }
       const previous = state.manager;
       const day = new Date().toISOString().slice(0, 10);
       const manager: ManagerState = {
@@ -319,7 +328,7 @@ async function main() {
     /** Returns 'limited' when the selected CLI is waiting for its quota, so other tasks may run. */
     const run = async (task: Task, item: Issue, pr?: PullRequest): Promise<'limited' | undefined> => {
       const { agent, args } = workerFor(item);
-      if (limited(agent)) { log(`#${task.issue} ${agent} は使用量の上限で見送り中（${new Date(limited(agent)!.until).toISOString()} まで）`); return 'limited'; }
+      if (limited(agent)) { log(`#${task.issue} ${agent} は${holdReason(agent)}見送り中（${new Date(limited(agent)!.until).toISOString()} まで）`); return 'limited'; }
       if (task.attempts >= config.maxAttempts) { await stopTask(task, `実行回数の上限 ${config.maxAttempts} 回に到達`); return; }
       if ((task.totalAttempts ?? task.attempts) >= config.maxTotalAttempts) { await stopTask(task, `合計実行回数の上限 ${config.maxTotalAttempts} 回に到達`); return; }
       if (state.runs >= config.maxRunsPerDay) { log('Daily run limit reached; waiting.'); return; }
@@ -340,7 +349,7 @@ async function main() {
       await writeFile(logfile, `agent-runner launch: ${JSON.stringify(launch)}\n`, { mode: 0o600 });
       log(`Running ${agent} ${JSON.stringify(args)} for #${task.issue}, attempt ${task.attempts}; log=${logfile}`);
       const progress = await followProgress(logfile, message => log(`#${task.issue} ${message}`));
-      let quota = false;
+      let refunded = false;
       try {
         await command(agent, args,
         { cwd: task.worktree, timeoutMs: config.timeoutSeconds * 1000, signal: abort.signal, log: logfile, input: prompt });
@@ -349,14 +358,13 @@ async function main() {
         task.error = String(error);
         log(task.error);
         if (await recordLimit(agent, logfile, error)) {
-          quota = true;
+          refunded = true;
           task.attempts--;
           task.totalAttempts!--;
           state.runs--;
           launch.counted = false;
           launch.limited = true;
-        } else if ((error instanceof CommandError && (error.exitCode === 2 ||
-              (error.exitCode !== null && await failedBeforeWork(logfile)))) ||
+        } else if ((error instanceof CommandError && error.exitCode === 2) ||
             ['ENOENT', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) {
           // Invalid invocation / missing executable is infrastructure failure, not work.
           task.attempts--;
@@ -365,9 +373,17 @@ async function main() {
           launch.counted = false;
           await save();
           throw new AgentLaunchError(`AI CLI could not start. Fix the configuration and restart.\n${task.error}`);
+        } else if (error instanceof CommandError && error.exitCode !== null && await failedBeforeWork(logfile)) {
+          // Not work either: refund, then hold this CLI instead of stopping the runner.
+          refunded = true;
+          task.attempts--;
+          task.totalAttempts!--;
+          state.runs--;
+          launch.counted = false;
+          await holdAfterFailure(agent, task.error);
         }
       } finally { launch.finishedAt = Date.now(); await progress.close(); await save(); }
-      if (before && !quota) { // A quota failure is already refunded.
+      if (before && !refunded) { // A refunded launch did no work.
         try {
           const after = await remoteHead();
           if (after && after !== before) {
