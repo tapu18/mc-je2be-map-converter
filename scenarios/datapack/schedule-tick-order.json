@@ -1,0 +1,77 @@
+{
+  "description": "同じ tick に期限が来た schedule と tick 関数の前後（#361）。tick の合間に 1t 後を予約し、1 tick だけ進めた時点の記録で順序を区別する。load で予約した関数の実行 tick も記録する",
+  "setup": [
+    "scoreboard objectives add order dummy",
+    "data modify storage m2:order trace set value []"
+  ],
+  "datapack": {
+    "functions": {
+      "m2:order/load": [
+        "schedule function m2:order/from_load 1t"
+      ],
+      "m2:order/tick": [
+        "scoreboard players add #tick order 1",
+        "data modify storage m2:order trace append value {source:\"tick\"}",
+        "execute store result storage m2:order trace[-1].tick int 1 run scoreboard players get #tick order"
+      ],
+      "m2:order/from_load": [
+        "data modify storage m2:order trace append value {source:\"from_load\"}",
+        "execute store result storage m2:order trace[-1].tick int 1 run scoreboard players get #tick order"
+      ],
+      "m2:order/from_gap": [
+        "data modify storage m2:order trace append value {source:\"from_gap\"}",
+        "execute store result storage m2:order trace[-1].tick int 1 run scoreboard players get #tick order"
+      ]
+    },
+    "functionTags": {
+      "minecraft:load": {
+        "values": [
+          "m2:order/load"
+        ]
+      },
+      "minecraft:tick": {
+        "values": [
+          "m2:order/tick"
+        ]
+      }
+    }
+  },
+  "actions": [
+    {
+      "ticks": 1
+    },
+    {
+      "run": "data modify storage m2:order after_first set from storage m2:order trace"
+    },
+    {
+      "run": "schedule function m2:order/from_gap 1t"
+    },
+    {
+      "ticks": 1
+    },
+    {
+      "run": "data modify storage m2:order after_second set from storage m2:order trace"
+    },
+    {
+      "ticks": 1
+    }
+  ],
+  "observe": {
+    "scores": [
+      "order"
+    ],
+    "storage": [
+      "m2:order"
+    ]
+  },
+  "bedrockRuntime": "actions",
+  "requiredObservations": [
+    "scores.order",
+    "storage.m2:order"
+  ],
+  "knownDiffs": {
+    "storage.m2:order.after_first": "BE のランタイムは期限の来た schedule を tick 関数より前に動かすが、Java は tick 関数の後に動かす（#440）",
+    "storage.m2:order.after_second": "BE のランタイムは期限の来た schedule を tick 関数より前に動かすが、Java は tick 関数の後に動かす（#440）",
+    "storage.m2:order.trace": "BE のランタイムは期限の来た schedule を tick 関数より前に動かすが、Java は tick 関数の後に動かす（#440）"
+  }
+}

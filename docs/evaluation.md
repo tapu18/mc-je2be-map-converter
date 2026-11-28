@@ -57,6 +57,11 @@ JE 26.3 → Chunker 1.21.0 → BDS 1.26.63.1で同シナリオのJava・BEテス
 その2件の自動成立率は100%だが、ブリッジの補助を含むサーバー内検証なので clearConfirmed は false。
 未検証の製品動作まで成功へ拡張しない。
 
+`evaluations/gimmick-door.observed.json` は自作の `scenarios/datapack/gimmick-door.json`（#361）に対応する。
+配布マップの関数の上位の型だけで作った扉の仕掛けを、初期化・委譲先のない行の後続・タイマーで開く・予約で閉じる・
+繰り返しの予約の5ギミックに分けた。JE 26.3 → BDS 1.26.66.1 のランタイムで3回連続同じ結果（2026-11-28）。
+繰り返しの予約は、同じ tick の `schedule` と `tick` 関数の順序が Java と逆なため不成立（#440）で、変換レポートは事前に警告していない。
+
 `evaluations/required-gate.illustrative.json` は、必須の表示・クリックギミックが未検証で進行を保証できない
 状況を示す説明用の例。実マップの不具合を観測した記録ではない。ボタンへの置換は未実証の手修正候補として
 記録する。成立率はnull、必須ギミックはblockersに残り、clearConfirmedはfalseとなる。

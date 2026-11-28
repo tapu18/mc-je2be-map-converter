@@ -1,0 +1,52 @@
+{
+  "java": "26.3",
+  "state": {
+    "scores": {
+      "door": {
+        "#named": 1,
+        "#phase": 2,
+        "#pulses": 2,
+        "#delay": 2,
+        "#after": 8,
+        "#timer": 8,
+        "#loaded": 1,
+        "#limit": 3
+      }
+    },
+    "storage": {
+      "m2:door": {
+        "timer": 8,
+        "log": [
+          {
+            "tick": 2,
+            "event": "pulse"
+          },
+          {
+            "tick": 3,
+            "event": "open"
+          },
+          {
+            "tick": 4,
+            "event": "close"
+          },
+          {
+            "event": "record"
+          },
+          {
+            "tick": 5,
+            "event": "pulse"
+          }
+        ],
+        "closed": {
+          "name": "door"
+        },
+        "config": {
+          "name": "door",
+          "open": {
+            "delay": 2
+          }
+        }
+      }
+    }
+  }
+}

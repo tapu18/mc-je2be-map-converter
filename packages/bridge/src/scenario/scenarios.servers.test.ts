@@ -56,9 +56,10 @@ for (const s of selected) {
       const loadTick = s.bedrockRuntime === "load-tick";
       const { state, log } = await (loadTick ? runBedrockLoadTick(s, servers.java.version)
         : s.bedrockRuntime === "actions" ? runBedrockRuntimeActions(s, servers.java.version) : runBedrock(s));
-      if (loadTick) {
-        const [id] = s.observe.storage!;
-        const expected = golden.state.storage?.[id!] as { trace: { source: string }[]; after_reload: unknown[] };
+      // datapack/load-tick traces command-block rows that BE cannot run (#236). Other load-tick scenarios use knownDiffs.
+      const [id] = s.observe.storage ?? [];
+      const expected = golden.state.storage?.[id!] as { trace?: { source: string }[] } | undefined;
+      if (loadTick && expected?.trace) {
         // Permit only the absent command-block rows. Load, every tick row and the reload snapshot must match.
         expect(state.storage?.[id!], log.join("\n")).toEqual({
           ...expected, trace: expected.trace.filter(row => row.source !== "block"),

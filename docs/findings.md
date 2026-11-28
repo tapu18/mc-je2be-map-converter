@@ -256,6 +256,7 @@ Java 26.3 で `reload` 後に操作し、スコアと command storage をワー�
 | storage とマクロ | `merge` は入れ子の既存キーを残し、指定したキーを更新・追加した。スコアを storage に保存し、2組の引数でマクロを呼ぶと、それぞれの名前に対応するスコア −7 と 12 が付いた | [storage-macro.java.json](../scenarios/datapack/storage-macro.java.json) |
 | 予約実行 | `append` の2件は予約から 2、4 tick 後に動いた。`replace` を使った関数は古い予約の 2 tick 後には動かず、5 tick 後に1回動いた。`clear` で取り消した 3、6 tick 後の2件は、7 tick 後まで記録されなかった | [schedule.java.json](../scenarios/datapack/schedule.java.json) |
 | load と tick | tick を止めて `reload` を済ませた時点の記録は空。最初の `tick step` で load が先に1回動いた。続く4組は各組で tick 関数 → 反復コマンドブロックの順に動き、各組の両方が同じ tick 番号 1〜4 を記録した | [load-tick.java.json](../scenarios/datapack/load-tick.java.json) |
+| 同じ tick の schedule と tick 関数（#361） | 合間に 1t 後を予約して `tick step` を1回進めると、tick 関数（#tick=2）→ 予約した関数（#tick=2）の順に動いた。load で 1t 後に予約した関数は、最初の `tick step` の中で load → tick 関数（#tick=1）→ 予約した関数（#tick=1）の順に動いた | [schedule-tick-order.java.json](../scenarios/datapack/schedule-tick-order.java.json) |
 
 ## 実機 CI の計時（#108）
 
@@ -649,3 +650,11 @@ BDS 1.26.66.1。`poc/command-forms/command-forms.servers.test.ts`（3 回連続�
 - `recipe give/take <プレイヤー> *` は成功した。`minecraft:stick`・`minecraft:wooden_pickaxe` は成功し、`minecraft:crafting_table`・`minecraft:chest`・存在しない ID はエラーなしで successCount 0。プレイヤー以外のセレクターは構文エラー
 - `ride <乗る者> start_riding <乗り物>` は豚と防具立てをトロッコに乗せ（`minecraft:riding` が付く）、`stop_riding` で降ろした。牛・村人・防具立てを乗り物にすると successCount 0。試験用プレイヤーはボートに乗らなかった。豚は近くのトロッコに自分から乗り直すことがある
 - `camera <プレイヤー> set minecraft:free pos … facing <エンティティ>`、`camera <プレイヤー> clear`、`gamemode spectator` は試験用プレイヤーで成功した
+
+## データパックだけで動く仕掛けのランタイム照合（#361）
+
+BDS 1.26.66.1 で、配布マップの関数の上位の型（`docs/corpus-patterns.md`）だけで作った扉の仕掛け [gimmick-door](../scenarios/datapack/gimmick-door.json) を変換し、`load` と tick 1〜8 をランタイムで動かして Java 26.3 の正解データと比べた（`bedrockRuntime: "load-tick"`、3回連続で同じ結果、`packages/bridge/src/scenario/scenarios.servers.test.ts`）。
+
+- `load` での `scoreboard objectives add`・`players set`、storage の初期化、`execute if score … matches` と `if score … >= …` からの関数呼び出し、`execute store result storage/score`、`data get`・`set from`・`remove`、`execute if/unless data storage`、`schedule function`・`schedule clear` を使った。スコア 8 件と storage の `timer`・`config`・`closed` が一致した
+- 委譲先のない `advancement revoke @a only …` を `load` の7行目と `tick` の4行目に置いた。BE ではそれぞれ1回だけ `fails without a BE command` の警告が出て、後続の行（`#loaded = 1`）と以後の tick（`#after = 8`）が Java と一致した
+- 一致しなかったのは storage の `log`（予約した関数の記録の順序と tick 番号）だけだった。ランタイムは期限の来た `schedule` を `tick` タグより前に動かすが、Java は `tick` 関数の後に動かす（上の表の「同じ tick の schedule と tick 関数」）。[schedule-tick-order](../scenarios/datapack/schedule-tick-order.json) の BE では、合間に予約した関数が tick 関数より前に動き、`load` で 1t 後に予約した関数は最初の tick 関数より前（#tick=0）に動いた。直す作業は #440
