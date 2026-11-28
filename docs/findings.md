@@ -636,3 +636,16 @@ BDS 1.26.66.1、`@minecraft/server` 2.12.0-beta.1.26.66-stable。`poc/summon-nbt
 - `Dimension.spawnEntity` の `initialRotation: 90` は yaw だけを 90 にし、pitch は 0
 - 召喚と同じ tick の `addTag`（3 つ）、`setRotation({x: 30, y: -45})`、改行を含む `nameTag`、245 バイトの JSON 文字列の `setDynamicProperty` は、同じ tick と次の tick に読み戻せた。防具立ては次の tick もピッチ 30 を保った（ゾンビは AI が頭を動かし、次の tick に変わった）
 - 防具立て・ゾンビの `getComponent("minecraft:equippable")` は `undefined` で、Script API から装備を書けない。`replaceitem entity … slot.weapon.mainhand 0 diamond_sword` と `slot.armor.head 0 carved_pumpkin` は成功し、`hasitem` の `testfor` で読み戻せた
+
+### random・team・bossbar・damage・rotate・forceload・recipe・ride・spectate の BE の受け皿（#359）
+
+BDS 1.26.66.1。`poc/command-forms/command-forms.servers.test.ts`（3 回連続で通過、結果は `poc/command-forms/results.json`）。GameTest の試験用プレイヤー 1 人を置いて測った。形ごとの判定は [台帳の上書き](compatibility-verdicts.jsonl)（`issue: 359`）。
+
+- `random`・`team`・`bossbar`・`rotate`・`forceload`・`spectate` は BE のコマンドになく、構文エラー（`Unexpected "<命令名>"`）になる
+- `scoreboard players random <名前> <目的> 1 6` は 30 回とも成功し、値は 1〜6（両端を含む）。最小と最大が同じ（`5 5`）か逆（`6 1`）だと successCount 0。int の全範囲は成功した
+- `damage <対象> <整数> [原因] [entity <与えた者>]` は豚で成功した。小数（`0.5`）、名前空間付きの原因（`minecraft:generic`）、Java だけの型名（`in_fire`）、位置の指定（`at`）は構文エラー。続けて 3 回成功しても体力は 10 から 9 に下がっただけだった。一致なしは successCount 0
+- 防具立てで `execute as … at @s run tp @s ~ ~ ~ <yaw> <pitch>`・`~180 ~`・`facing <位置>`・`facing <エンティティ>` は位置を変えずに yaw を変えた（-90、90、-90 を読み戻した）。pitch は指定どおりに読み戻せなかった（`90 30` で 20、facing で 0）。コンソールから実行する `~` は 0 0 0 を基準にする
+- `tickingarea add` は 10 領域まで（11 個目から successCount 0）。1 領域 90 チャンクは成功し、100 チャンクは 0。`tickingarea remove <位置>` はその位置を含む領域全体を消し、どの領域にもない位置は 0
+- `recipe give/take <プレイヤー> *` は成功した。`minecraft:stick`・`minecraft:wooden_pickaxe` は成功し、`minecraft:crafting_table`・`minecraft:chest`・存在しない ID はエラーなしで successCount 0。プレイヤー以外のセレクターは構文エラー
+- `ride <乗る者> start_riding <乗り物>` は豚と防具立てをトロッコに乗せ（`minecraft:riding` が付く）、`stop_riding` で降ろした。牛・村人・防具立てを乗り物にすると successCount 0。試験用プレイヤーはボートに乗らなかった。豚は近くのトロッコに自分から乗り直すことがある
+- `camera <プレイヤー> set minecraft:free pos … facing <エンティティ>`、`camera <プレイヤー> clear`、`gamemode spectator` は試験用プレイヤーで成功した
