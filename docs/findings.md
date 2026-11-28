@@ -583,3 +583,12 @@ BDS 1.26.66.1、`@minecraft/server` 2.12.0-beta、変換と同じ `je2be_init` �
 - **部分書き込みの模擬**：確定していない世代の片（マーカーが指さない `je2be:state:<世代>:<slot>:<片>`）を書いて再起動しても、復元はそれを読まずに成功した。片は回収されずに残った。確定した世代の片を 1 件消すと、次の tick の確定が `state persistence failed: Error: missing state chunk <世代>/<slot>/<片>` で失敗して tick が止まった。再起動後も `[je2be] initialization failed` で止まり、初期データへの巻き戻しや一部だけの読み込みは起きなかった（`load` は動かない）
 - **容量**：動的プロパティ 1 件の上限は UTF-8 で 32,767 バイト（既知、`poc/dynamic-properties/`）。32,767 バイトの値を 4,000 件（合計 131,135,243 バイト）書いても失敗せず、500 件ごとに約 50〜160ms かかった。正常停止の後、全件を読み直せた。確定マーカーの索引は 1 件の動的プロパティに収める。600 個の objective を持つ初期状態では、`state index exceeds dynamic property capacity` で初期化が止まり、マーカーは書かれなかった。切り詰めは起きなかった
 - **マクロ**：`function test:macro {holder:"m",score:7}` と `with storage` による呼び出しは、BDS で中核と同じ結果になった。展開に失敗した呼び出し（引数の欠け、引数の境界を変える値）は、何も実行しなかった。失敗はスクリプトの `console.warn` で `[Scripting] [je2be] function test:macro: <理由>` としてコンテンツログ（`content-log-console-output-enabled`）に出た
+
+### エンティティ NBT の読み取り（#345）
+
+Java 26.3 で記録した `scenarios/datapack/entity-nbt-read.java.json`（Node のフェイクホストとの照合は `packages/bridge/src/runtime-context-ir.data.test.ts`）。
+
+- `data get entity` の値は保存型の値に倍率を掛けて切り下げる。`Rotation` は float のため、`Rotation:[33.3f,12.7f]` の 10 倍は 332 と 126 になる。倍率なしの `Rotation[1]`（-30.25）は -31、`Motion[2]`（-0.125）は -1
+- 添字なしの `Pos` は 3、`UUID` は 4（要素数）を返す。`UUID[3]`・`UUID[-1]` のように int 配列にも添字（負を含む）が使え、要素の int を返す
+- 停止中の tick で召喚した `NoGravity` の防具立ては、召喚時の `Motion` をそのまま返す。`Motion` を指定しないマーカーも `Motion:[0.0,0.0,0.0]` を持つ
+- `execute store result storage … double 0.001` は `data get` の結果（1250）を 1.25 の double として書く
