@@ -80,7 +80,7 @@ export async function runJava(s: Scenario, version?: ScenarioJavaVersion): Promi
     const dump = await java.dump({
       scores: !!(s.observe.scores || s.observe.entityScores),
       storage: !!s.observe.storage,
-      entities: !!s.observe.entityTags,
+      entities: !!(s.observe.entityTags || s.observe.entityPoses),
     });
     const blocks = [];
     for (const b of s.observe.blocks ?? []) {
@@ -225,7 +225,7 @@ export async function runBedrock(s: Scenario, mapBlock?: BedrockBlockMapper): Pr
       const [from, to] = blockRange(b);
       blocks.push(...await observe<RawBlock[]>("blocks", { from, to }));
     }
-    const entities = s.observe.entityTags ? await observe<RawEntity[]>("entities", { scoreObjectives: s.observe.entityScores ?? [] }) : undefined;
+    const entities = s.observe.entityTags || s.observe.entityPoses ? await observe<RawEntity[]>("entities", { scoreObjectives: s.observe.entityScores ?? [] }) : undefined;
     const state = normalizeBedrock(s.observe, { ...(scores ? { scores } : {}), blocks, ...(entities ? { entities } : {}) }, mapBlock);
     if (entityEffects) state.entityEffects = entityEffects;
     return { state, log };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assessComparison, compareStates, unexpectedDiffs } from "./compare.ts";
-import { javaBlockString, minimalBlockMapper, normalizeBedrock, normalizeJava } from "./normalize.ts";
+import { javaBlockString, minimalBlockMapper, normalizeBedrock, normalizeJava, wrapYaw } from "./normalize.ts";
 
 describe("scenario normalize/compare", () => {
   it("fails missing or incomparable required observations while allowing investigative comparisons", () => {
@@ -78,6 +78,28 @@ describe("scenario normalize/compare", () => {
       { path: "entityEffects.pig.minecraft:village_hero.duration", java: -1, bedrock: 1 },
       { path: "entityEffects.pig.minecraft:glowing", java: { amplifier: 0, duration: 395 }, bedrock: null },
     ]);
+  });
+
+  it("normalizes entity poses by unique tag and compares them with a float tolerance", () => {
+    const observe = { entityPoses: ["a", "b", "gone"] };
+    const raw = [
+      { type: "minecraft:armor_stand", tags: ["a"], pos: [1.25, -60, 2.5], rot: [-30, 190] },
+      { type: "minecraft:armor_stand", tags: ["b"], pos: [3, -60, 4], rot: [0, -45] },
+    ];
+    const j = normalizeJava(observe, { entities: raw });
+    expect(j.entityPoses).toEqual({ a: { pos: [1.25, -60, 2.5], rot: [-30, -170] }, b: { pos: [3, -60, 4], rot: [0, -45] }, gone: null });
+    expect(wrapYaw(180)).toBe(-180);
+    const b = normalizeBedrock(observe, { entities: [
+      { type: "minecraft:armor_stand", tags: ["a"], pos: [1.2549, -60, 2.5], rot: [0, -170.004] },
+      { type: "minecraft:armor_stand", tags: ["b", "gone"], pos: [3, -60, 4.5], rot: [0, -45] },
+    ] });
+    expect(compareStates(j, b).diffs).toEqual([
+      { path: "entityPoses.a.rot", java: [-30, -170], bedrock: [0, -170.004] },
+      { path: "entityPoses.b.pos", java: [3, -60, 4], bedrock: [3, -60, 4.5] },
+      { path: "entityPoses.gone", java: null, bedrock: { pos: [3, -60, 4.5], rot: [0, -45] } },
+    ]);
+    expect(compareStates({ entityPoses: { a: { pos: [0, 0, 0], rot: [0, 179.999] } } }, { entityPoses: { a: { pos: [0, 0, 0], rot: [0, -180] } } }).diffs).toEqual([]);
+    expect(() => normalizeJava(observe, { entities: [...raw, raw[0]!] })).toThrow(/2 体/);
   });
 
   it("formats Java block states in a stable order", () => {
