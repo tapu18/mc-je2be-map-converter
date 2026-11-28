@@ -90,5 +90,12 @@
       "m2:calls"
     ]
   },
-  "bedrockPending": "M2 のデータパック実行が未実装"
+  "bedrockRuntime": "actions",
+  "requiredObservations": [
+    "scores.result",
+    "storage.m2:calls"
+  ],
+  "knownDiffs": {
+    "storage.m2:calls.executors": "marker は BE にない Java 専用のエンティティで、変換器が summon を未対応として拒否する（代替エンティティは #383）。marker を実行者にする関数が一度も動かず、executors が空になる。"
+  }
 }
