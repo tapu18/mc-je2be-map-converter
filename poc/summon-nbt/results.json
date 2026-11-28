@@ -1,0 +1,302 @@
+{
+  "scripted": {
+    "armor_stand": {
+      "type": "minecraft:armor_stand",
+      "initialRotation": {
+        "x": 0,
+        "y": 90
+      },
+      "addTag": {
+        "ok": true,
+        "value": [
+          true,
+          true,
+          true
+        ]
+      },
+      "setRotation": {
+        "ok": true,
+        "value": {
+          "x": 30,
+          "y": -45
+        }
+      },
+      "nameTag": {
+        "ok": true,
+        "value": "Hello\nWorld"
+      },
+      "dynamic": {
+        "ok": true,
+        "value": 245
+      },
+      "setMainhand": {
+        "ok": true,
+        "value": "no equippable"
+      },
+      "setHead": {
+        "ok": true,
+        "value": "no equippable"
+      },
+      "immediate": {
+        "valid": true,
+        "tags": {
+          "ok": true,
+          "value": [
+            "je2be_a",
+            "je2be_b",
+            "je2be_c"
+          ]
+        },
+        "rotation": {
+          "ok": true,
+          "value": {
+            "x": 30,
+            "y": -45
+          }
+        },
+        "nameTag": {
+          "ok": true,
+          "value": "Hello\nWorld"
+        },
+        "dynamic": {
+          "ok": true,
+          "value": "{\"transformation\":{\"translation\":[0,0.5,0],\"left_rotation\":[0,0,0,1],\"scale\":[2,2,2],\"right_rotation\":[0,0,0,1]},\"billboard\":\"center\",\"text\":{\"text\":\"Hello\",\"color\":\"gold\"},\"background\":1073741824,\"teleport_duration\":3,\"width\":1.5,\"height\":2.25}"
+        },
+        "mainhand": {
+          "ok": true,
+          "value": null
+        },
+        "head": {
+          "ok": true,
+          "value": null
+        }
+      },
+      "nextTick": {
+        "valid": true,
+        "tags": {
+          "ok": true,
+          "value": [
+            "je2be_a",
+            "je2be_b",
+            "je2be_c"
+          ]
+        },
+        "rotation": {
+          "ok": true,
+          "value": {
+            "x": 30,
+            "y": -45
+          }
+        },
+        "nameTag": {
+          "ok": true,
+          "value": "Hello\nWorld"
+        },
+        "dynamic": {
+          "ok": true,
+          "value": "{\"transformation\":{\"translation\":[0,0.5,0],\"left_rotation\":[0,0,0,1],\"scale\":[2,2,2],\"right_rotation\":[0,0,0,1]},\"billboard\":\"center\",\"text\":{\"text\":\"Hello\",\"color\":\"gold\"},\"background\":1073741824,\"teleport_duration\":3,\"width\":1.5,\"height\":2.25}"
+        },
+        "mainhand": {
+          "ok": true,
+          "value": null
+        },
+        "head": {
+          "ok": true,
+          "value": null
+        }
+      }
+    },
+    "zombie": {
+      "type": "minecraft:zombie",
+      "initialRotation": {
+        "x": 0,
+        "y": 90
+      },
+      "addTag": {
+        "ok": true,
+        "value": [
+          true,
+          true,
+          true
+        ]
+      },
+      "setRotation": {
+        "ok": true,
+        "value": {
+          "x": 30,
+          "y": -45
+        }
+      },
+      "nameTag": {
+        "ok": true,
+        "value": "Hello\nWorld"
+      },
+      "dynamic": {
+        "ok": true,
+        "value": 245
+      },
+      "setMainhand": {
+        "ok": true,
+        "value": "no equippable"
+      },
+      "setHead": {
+        "ok": true,
+        "value": "no equippable"
+      },
+      "immediate": {
+        "valid": true,
+        "tags": {
+          "ok": true,
+          "value": [
+            "je2be_a",
+            "je2be_b",
+            "je2be_c"
+          ]
+        },
+        "rotation": {
+          "ok": true,
+          "value": {
+            "x": 30,
+            "y": -45
+          }
+        },
+        "nameTag": {
+          "ok": true,
+          "value": "Hello\nWorld"
+        },
+        "dynamic": {
+          "ok": true,
+          "value": "{\"transformation\":{\"translation\":[0,0.5,0],\"left_rotation\":[0,0,0,1],\"scale\":[2,2,2],\"right_rotation\":[0,0,0,1]},\"billboard\":\"center\",\"text\":{\"text\":\"Hello\",\"color\":\"gold\"},\"background\":1073741824,\"teleport_duration\":3,\"width\":1.5,\"height\":2.25}"
+        },
+        "mainhand": {
+          "ok": true,
+          "value": null
+        },
+        "head": {
+          "ok": true,
+          "value": null
+        }
+      },
+      "nextTick": {
+        "valid": true,
+        "tags": {
+          "ok": true,
+          "value": [
+            "je2be_a",
+            "je2be_b",
+            "je2be_c"
+          ]
+        },
+        "rotation": {
+          "ok": true,
+          "value": {
+            "x": 20,
+            "y": -45
+          }
+        },
+        "nameTag": {
+          "ok": true,
+          "value": "Hello\nWorld"
+        },
+        "dynamic": {
+          "ok": true,
+          "value": "{\"transformation\":{\"translation\":[0,0.5,0],\"left_rotation\":[0,0,0,1],\"scale\":[2,2,2],\"right_rotation\":[0,0,0,1]},\"billboard\":\"center\",\"text\":{\"text\":\"Hello\",\"color\":\"gold\"},\"background\":1073741824,\"teleport_duration\":3,\"width\":1.5,\"height\":2.25}"
+        },
+        "mainhand": {
+          "ok": true,
+          "value": null
+        },
+        "head": {
+          "ok": true,
+          "value": null
+        }
+      }
+    }
+  },
+  "command": {
+    "rotation": {
+      "successCount": {
+        "ok": true,
+        "value": 1
+      },
+      "entities": [
+        {
+          "type": "minecraft:armor_stand",
+          "rotation": {
+            "x": 30,
+            "y": 90
+          },
+          "nameTag": ""
+        }
+      ]
+    },
+    "nameTag": {
+      "successCount": {
+        "ok": true,
+        "value": 1
+      },
+      "entities": [
+        {
+          "type": "minecraft:armor_stand",
+          "rotation": {
+            "x": 0,
+            "y": 0
+          },
+          "nameTag": "Named"
+        }
+      ]
+    },
+    "zombieRotation": {
+      "successCount": {
+        "ok": true,
+        "value": 1
+      },
+      "entities": [
+        {
+          "type": "minecraft:zombie",
+          "rotation": {
+            "x": 30,
+            "y": 90
+          },
+          "nameTag": ""
+        }
+      ]
+    },
+    "equipment_je2be_cmd_rot": {
+      "setMainhand": {
+        "ok": true,
+        "value": 1
+      },
+      "setHead": {
+        "ok": true,
+        "value": 1
+      },
+      "hasMainhand": {
+        "ok": true,
+        "value": 1
+      },
+      "hasHead": {
+        "ok": true,
+        "value": 1
+      }
+    },
+    "equipment_je2be_cmd_zrot": {
+      "setMainhand": {
+        "ok": true,
+        "value": 1
+      },
+      "setHead": {
+        "ok": true,
+        "value": 1
+      },
+      "hasMainhand": {
+        "ok": true,
+        "value": 1
+      },
+      "hasHead": {
+        "ok": true,
+        "value": 1
+      }
+    }
+  }
+}

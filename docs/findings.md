@@ -627,3 +627,12 @@ Java 26.3 / BDS 1.26.66.1。`packages/bridge/src/text.servers.test.ts`（3 回�
 - text・translate（`with`・`fallback` 付き）・score（名前、`*`、`@s`、`@p`、偽プレイヤー、値のない名前、ない目的）・selector（一致なしを含む）と、色・16 進の色・太字などの書式、`extra` の深さ 2 を書き換えた `tellraw`・`titleraw title/subtitle/actionbar` は、どれも successCount 1 だった
 - successCount は受け取ったプレイヤーの数で、rawtext の中身では変わらない。BE の rawtext に未知のキー（`keybind`、`nbt`・`storage`、部分の `color`）を書いても、空の `rawtext` でも 1。`rawtext` を持たない Java 形式の JSON（`{"text":"x"}`）は 0、対象がいない `tellraw` は失敗した。表示されたかどうかは successCount では区別できない
 - Java 26.3 のサーバーは `tellraw @a 12`（数だけのテキスト）と `color:"reset"` のテキストを拒否した（同テストの `uses inputs that Java 26.3 accepts`）
+
+### summon 直後の Script API による設定（#357）
+
+BDS 1.26.66.1、`@minecraft/server` 2.12.0-beta.1.26.66-stable。`poc/summon-nbt/summon-nbt.servers.test.ts`（3 回連続で通過、結果は `poc/summon-nbt/results.json`）。防具立てとゾンビで測った。コーパスの集計と分類は [research/summon-nbt.md](research/summon-nbt.md)。
+
+- BE の `summon <種類> <位置> <yaw> <pitch>` は yaw・pitch とも付き、`summon … minecraft:entity_spawned "<名前>"` は `nameTag` に名前が付いた（防具立て・ゾンビ）
+- `Dimension.spawnEntity` の `initialRotation: 90` は yaw だけを 90 にし、pitch は 0
+- 召喚と同じ tick の `addTag`（3 つ）、`setRotation({x: 30, y: -45})`、改行を含む `nameTag`、245 バイトの JSON 文字列の `setDynamicProperty` は、同じ tick と次の tick に読み戻せた。防具立ては次の tick もピッチ 30 を保った（ゾンビは AI が頭を動かし、次の tick に変わった）
+- 防具立て・ゾンビの `getComponent("minecraft:equippable")` は `undefined` で、Script API から装備を書けない。`replaceitem entity … slot.weapon.mainhand 0 diamond_sword` と `slot.armor.head 0 carved_pumpkin` は成功し、`hasitem` の `testfor` で読み戻せた

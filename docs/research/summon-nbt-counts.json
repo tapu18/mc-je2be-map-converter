@@ -1,0 +1,4930 @@
+{
+  "skipped": {
+    "macro": 3630,
+    "different": 90,
+    "unavailable": 5,
+    "invalid": 2373
+  },
+  "shapes": {
+    "summon entity<minecraft:resource> pos<minecraft:vec3> nbt<minecraft:nbt_compound_tag>": {
+      "lines": 3296,
+      "maps": 16
+    },
+    "summon entity<minecraft:resource> pos<minecraft:vec3>": {
+      "lines": 9,
+      "maps": 3
+    }
+  },
+  "nbtLines": 3296,
+  "nbtMaps": 16,
+  "grammarVersions": {
+    "1.20.4": {
+      "lines": 1461,
+      "maps": 1
+    },
+    "1.21.11": {
+      "lines": 659,
+      "maps": 2
+    },
+    "1.21.4": {
+      "lines": 367,
+      "maps": 2
+    },
+    "1.20.6": {
+      "lines": 342,
+      "maps": 1
+    },
+    "26.2": {
+      "lines": 231,
+      "maps": 3
+    },
+    "1.21": {
+      "lines": 119,
+      "maps": 2
+    },
+    "26.3": {
+      "lines": 117,
+      "maps": 5
+    }
+  },
+  "groups": {
+    "Java 専用（表示用・marker・interaction）": {
+      "lines": 2243,
+      "maps": 15
+    },
+    "BE にもある種類": {
+      "lines": 1053,
+      "maps": 16
+    }
+  },
+  "topLevelKeyCount": {
+    "1": {
+      "lines": 410,
+      "maps": 15
+    },
+    "2": {
+      "lines": 394,
+      "maps": 12
+    },
+    "3": {
+      "lines": 379,
+      "maps": 12
+    },
+    "4": {
+      "lines": 454,
+      "maps": 11
+    },
+    "5": {
+      "lines": 133,
+      "maps": 9
+    },
+    "6": {
+      "lines": 939,
+      "maps": 9
+    },
+    "7": {
+      "lines": 261,
+      "maps": 5
+    },
+    "8": {
+      "lines": 96,
+      "maps": 7
+    },
+    "9": {
+      "lines": 94,
+      "maps": 4
+    },
+    "10": {
+      "lines": 44,
+      "maps": 6
+    },
+    "11": {
+      "lines": 32,
+      "maps": 2
+    },
+    "12": {
+      "lines": 21,
+      "maps": 3
+    },
+    "13": {
+      "lines": 13,
+      "maps": 2
+    },
+    "14": {
+      "lines": 17,
+      "maps": 2
+    },
+    "26": {
+      "lines": 2,
+      "maps": 1
+    },
+    "28": {
+      "lines": 3,
+      "maps": 2
+    },
+    "30": {
+      "lines": 1,
+      "maps": 1
+    },
+    "32": {
+      "lines": 3,
+      "maps": 1
+    }
+  },
+  "entities": {
+    "minecraft:item_display": {
+      "lines": 666,
+      "maps": 11
+    },
+    "minecraft:text_display": {
+      "lines": 629,
+      "maps": 10
+    },
+    "minecraft:marker": {
+      "lines": 469,
+      "maps": 9
+    },
+    "minecraft:interaction": {
+      "lines": 373,
+      "maps": 10
+    },
+    "minecraft:armor_stand": {
+      "lines": 291,
+      "maps": 9
+    },
+    "minecraft:arrow": {
+      "lines": 108,
+      "maps": 1
+    },
+    "minecraft:block_display": {
+      "lines": 106,
+      "maps": 6
+    },
+    "minecraft:item": {
+      "lines": 77,
+      "maps": 9
+    },
+    "minecraft:experience_orb": {
+      "lines": 60,
+      "maps": 2
+    },
+    "minecraft:firework_rocket": {
+      "lines": 37,
+      "maps": 5
+    },
+    "minecraft:villager": {
+      "lines": 31,
+      "maps": 3
+    },
+    "minecraft:wolf": {
+      "lines": 24,
+      "maps": 3
+    },
+    "minecraft:area_effect_cloud": {
+      "lines": 23,
+      "maps": 3
+    },
+    "minecraft:zombie": {
+      "lines": 20,
+      "maps": 3
+    },
+    "minecraft:guardian": {
+      "lines": 19,
+      "maps": 2
+    },
+    "minecraft:painting": {
+      "lines": 19,
+      "maps": 2
+    },
+    "minecraft:skeleton": {
+      "lines": 16,
+      "maps": 3
+    },
+    "minecraft:slime": {
+      "lines": 12,
+      "maps": 3
+    },
+    "minecraft:evoker": {
+      "lines": 12,
+      "maps": 2
+    },
+    "minecraft:piglin": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:wither": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:falling_block": {
+      "lines": 11,
+      "maps": 2
+    },
+    "minecraft:tnt": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:creeper": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:spider": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:vindicator": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:bat": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:magma_cube": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:wither_skeleton": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:wind_charge": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:item_frame": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:minecart": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:trident": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:phantom": {
+      "lines": 7,
+      "maps": 3
+    },
+    "minecraft:blaze": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:cave_spider": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:husk": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:stray": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:fireball": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:mannequin": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:iron_golem": {
+      "lines": 6,
+      "maps": 3
+    },
+    "minecraft:silverfish": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:witch": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:zombie_villager": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:shulker": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:wandering_trader": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:parched": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:pillager": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:polar_bear": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:rabbit": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:axolotl": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:copper_golem": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:ravager": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:warden": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:bogged": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:breeze": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:hoglin": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:fox": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:ghast": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:illusioner": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:shulker_bullet": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:snow_golem": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:drowned": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:frog": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:piglin_brute": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:snowball": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:chicken": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:oak_boat": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:pig": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:potion": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:salmon": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:tadpole": {
+      "lines": 1,
+      "maps": 1
+    }
+  },
+  "keys": {
+    "Tags": {
+      "lines": 3104,
+      "maps": 16
+    },
+    "Rotation": {
+      "lines": 1425,
+      "maps": 9
+    },
+    "transformation": {
+      "lines": 1216,
+      "maps": 10
+    },
+    "billboard": {
+      "lines": 937,
+      "maps": 4
+    },
+    "item": {
+      "lines": 645,
+      "maps": 9
+    },
+    "text": {
+      "lines": 601,
+      "maps": 9
+    },
+    "teleport_duration": {
+      "lines": 464,
+      "maps": 3
+    },
+    "background": {
+      "lines": 441,
+      "maps": 7
+    },
+    "height": {
+      "lines": 394,
+      "maps": 10
+    },
+    "width": {
+      "lines": 392,
+      "maps": 10
+    },
+    "Invulnerable": {
+      "lines": 360,
+      "maps": 12
+    },
+    "PersistenceRequired": {
+      "lines": 304,
+      "maps": 7
+    },
+    "DeathLootTable": {
+      "lines": 286,
+      "maps": 4
+    },
+    "Invisible": {
+      "lines": 249,
+      "maps": 7
+    },
+    "NoGravity": {
+      "lines": 238,
+      "maps": 9
+    },
+    "Marker": {
+      "lines": 232,
+      "maps": 7
+    },
+    "Health": {
+      "lines": 230,
+      "maps": 4
+    },
+    "Silent": {
+      "lines": 215,
+      "maps": 9
+    },
+    "data": {
+      "lines": 211,
+      "maps": 2
+    },
+    "NoAI": {
+      "lines": 179,
+      "maps": 7
+    },
+    "shadow": {
+      "lines": 173,
+      "maps": 4
+    },
+    "CustomName": {
+      "lines": 172,
+      "maps": 6
+    },
+    "active_effects": {
+      "lines": 160,
+      "maps": 5
+    },
+    "Small": {
+      "lines": 160,
+      "maps": 3
+    },
+    "attributes": {
+      "lines": 153,
+      "maps": 2
+    },
+    "Motion": {
+      "lines": 147,
+      "maps": 5
+    },
+    "Team": {
+      "lines": 115,
+      "maps": 3
+    },
+    "NoBasePlate": {
+      "lines": 113,
+      "maps": 4
+    },
+    "CanPickUpLoot": {
+      "lines": 109,
+      "maps": 2
+    },
+    "crit": {
+      "lines": 108,
+      "maps": 1
+    },
+    "damage": {
+      "lines": 108,
+      "maps": 1
+    },
+    "PierceLevel": {
+      "lines": 108,
+      "maps": 1
+    },
+    "alignment": {
+      "lines": 105,
+      "maps": 3
+    },
+    "Attributes": {
+      "lines": 105,
+      "maps": 3
+    },
+    "Pose": {
+      "lines": 100,
+      "maps": 3
+    },
+    "block_state": {
+      "lines": 95,
+      "maps": 6
+    },
+    "equipment": {
+      "lines": 92,
+      "maps": 2
+    },
+    "line_width": {
+      "lines": 88,
+      "maps": 3
+    },
+    "view_range": {
+      "lines": 86,
+      "maps": 3
+    },
+    "Item": {
+      "lines": 81,
+      "maps": 10
+    },
+    "ArmorItems": {
+      "lines": 76,
+      "maps": 4
+    },
+    "HandItems": {
+      "lines": 65,
+      "maps": 4
+    },
+    "Passengers": {
+      "lines": 62,
+      "maps": 6
+    },
+    "Value": {
+      "lines": 60,
+      "maps": 2
+    },
+    "drop_chances": {
+      "lines": 57,
+      "maps": 1
+    },
+    "CustomNameVisible": {
+      "lines": 48,
+      "maps": 4
+    },
+    "Age": {
+      "lines": 46,
+      "maps": 5
+    },
+    "variant": {
+      "lines": 37,
+      "maps": 3
+    },
+    "FireworksItem": {
+      "lines": 35,
+      "maps": 5
+    },
+    "brightness": {
+      "lines": 34,
+      "maps": 3
+    },
+    "PickupDelay": {
+      "lines": 33,
+      "maps": 3
+    },
+    "LifeTime": {
+      "lines": 31,
+      "maps": 4
+    },
+    "ShowArms": {
+      "lines": 25,
+      "maps": 4
+    },
+    "Size": {
+      "lines": 19,
+      "maps": 3
+    },
+    "DeathTime": {
+      "lines": 19,
+      "maps": 2
+    },
+    "facing": {
+      "lines": 19,
+      "maps": 2
+    },
+    "IsImmuneToZombification": {
+      "lines": 16,
+      "maps": 1
+    },
+    "DrownedConversionTime": {
+      "lines": 15,
+      "maps": 3
+    },
+    "Count": {
+      "lines": 15,
+      "maps": 1
+    },
+    "item_display": {
+      "lines": 15,
+      "maps": 1
+    },
+    "Duration": {
+      "lines": 13,
+      "maps": 3
+    },
+    "interpolation_duration": {
+      "lines": 13,
+      "maps": 1
+    },
+    "ArmorDropChances": {
+      "lines": 12,
+      "maps": 3
+    },
+    "HandDropChances": {
+      "lines": 12,
+      "maps": 3
+    },
+    "Air": {
+      "lines": 11,
+      "maps": 3
+    },
+    "Brain": {
+      "lines": 11,
+      "maps": 3
+    },
+    "PortalCooldown": {
+      "lines": 11,
+      "maps": 3
+    },
+    "BlockState": {
+      "lines": 11,
+      "maps": 2
+    },
+    "potion_contents": {
+      "lines": 11,
+      "maps": 2
+    },
+    "fuse": {
+      "lines": 11,
+      "maps": 1
+    },
+    "Fire": {
+      "lines": 10,
+      "maps": 2
+    },
+    "OnGround": {
+      "lines": 10,
+      "maps": 2
+    },
+    "Particle": {
+      "lines": 10,
+      "maps": 1
+    },
+    "Radius": {
+      "lines": 10,
+      "maps": 1
+    },
+    "AbsorptionAmount": {
+      "lines": 9,
+      "maps": 2
+    },
+    "FallFlying": {
+      "lines": 9,
+      "maps": 2
+    },
+    "HurtByTimestamp": {
+      "lines": 9,
+      "maps": 2
+    },
+    "HurtTime": {
+      "lines": 9,
+      "maps": 2
+    },
+    "FallDistance": {
+      "lines": 9,
+      "maps": 1
+    },
+    "DisabledSlots": {
+      "lines": 8,
+      "maps": 3
+    },
+    "Facing": {
+      "lines": 8,
+      "maps": 1
+    },
+    "see_through": {
+      "lines": 8,
+      "maps": 1
+    },
+    "profile": {
+      "lines": 7,
+      "maps": 1
+    },
+    "ForcedAge": {
+      "lines": 6,
+      "maps": 2
+    },
+    "Glowing": {
+      "lines": 6,
+      "maps": 2
+    },
+    "LeftHanded": {
+      "lines": 6,
+      "maps": 1
+    },
+    "PlayerCreated": {
+      "lines": 5,
+      "maps": 2
+    },
+    "CannotHunt": {
+      "lines": 5,
+      "maps": 1
+    },
+    "InLove": {
+      "lines": 5,
+      "maps": 1
+    },
+    "Life": {
+      "lines": 5,
+      "maps": 1
+    },
+    "RabbitType": {
+      "lines": 5,
+      "maps": 1
+    },
+    "ShotAtAngle": {
+      "lines": 5,
+      "maps": 1
+    },
+    "VillagerData": {
+      "lines": 5,
+      "maps": 1
+    },
+    "CanBreakDoors": {
+      "lines": 4,
+      "maps": 2
+    },
+    "Sitting": {
+      "lines": 4,
+      "maps": 2
+    },
+    "Type": {
+      "lines": 4,
+      "maps": 2
+    },
+    "Variant": {
+      "lines": 4,
+      "maps": 2
+    },
+    "AttachFace": {
+      "lines": 4,
+      "maps": 1
+    },
+    "Pumpkin": {
+      "lines": 4,
+      "maps": 1
+    },
+    "response": {
+      "lines": 4,
+      "maps": 1
+    },
+    "Angry": {
+      "lines": 3,
+      "maps": 1
+    },
+    "Crouching": {
+      "lines": 3,
+      "maps": 1
+    },
+    "Lifetime": {
+      "lines": 3,
+      "maps": 1
+    },
+    "MoreCarrotTicks": {
+      "lines": 3,
+      "maps": 1
+    },
+    "Sleeping": {
+      "lines": 3,
+      "maps": 1
+    },
+    "Trusted": {
+      "lines": 3,
+      "maps": 1
+    },
+    "weather_state": {
+      "lines": 3,
+      "maps": 1
+    },
+    "IsBaby": {
+      "lines": 2,
+      "maps": 2
+    },
+    "text_opacity": {
+      "lines": 2,
+      "maps": 2
+    },
+    "UUID": {
+      "lines": 2,
+      "maps": 2
+    },
+    "AngerTime": {
+      "lines": 2,
+      "maps": 1
+    },
+    "ExplosionRadius": {
+      "lines": 2,
+      "maps": 1
+    },
+    "FallHurtAmount": {
+      "lines": 2,
+      "maps": 1
+    },
+    "FallHurtMax": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Fireworks": {
+      "lines": 2,
+      "maps": 1
+    },
+    "FromBucket": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Fuse": {
+      "lines": 2,
+      "maps": 1
+    },
+    "HurtEntities": {
+      "lines": 2,
+      "maps": 1
+    },
+    "ignited": {
+      "lines": 2,
+      "maps": 1
+    },
+    "powered": {
+      "lines": 2,
+      "maps": 1
+    },
+    "shadow_radius": {
+      "lines": 2,
+      "maps": 1
+    },
+    "shadow_strength": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Time": {
+      "lines": 2,
+      "maps": 1
+    },
+    "effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "EggLayTime": {
+      "lines": 1,
+      "maps": 1
+    },
+    "fall_distance": {
+      "lines": 1,
+      "maps": 1
+    },
+    "Fixed": {
+      "lines": 1,
+      "maps": 1
+    },
+    "InWaterTime": {
+      "lines": 1,
+      "maps": 1
+    },
+    "Owner": {
+      "lines": 1,
+      "maps": 1
+    },
+    "Pos": {
+      "lines": 1,
+      "maps": 1
+    },
+    "TileX": {
+      "lines": 1,
+      "maps": 1
+    },
+    "TileY": {
+      "lines": 1,
+      "maps": 1
+    },
+    "TileZ": {
+      "lines": 1,
+      "maps": 1
+    }
+  },
+  "entityKeys": {
+    "minecraft:item_display Tags": {
+      "lines": 666,
+      "maps": 11
+    },
+    "minecraft:item_display item": {
+      "lines": 645,
+      "maps": 9
+    },
+    "minecraft:item_display transformation": {
+      "lines": 638,
+      "maps": 9
+    },
+    "minecraft:text_display Tags": {
+      "lines": 627,
+      "maps": 10
+    },
+    "minecraft:text_display text": {
+      "lines": 601,
+      "maps": 9
+    },
+    "minecraft:text_display transformation": {
+      "lines": 568,
+      "maps": 8
+    },
+    "minecraft:item_display Rotation": {
+      "lines": 491,
+      "maps": 3
+    },
+    "minecraft:item_display billboard": {
+      "lines": 471,
+      "maps": 2
+    },
+    "minecraft:marker Tags": {
+      "lines": 468,
+      "maps": 9
+    },
+    "minecraft:text_display billboard": {
+      "lines": 466,
+      "maps": 4
+    },
+    "minecraft:text_display background": {
+      "lines": 441,
+      "maps": 7
+    },
+    "minecraft:item_display teleport_duration": {
+      "lines": 421,
+      "maps": 2
+    },
+    "minecraft:interaction height": {
+      "lines": 367,
+      "maps": 10
+    },
+    "minecraft:interaction width": {
+      "lines": 367,
+      "maps": 10
+    },
+    "minecraft:interaction Tags": {
+      "lines": 365,
+      "maps": 10
+    },
+    "minecraft:text_display Rotation": {
+      "lines": 358,
+      "maps": 4
+    },
+    "minecraft:armor_stand Tags": {
+      "lines": 291,
+      "maps": 9
+    },
+    "minecraft:armor_stand Invisible": {
+      "lines": 249,
+      "maps": 7
+    },
+    "minecraft:armor_stand Marker": {
+      "lines": 232,
+      "maps": 7
+    },
+    "minecraft:interaction Rotation": {
+      "lines": 228,
+      "maps": 2
+    },
+    "minecraft:marker data": {
+      "lines": 204,
+      "maps": 1
+    },
+    "minecraft:text_display shadow": {
+      "lines": 173,
+      "maps": 4
+    },
+    "minecraft:armor_stand Small": {
+      "lines": 160,
+      "maps": 3
+    },
+    "minecraft:armor_stand Invulnerable": {
+      "lines": 157,
+      "maps": 7
+    },
+    "minecraft:armor_stand NoGravity": {
+      "lines": 145,
+      "maps": 8
+    },
+    "minecraft:armor_stand NoBasePlate": {
+      "lines": 113,
+      "maps": 4
+    },
+    "minecraft:arrow crit": {
+      "lines": 108,
+      "maps": 1
+    },
+    "minecraft:arrow damage": {
+      "lines": 108,
+      "maps": 1
+    },
+    "minecraft:arrow Motion": {
+      "lines": 108,
+      "maps": 1
+    },
+    "minecraft:arrow PierceLevel": {
+      "lines": 108,
+      "maps": 1
+    },
+    "minecraft:arrow Rotation": {
+      "lines": 108,
+      "maps": 1
+    },
+    "minecraft:arrow Tags": {
+      "lines": 108,
+      "maps": 1
+    },
+    "minecraft:text_display alignment": {
+      "lines": 105,
+      "maps": 3
+    },
+    "minecraft:armor_stand Pose": {
+      "lines": 100,
+      "maps": 3
+    },
+    "minecraft:block_display Tags": {
+      "lines": 98,
+      "maps": 6
+    },
+    "minecraft:block_display block_state": {
+      "lines": 95,
+      "maps": 6
+    },
+    "minecraft:text_display line_width": {
+      "lines": 88,
+      "maps": 3
+    },
+    "minecraft:item Item": {
+      "lines": 77,
+      "maps": 9
+    },
+    "minecraft:text_display view_range": {
+      "lines": 64,
+      "maps": 2
+    },
+    "minecraft:experience_orb Value": {
+      "lines": 60,
+      "maps": 2
+    },
+    "minecraft:armor_stand Silent": {
+      "lines": 57,
+      "maps": 2
+    },
+    "minecraft:block_display teleport_duration": {
+      "lines": 42,
+      "maps": 1
+    },
+    "minecraft:armor_stand Rotation": {
+      "lines": 41,
+      "maps": 5
+    },
+    "minecraft:firework_rocket FireworksItem": {
+      "lines": 35,
+      "maps": 5
+    },
+    "minecraft:armor_stand equipment": {
+      "lines": 34,
+      "maps": 2
+    },
+    "minecraft:item PickupDelay": {
+      "lines": 33,
+      "maps": 3
+    },
+    "minecraft:item Tags": {
+      "lines": 32,
+      "maps": 4
+    },
+    "minecraft:firework_rocket LifeTime": {
+      "lines": 31,
+      "maps": 4
+    },
+    "minecraft:villager NoAI": {
+      "lines": 31,
+      "maps": 3
+    },
+    "minecraft:villager PersistenceRequired": {
+      "lines": 31,
+      "maps": 3
+    },
+    "minecraft:villager Silent": {
+      "lines": 31,
+      "maps": 3
+    },
+    "minecraft:villager Tags": {
+      "lines": 31,
+      "maps": 3
+    },
+    "minecraft:villager Invulnerable": {
+      "lines": 28,
+      "maps": 2
+    },
+    "minecraft:villager CustomName": {
+      "lines": 27,
+      "maps": 2
+    },
+    "minecraft:armor_stand ShowArms": {
+      "lines": 25,
+      "maps": 4
+    },
+    "minecraft:wolf PersistenceRequired": {
+      "lines": 24,
+      "maps": 3
+    },
+    "minecraft:wolf Tags": {
+      "lines": 24,
+      "maps": 3
+    },
+    "minecraft:marker Rotation": {
+      "lines": 24,
+      "maps": 2
+    },
+    "minecraft:villager Rotation": {
+      "lines": 24,
+      "maps": 2
+    },
+    "minecraft:villager Team": {
+      "lines": 24,
+      "maps": 2
+    },
+    "minecraft:armor_stand Passengers": {
+      "lines": 23,
+      "maps": 1
+    },
+    "minecraft:item_display brightness": {
+      "lines": 22,
+      "maps": 2
+    },
+    "minecraft:item_display view_range": {
+      "lines": 22,
+      "maps": 2
+    },
+    "minecraft:wolf Invulnerable": {
+      "lines": 21,
+      "maps": 3
+    },
+    "minecraft:villager CanPickUpLoot": {
+      "lines": 21,
+      "maps": 1
+    },
+    "minecraft:item Age": {
+      "lines": 20,
+      "maps": 2
+    },
+    "minecraft:zombie PersistenceRequired": {
+      "lines": 19,
+      "maps": 3
+    },
+    "minecraft:zombie Tags": {
+      "lines": 19,
+      "maps": 3
+    },
+    "minecraft:guardian DeathLootTable": {
+      "lines": 19,
+      "maps": 2
+    },
+    "minecraft:guardian Tags": {
+      "lines": 19,
+      "maps": 2
+    },
+    "minecraft:painting facing": {
+      "lines": 19,
+      "maps": 2
+    },
+    "minecraft:painting Invulnerable": {
+      "lines": 19,
+      "maps": 2
+    },
+    "minecraft:painting variant": {
+      "lines": 19,
+      "maps": 2
+    },
+    "minecraft:painting Tags": {
+      "lines": 18,
+      "maps": 1
+    },
+    "minecraft:wolf Age": {
+      "lines": 18,
+      "maps": 1
+    },
+    "minecraft:wolf Attributes": {
+      "lines": 18,
+      "maps": 1
+    },
+    "minecraft:wolf variant": {
+      "lines": 18,
+      "maps": 1
+    },
+    "minecraft:skeleton DeathLootTable": {
+      "lines": 16,
+      "maps": 3
+    },
+    "minecraft:skeleton Tags": {
+      "lines": 16,
+      "maps": 3
+    },
+    "minecraft:item_display height": {
+      "lines": 16,
+      "maps": 2
+    },
+    "minecraft:item_display width": {
+      "lines": 16,
+      "maps": 2
+    },
+    "minecraft:zombie DeathLootTable": {
+      "lines": 16,
+      "maps": 2
+    },
+    "minecraft:guardian CanPickUpLoot": {
+      "lines": 16,
+      "maps": 1
+    },
+    "minecraft:guardian PersistenceRequired": {
+      "lines": 16,
+      "maps": 1
+    },
+    "minecraft:guardian Team": {
+      "lines": 16,
+      "maps": 1
+    },
+    "minecraft:experience_orb Count": {
+      "lines": 15,
+      "maps": 1
+    },
+    "minecraft:experience_orb Tags": {
+      "lines": 15,
+      "maps": 1
+    },
+    "minecraft:item Health": {
+      "lines": 15,
+      "maps": 1
+    },
+    "minecraft:item_display item_display": {
+      "lines": 15,
+      "maps": 1
+    },
+    "minecraft:item_display Passengers": {
+      "lines": 14,
+      "maps": 4
+    },
+    "minecraft:guardian Health": {
+      "lines": 14,
+      "maps": 2
+    },
+    "minecraft:armor_stand NoAI": {
+      "lines": 14,
+      "maps": 1
+    },
+    "minecraft:area_effect_cloud Duration": {
+      "lines": 13,
+      "maps": 3
+    },
+    "minecraft:armor_stand attributes": {
+      "lines": 13,
+      "maps": 2
+    },
+    "minecraft:guardian Rotation": {
+      "lines": 13,
+      "maps": 2
+    },
+    "minecraft:skeleton PersistenceRequired": {
+      "lines": 13,
+      "maps": 2
+    },
+    "minecraft:item_display interpolation_duration": {
+      "lines": 13,
+      "maps": 1
+    },
+    "minecraft:slime DeathLootTable": {
+      "lines": 12,
+      "maps": 3
+    },
+    "minecraft:slime Size": {
+      "lines": 12,
+      "maps": 3
+    },
+    "minecraft:slime Tags": {
+      "lines": 12,
+      "maps": 3
+    },
+    "minecraft:evoker DeathLootTable": {
+      "lines": 12,
+      "maps": 2
+    },
+    "minecraft:evoker PersistenceRequired": {
+      "lines": 12,
+      "maps": 2
+    },
+    "minecraft:evoker Tags": {
+      "lines": 12,
+      "maps": 2
+    },
+    "minecraft:text_display brightness": {
+      "lines": 12,
+      "maps": 2
+    },
+    "minecraft:zombie Attributes": {
+      "lines": 12,
+      "maps": 2
+    },
+    "minecraft:zombie Health": {
+      "lines": 12,
+      "maps": 2
+    },
+    "minecraft:item NoGravity": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:marker CustomName": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin attributes": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin CustomName": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin CustomNameVisible": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin DeathLootTable": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin Health": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin IsImmuneToZombification": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin NoAI": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin Rotation": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin Silent": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:piglin Tags": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:wither active_effects": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:wither attributes": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:wither CustomName": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:wither DeathLootTable": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:wither Health": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:wither PersistenceRequired": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:wither Tags": {
+      "lines": 12,
+      "maps": 1
+    },
+    "minecraft:skeleton Health": {
+      "lines": 11,
+      "maps": 3
+    },
+    "minecraft:area_effect_cloud potion_contents": {
+      "lines": 11,
+      "maps": 2
+    },
+    "minecraft:evoker NoAI": {
+      "lines": 11,
+      "maps": 2
+    },
+    "minecraft:evoker Rotation": {
+      "lines": 11,
+      "maps": 2
+    },
+    "minecraft:falling_block BlockState": {
+      "lines": 11,
+      "maps": 2
+    },
+    "minecraft:area_effect_cloud Tags": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:guardian Attributes": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:item Invulnerable": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:tnt fuse": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:zombie ArmorItems": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:zombie CanPickUpLoot": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:zombie CustomName": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:zombie Team": {
+      "lines": 11,
+      "maps": 1
+    },
+    "minecraft:block_display transformation": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:evoker Health": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:slime active_effects": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:slime Attributes": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:slime PersistenceRequired": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:spider DeathLootTable": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:spider PersistenceRequired": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:spider Tags": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:vindicator DeathLootTable": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:vindicator PersistenceRequired": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:vindicator Tags": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:zombie Rotation": {
+      "lines": 10,
+      "maps": 2
+    },
+    "minecraft:area_effect_cloud Particle": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:area_effect_cloud Radius": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:bat active_effects": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:bat attributes": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:bat DeathLootTable": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:bat DeathTime": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:bat Health": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:bat NoAI": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:bat Silent": {
+      "lines": 10,
+      "maps": 1
+    },
+    "minecraft:creeper Tags": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:magma_cube DeathLootTable": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:magma_cube PersistenceRequired": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:magma_cube Tags": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:slime NoAI": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:wither_skeleton DeathLootTable": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:wither_skeleton PersistenceRequired": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:wither_skeleton Tags": {
+      "lines": 9,
+      "maps": 2
+    },
+    "minecraft:evoker ArmorItems": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:evoker Attributes": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:evoker CanPickUpLoot": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:evoker HandItems": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:evoker Team": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:guardian ArmorItems": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:guardian HandItems": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:piglin active_effects": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:piglin drop_chances": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:piglin equipment": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:piglin Invulnerable": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:text_display height": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:text_display width": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:wind_charge Motion": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:wind_charge Tags": {
+      "lines": 9,
+      "maps": 1
+    },
+    "minecraft:armor_stand DisabledSlots": {
+      "lines": 8,
+      "maps": 3
+    },
+    "minecraft:creeper DeathLootTable": {
+      "lines": 8,
+      "maps": 2
+    },
+    "minecraft:creeper PersistenceRequired": {
+      "lines": 8,
+      "maps": 2
+    },
+    "minecraft:skeleton ArmorItems": {
+      "lines": 8,
+      "maps": 2
+    },
+    "minecraft:skeleton Attributes": {
+      "lines": 8,
+      "maps": 2
+    },
+    "minecraft:skeleton CustomName": {
+      "lines": 8,
+      "maps": 2
+    },
+    "minecraft:spider Health": {
+      "lines": 8,
+      "maps": 2
+    },
+    "minecraft:vindicator Health": {
+      "lines": 8,
+      "maps": 2
+    },
+    "minecraft:bat Tags": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:guardian CustomName": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:guardian NoAI": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:guardian NoGravity": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:guardian Silent": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:item_frame Facing": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:item_frame Invulnerable": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:item_frame Tags": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:minecart Invulnerable": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:minecart Passengers": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:minecart Tags": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:slime Invulnerable": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:slime NoGravity": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:slime Silent": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:text_display see_through": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:trident Motion": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:trident Tags": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:zombie HandItems": {
+      "lines": 8,
+      "maps": 1
+    },
+    "minecraft:armor_stand HandItems": {
+      "lines": 7,
+      "maps": 3
+    },
+    "minecraft:item Motion": {
+      "lines": 7,
+      "maps": 3
+    },
+    "minecraft:phantom DeathLootTable": {
+      "lines": 7,
+      "maps": 3
+    },
+    "minecraft:phantom PersistenceRequired": {
+      "lines": 7,
+      "maps": 3
+    },
+    "minecraft:phantom Tags": {
+      "lines": 7,
+      "maps": 3
+    },
+    "minecraft:blaze DeathLootTable": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:blaze PersistenceRequired": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:blaze Tags": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:cave_spider DeathLootTable": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:cave_spider PersistenceRequired": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:cave_spider Tags": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:husk DeathLootTable": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:husk PersistenceRequired": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:husk Tags": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:magma_cube active_effects": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:magma_cube Size": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:skeleton active_effects": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:stray DeathLootTable": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:stray PersistenceRequired": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:stray Tags": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:wither_skeleton Health": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:wither_skeleton Rotation": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:zombie active_effects": {
+      "lines": 7,
+      "maps": 2
+    },
+    "minecraft:block_display Passengers": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:fireball Tags": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:interaction data": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:mannequin CustomName": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:mannequin CustomNameVisible": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:mannequin profile": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:mannequin Tags": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:mannequin Team": {
+      "lines": 7,
+      "maps": 1
+    },
+    "minecraft:iron_golem Tags": {
+      "lines": 6,
+      "maps": 3
+    },
+    "minecraft:zombie Silent": {
+      "lines": 6,
+      "maps": 3
+    },
+    "minecraft:creeper Health": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:silverfish DeathLootTable": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:silverfish PersistenceRequired": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:silverfish Tags": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:spider Rotation": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:vindicator Rotation": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:witch DeathLootTable": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:witch PersistenceRequired": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:witch Tags": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:zombie DrownedConversionTime": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:zombie_villager DeathLootTable": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:zombie_villager PersistenceRequired": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:zombie_villager Tags": {
+      "lines": 6,
+      "maps": 2
+    },
+    "minecraft:item_display CustomName": {
+      "lines": 6,
+      "maps": 1
+    },
+    "minecraft:skeleton attributes": {
+      "lines": 6,
+      "maps": 1
+    },
+    "minecraft:villager CustomNameVisible": {
+      "lines": 6,
+      "maps": 1
+    },
+    "minecraft:villager Passengers": {
+      "lines": 6,
+      "maps": 1
+    },
+    "minecraft:armor_stand Motion": {
+      "lines": 5,
+      "maps": 3
+    },
+    "minecraft:phantom Health": {
+      "lines": 5,
+      "maps": 3
+    },
+    "minecraft:blaze active_effects": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:blaze Health": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:cave_spider Health": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:creeper CustomName": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:guardian active_effects": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:husk active_effects": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:husk Health": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:iron_golem DeathLootTable": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:iron_golem Health": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:iron_golem PlayerCreated": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:shulker active_effects": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:shulker NoAI": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:shulker Silent": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:shulker Tags": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:spider active_effects": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:stray active_effects": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:stray Health": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:wandering_trader CustomName": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:wandering_trader CustomNameVisible": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:wandering_trader Invulnerable": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:wandering_trader NoAI": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:wandering_trader Silent": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:wandering_trader Tags": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:zombie Invulnerable": {
+      "lines": 5,
+      "maps": 2
+    },
+    "minecraft:armor_stand CustomName": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:armor_stand CustomNameVisible": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:firework_rocket Life": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:firework_rocket ShotAtAngle": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:guardian Invulnerable": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:magma_cube attributes": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:parched DeathLootTable": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:parched drop_chances": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:parched equipment": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:parched PersistenceRequired": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:parched Tags": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:pillager DeathLootTable": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:pillager drop_chances": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:pillager equipment": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:pillager PersistenceRequired": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:pillager Tags": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:polar_bear DeathLootTable": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:polar_bear PersistenceRequired": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:polar_bear Tags": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:rabbit DeathLootTable": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:rabbit PersistenceRequired": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:rabbit RabbitType": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:rabbit Tags": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:skeleton CanPickUpLoot": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:skeleton drop_chances": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:skeleton equipment": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:skeleton Silent": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:skeleton Team": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:spider ArmorItems": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:spider Attributes": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:spider CanPickUpLoot": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:spider CustomName": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:spider Team": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:stray drop_chances": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:stray equipment": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:villager VillagerData": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:vindicator ArmorItems": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:vindicator Attributes": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:vindicator CanPickUpLoot": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:vindicator CustomName": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:vindicator drop_chances": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:vindicator equipment": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:vindicator HandItems": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:vindicator Team": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton ArmorItems": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton Attributes": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton CanPickUpLoot": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton CustomName": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton HandItems": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton Team": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:wolf DeathLootTable": {
+      "lines": 5,
+      "maps": 1
+    },
+    "minecraft:axolotl Invulnerable": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:axolotl PersistenceRequired": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:axolotl Variant": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:blaze Rotation": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:cave_spider active_effects": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:copper_golem Invulnerable": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:copper_golem Tags": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:iron_golem NoAI": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:ravager DeathLootTable": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:ravager PersistenceRequired": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:ravager Tags": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:silverfish Health": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:stray Rotation": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:villager active_effects": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:vindicator active_effects": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:warden DeathLootTable": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:warden PersistenceRequired": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:warden Tags": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:witch active_effects": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:witch Health": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:witch Rotation": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:wither_skeleton active_effects": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:zombie_villager Health": {
+      "lines": 4,
+      "maps": 2
+    },
+    "minecraft:bogged DeathLootTable": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:bogged drop_chances": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:bogged equipment": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:bogged PersistenceRequired": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:bogged Tags": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:breeze DeathLootTable": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:breeze PersistenceRequired": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:breeze Tags": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:hoglin DeathLootTable": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:hoglin PersistenceRequired": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:hoglin Tags": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:interaction response": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:iron_golem attributes": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:iron_golem CustomName": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:item Glowing": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:magma_cube CanPickUpLoot": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:magma_cube CustomName": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:magma_cube Team": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:shulker AttachFace": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:shulker Invulnerable": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:spider HandItems": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton drop_chances": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton equipment": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin DeathLootTable": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin drop_chances": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin equipment": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin PersistenceRequired": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin Tags": {
+      "lines": 4,
+      "maps": 1
+    },
+    "minecraft:armor_stand AbsorptionAmount": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand Air": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand ArmorItems": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand Brain": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand DeathTime": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand FallFlying": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand Fire": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand Health": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand HurtByTimestamp": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand HurtTime": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand OnGround": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:armor_stand PortalCooldown": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:cave_spider Rotation": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:husk Rotation": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:magma_cube Silent": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:skeleton Rotation": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:slime Health": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:warden Rotation": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:wither_skeleton Invulnerable": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:wolf NoAI": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:wolf Rotation": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:wolf Silent": {
+      "lines": 3,
+      "maps": 2
+    },
+    "minecraft:blaze attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:block_display Rotation": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:cave_spider attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem CustomName": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem CustomNameVisible": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem DeathLootTable": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem NoAI": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem Rotation": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem Silent": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:copper_golem weather_state": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:creeper active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:creeper attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:creeper Attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:creeper CanPickUpLoot": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:creeper drop_chances": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:creeper equipment": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:creeper Team": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox AbsorptionAmount": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Age": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Air": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox ArmorDropChances": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox ArmorItems": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Brain": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox CanPickUpLoot": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Crouching": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox DeathTime": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox FallDistance": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox FallFlying": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Fire": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox ForcedAge": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox HandDropChances": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox HandItems": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox HurtByTimestamp": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox HurtTime": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox InLove": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Invulnerable": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox LeftHanded": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Motion": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox NoAI": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox OnGround": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox PersistenceRequired": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox PortalCooldown": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Rotation": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Sitting": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Sleeping": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Trusted": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:fox Type": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:ghast attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:ghast DeathLootTable": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:ghast PersistenceRequired": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:ghast Tags": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:guardian attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:husk attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:husk DrownedConversionTime": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:illusioner DeathLootTable": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:illusioner drop_chances": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:illusioner equipment": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:illusioner PersistenceRequired": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:illusioner Tags": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:iron_golem CustomNameVisible": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:iron_golem Invulnerable": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:iron_golem Rotation": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:iron_golem Silent": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:magma_cube Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:parched active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:parched attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:parched Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:phantom active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:phantom attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:piglin CannotHunt": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:pillager active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:pillager attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:pillager Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:polar_bear active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:polar_bear attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:polar_bear Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:rabbit active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:rabbit attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:rabbit Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:rabbit MoreCarrotTicks": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:shulker_bullet Motion": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:shulker_bullet NoGravity": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:shulker_bullet Tags": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:silverfish active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:silverfish attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:silverfish Lifetime": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:skeleton ArmorDropChances": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:skeleton CustomNameVisible": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:skeleton HandItems": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:skeleton Passengers": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:snow_golem attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:snow_golem CustomName": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:snow_golem DeathLootTable": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:snow_golem Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:snow_golem PersistenceRequired": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:snow_golem Pumpkin": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:snow_golem Tags": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:spider attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:stray attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:villager attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:villager DeathLootTable": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:villager drop_chances": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:villager equipment": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:villager Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:vindicator attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:wolf active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:wolf Angry": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:wolf attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:wolf Health": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:zombie attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:zombie CanBreakDoors": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:zombie_villager active_effects": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:zombie_villager attributes": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:zombie_villager DrownedConversionTime": {
+      "lines": 3,
+      "maps": 1
+    },
+    "minecraft:area_effect_cloud Age": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:drowned active_effects": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:drowned ArmorItems": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:drowned CanPickUpLoot": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:drowned CustomName": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:drowned HandItems": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:drowned Health": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:drowned PersistenceRequired": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:drowned Rotation": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:ravager Health": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:text_display text_opacity": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:warden Brain": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:warden Health": {
+      "lines": 2,
+      "maps": 2
+    },
+    "minecraft:armor_stand ArmorDropChances": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:armor_stand DeathLootTable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:armor_stand FallDistance": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:armor_stand HandDropChances": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:armor_stand Team": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl AbsorptionAmount": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl Age": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl Air": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl ArmorDropChances": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl ArmorItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl Brain": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl CanPickUpLoot": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl DeathTime": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl FallDistance": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl FallFlying": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl Fire": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl ForcedAge": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl FromBucket": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl HandDropChances": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl HandItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl Health": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl HurtByTimestamp": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl HurtTime": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl InLove": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl LeftHanded": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl Motion": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl OnGround": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl PortalCooldown": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:axolotl Tags": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze ArmorItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze Attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze CanPickUpLoot": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze CustomName": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze HandItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:blaze Team": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:bogged active_effects": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:bogged attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:bogged Health": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:bogged Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:bogged NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:bogged NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:bogged Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:bogged Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:breeze active_effects": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:breeze attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:breeze Health": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:breeze Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:breeze NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:breeze NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:breeze Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:breeze Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:cave_spider Attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:cave_spider CanPickUpLoot": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:cave_spider CustomName": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:cave_spider Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:cave_spider NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:cave_spider NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:cave_spider Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:cave_spider Team": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper ExplosionRadius": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper Fuse": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper ignited": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper powered": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:creeper Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:evoker Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:evoker NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:evoker Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:falling_block FallHurtAmount": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:falling_block FallHurtMax": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:falling_block HurtEntities": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:falling_block Time": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:firework_rocket Fireworks": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:frog CustomName": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:frog CustomNameVisible": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:frog Health": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:frog NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:frog Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:frog Tags": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ghast Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ghast NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ghast NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ghast Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ghast Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin active_effects": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin Health": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin IsImmuneToZombification": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:hoglin Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk ArmorItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk Attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk CanPickUpLoot": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk CustomName": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:husk Team": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:illusioner Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:illusioner NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:illusioner NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:illusioner Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:illusioner Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:item_display shadow_radius": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:item_display shadow_strength": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:magma_cube Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:magma_cube NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:magma_cube NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:magma_cube Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:marker height": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:parched Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:parched NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:parched NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:parched Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:parched Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:phantom Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:phantom NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:phantom NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:phantom Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:phantom Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:piglin_brute active_effects": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:piglin_brute attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:piglin_brute drop_chances": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:piglin_brute equipment": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:piglin_brute Health": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:piglin_brute IsImmuneToZombification": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:piglin_brute Tags": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:pillager Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:pillager NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:pillager NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:pillager Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:pillager Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:polar_bear Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:polar_bear NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:polar_bear NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:polar_bear Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:polar_bear Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:rabbit Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:rabbit NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:rabbit NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:rabbit Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:rabbit Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ravager Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ravager NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ravager NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ravager Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:ravager Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:silverfish Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:silverfish NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:silverfish NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:silverfish Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:silverfish Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:skeleton Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:skeleton NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:skeleton NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:slime attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:slime Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:snowball Item": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:snowball NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:snowball Tags": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:spider Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:spider NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:spider NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:spider Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray ArmorItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray Attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray CanPickUpLoot": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray CustomName": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray HandItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:stray Team": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:vindicator HandDropChances": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:vindicator Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:vindicator NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:vindicator NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:vindicator Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:warden Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:warden NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:warden NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:warden Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch ArmorItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch Attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch CanPickUpLoot": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch CustomName": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch HandDropChances": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch HandItems": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:witch Team": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:wither_skeleton Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:wolf NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombie NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombie NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombie_villager Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombie_villager NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombie_villager NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombie_villager Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombie_villager Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin active_effects": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin AngerTime": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin attributes": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin DrownedConversionTime": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin Health": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin Invulnerable": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin NoAI": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin NoGravity": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin Rotation": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:zombified_piglin Silent": {
+      "lines": 2,
+      "maps": 1
+    },
+    "minecraft:area_effect_cloud effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:armor_stand fall_distance": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:armor_stand Glowing": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:armor_stand PersistenceRequired": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:armor_stand Pos": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:armor_stand UUID": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:cave_spider ArmorItems": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:chicken EggLayTime": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:chicken Invulnerable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:chicken NoAI": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:chicken NoGravity": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:chicken Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:chicken Silent": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:chicken Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned AbsorptionAmount": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned Air": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned ArmorDropChances": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned Brain": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned CanBreakDoors": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned DeathLootTable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned DeathTime": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned DrownedConversionTime": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned FallDistance": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned FallFlying": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned Fire": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned HandDropChances": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned HurtByTimestamp": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned HurtTime": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned Invulnerable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned InWaterTime": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned IsBaby": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned LeftHanded": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned Motion": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned NoAI": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned OnGround": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned PortalCooldown": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:drowned Team": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite CannotHunt": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite CustomNameVisible": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite DeathLootTable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite Health": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite NoAI": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite Silent": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:endermite Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:evoker active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:evoker attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ghast active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ghast Health": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:husk HandItems": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:illusioner active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:illusioner attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:illusioner Health": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:iron_golem active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:iron_golem PersistenceRequired": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:iron_golem PortalCooldown": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:item_display Glowing": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:item_frame Fixed": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:item_frame Item": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:magma_cube Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:marker UUID": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom CanPickUpLoot": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom DeathLootTable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom Health": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom NoAI": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom PersistenceRequired": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom Team": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:mooshroom Type": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:oak_boat Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:oak_boat Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting Air": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting FallDistance": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting Fire": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting Motion": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting OnGround": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting PortalCooldown": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting TileX": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting TileY": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:painting TileZ": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:phantom ArmorDropChances": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:phantom ArmorItems": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:phantom Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:phantom CanPickUpLoot": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:phantom CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:phantom Team": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:pig Invulnerable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:pig NoAI": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:pig NoGravity": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:pig Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:pig Silent": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:pig Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:piglin_brute CannotHunt": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:piglin_brute CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:piglin_brute DeathLootTable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:piglin_brute Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:potion Item": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ravager active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ravager ArmorItems": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ravager attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ravager Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ravager CanPickUpLoot": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ravager CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:ravager Team": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:salmon active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:salmon Air": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:salmon DeathLootTable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:salmon Health": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:salmon PersistenceRequired": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:salmon Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:silverfish ArmorItems": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:silverfish Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:silverfish CanPickUpLoot": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:silverfish CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:silverfish Team": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse CanPickUpLoot": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse DeathLootTable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse Health": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse PersistenceRequired": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:skeleton_horse Team": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:slime CanPickUpLoot": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:slime CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:slime Team": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:tadpole active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:tadpole attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:tadpole DeathLootTable": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:tadpole Health": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:tadpole Passengers": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:tadpole Silent": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:tadpole Tags": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:text_display teleport_duration": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:villager Age": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:villager ForcedAge": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:wandering_trader PersistenceRequired": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:wandering_trader Rotation": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:warden active_effects": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:warden ArmorItems": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:warden attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:warden Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:warden CanPickUpLoot": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:warden CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:warden HandItems": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:warden Team": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:wolf CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:wolf CustomNameVisible": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:wolf Owner": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:wolf Sitting": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:zombie equipment": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:zombie IsBaby": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:zombie Pumpkin": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:zombie_villager ArmorItems": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:zombie_villager Attributes": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:zombie_villager CanPickUpLoot": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:zombie_villager CustomName": {
+      "lines": 1,
+      "maps": 1
+    },
+    "minecraft:zombie_villager Team": {
+      "lines": 1,
+      "maps": 1
+    }
+  },
+  "passengerKeys": {
+    "id": {
+      "lines": 298,
+      "maps": 6
+    },
+    "transformation": {
+      "lines": 180,
+      "maps": 2
+    },
+    "Tags": {
+      "lines": 173,
+      "maps": 4
+    },
+    "item": {
+      "lines": 124,
+      "maps": 2
+    },
+    "Invulnerable": {
+      "lines": 89,
+      "maps": 3
+    },
+    "NoAI": {
+      "lines": 82,
+      "maps": 3
+    },
+    "CustomName": {
+      "lines": 82,
+      "maps": 2
+    },
+    "DeathLootTable": {
+      "lines": 80,
+      "maps": 2
+    },
+    "Silent": {
+      "lines": 79,
+      "maps": 3
+    },
+    "height": {
+      "lines": 74,
+      "maps": 2
+    },
+    "width": {
+      "lines": 74,
+      "maps": 2
+    },
+    "NoGravity": {
+      "lines": 73,
+      "maps": 2
+    },
+    "interpolation_duration": {
+      "lines": 68,
+      "maps": 1
+    },
+    "item_display": {
+      "lines": 68,
+      "maps": 1
+    },
+    "background": {
+      "lines": 56,
+      "maps": 1
+    },
+    "line_width": {
+      "lines": 56,
+      "maps": 1
+    },
+    "text": {
+      "lines": 56,
+      "maps": 1
+    },
+    "Passengers": {
+      "lines": 50,
+      "maps": 1
+    },
+    "active_effects": {
+      "lines": 14,
+      "maps": 3
+    },
+    "PersistenceRequired": {
+      "lines": 14,
+      "maps": 3
+    },
+    "Rotation": {
+      "lines": 13,
+      "maps": 1
+    },
+    "Item": {
+      "lines": 12,
+      "maps": 1
+    },
+    "attributes": {
+      "lines": 10,
+      "maps": 2
+    },
+    "Brain": {
+      "lines": 10,
+      "maps": 1
+    },
+    "profile": {
+      "lines": 8,
+      "maps": 1
+    },
+    "data": {
+      "lines": 6,
+      "maps": 1
+    },
+    "Health": {
+      "lines": 6,
+      "maps": 1
+    },
+    "drop_chances": {
+      "lines": 3,
+      "maps": 1
+    },
+    "equipment": {
+      "lines": 3,
+      "maps": 1
+    },
+    "AbsorptionAmount": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Air": {
+      "lines": 2,
+      "maps": 1
+    },
+    "CustomNameVisible": {
+      "lines": 2,
+      "maps": 1
+    },
+    "DeathTime": {
+      "lines": 2,
+      "maps": 1
+    },
+    "DisabledSlots": {
+      "lines": 2,
+      "maps": 1
+    },
+    "fall_distance": {
+      "lines": 2,
+      "maps": 1
+    },
+    "FallFlying": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Fire": {
+      "lines": 2,
+      "maps": 1
+    },
+    "HurtByTimestamp": {
+      "lines": 2,
+      "maps": 1
+    },
+    "HurtTime": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Invisible": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Motion": {
+      "lines": 2,
+      "maps": 1
+    },
+    "NoBasePlate": {
+      "lines": 2,
+      "maps": 1
+    },
+    "OnGround": {
+      "lines": 2,
+      "maps": 1
+    },
+    "PortalCooldown": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Pos": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Pose": {
+      "lines": 2,
+      "maps": 1
+    },
+    "ShowArms": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Small": {
+      "lines": 2,
+      "maps": 1
+    },
+    "UUID": {
+      "lines": 2,
+      "maps": 1
+    },
+    "Color": {
+      "lines": 1,
+      "maps": 1
+    }
+  }
+}
