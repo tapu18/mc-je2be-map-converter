@@ -12,6 +12,8 @@ export interface CommandOptions {
   signal?: AbortSignal;
   log?: string;
   input?: string;
+  /** Called with the process group id once the child is spawned. */
+  onSpawn?: (pid: number) => void;
 }
 
 // One process group per invocation: timeout / shutdown also stops servers and shells.
@@ -24,6 +26,7 @@ export async function command(executable: string, args: string[], options: Comma
         cwd: options.cwd, detached: true,
         stdio: ['pipe', file ? file.fd : 'pipe', file ? file.fd : 'pipe'],
       });
+      if (child.pid) options.onSpawn?.(child.pid);
       let stdout = '';
       let stderr = '';
       let stopped = false;

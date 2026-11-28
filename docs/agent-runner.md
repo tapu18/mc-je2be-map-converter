@@ -15,7 +15,7 @@ npm run agents -- --dry-run
 npm run agents
 ```
 
-`--dry-run` は候補の読み取りのみ。Issue・PR・作業ディレクトリ・状態ファイルを作成せず、AI も起動しない。`--once` は1回だけ巡回する。最初の巡回は claim の記録で終わり、次の巡回で着手権を再確認してから AI を起動する。
+`npm run agents` は監視プロセス（`tools/agent-runner/supervisor.ts`）から管理プログラムを起動する。自分のコードが base で変わると、管理プログラムは合間に入れ替わる（下記「コードの更新と入れ替わり」）。`--dry-run` は候補の読み取りのみ。Issue・PR・作業ディレクトリ・状態ファイルを作成せず、AI も起動しない。`--once` は1回だけ巡回する。最初の巡回は claim の記録で終わり、次の巡回で着手権を再確認してから AI を起動する。
 
 ```sh
 npm run agents -- --once
@@ -41,6 +41,7 @@ Ctrl+C / SIGTERM で停止する。実行中の CLI とその子プロセスを�
 | `maxRunsPerDay` | `12`。UTC の1日あたり AI 起動回数上限。日付が変われば再開 |
 | `limitWaitSeconds` | `3600`。CLI が使用量の上限で失敗し、再開時刻を読み取れないときに待つ秒数。下記参照 |
 | `autoMerge` | `true`。`false` なら PR 作成・修正まで進め、マージは手動 |
+| `selfUpdate` | `true`。`false` なら自分のコードの更新を警告するだけで、入れ替わらない。下記「コードの更新と入れ替わり」参照 |
 | `agentArgs` | `[]`。AI CLI に渡す追加引数の配列。シェルは介さない |
 | `workerOverrides` | Issue のラベルごとの worker 設定。省略時は上書きなし。下記参照 |
 | `manager` | PM 巡回の設定。省略すると無効。下記参照 |
@@ -197,6 +198,23 @@ worker が依存や判断を待つ場合、待つ Issue を本文に `Depends on
 
 別案として Codex CLI の `codex exec resume <SESSION_ID> <PROMPT>` は既存セッションへ追加指示を送れる（ローカルの `--help` で確認）。同じ文脈を保てる一方、セッション ID の保存・再開失敗・時間と回数の制御が別途必要になる。今回の方式は既存の起動と worktree の再開を維持し、push を検証して上限だけを調整する。
 
+## コードの更新と入れ替わり
+
+管理プログラムは checkout の HEAD のコードを読んで動く。巡回の頭で `origin/<base>` を fetch し、自分のコード（`tools/agent-runner.ts` と `tools/agent-runner/`）が起動時と違えば、次の条件をすべて満たすときに自分で入れ替わる。
+
+- 設定 `selfUpdate` が `true`（既定）
+- `npm run agents` で起動している。`npm run agents` は監視プロセス `tools/agent-runner/supervisor.ts` を動かし、それが `tools/agent-runner.ts` を同じ引数で起動する。`node tools/agent-runner.ts` を直接起動した場合は、終了しても誰も起動し直さないので入れ替わらない
+- ロックの PID が自分
+- 実行中の worker・PM の CLI がない。状態ファイルで開始済み・未終了の起動を探し、記録したプロセスグループが残っていれば実行中とみなす。PID の記録がない古い起動は実行中とみなす
+- checkout が base のブランチにいて、追跡中のファイルに未コミットの変更がなく、`origin/<base>` へ fast-forward できる
+- `package-lock.json` が変わっていない（`npm install` が要る変更は入れ替わらない）
+
+入れ替わり方は、終了コードで外側に知らせる方式にした。checkout を `git merge --ff-only origin/<base>` で進め、状態ファイルに `selfUpdate`（入れ替え前後のコードのハッシュ）を保存し、ロックを外して終了コード 75 で終わる。監視プロセスは終了コード 75 なら同じ引数で起動し直し、それ以外の終了コードではそのコードで終わる。新しいプロセスは同じ状態ファイルを読むため、claim・起動回数・worktree はそのまま続く。`--once` で入れ替わった場合も、新しいプロセスが `--once` でもう1回巡回する。自分で新しいプロセスを起動して終わる方式は、端末の Ctrl+C や systemd の管理から外れるため採らなかった。
+
+条件を満たさないときは、満たさない理由を端末と状態ファイル（`selfUpdate.blocked`、`codeWarning`）に出し、巡回を続ける。PM 巡回の指示の末尾にも警告を付ける。警告は、巡回を中止せず最後まで続け、所有者への報告に「管理プログラムの再起動が必要（理由）」と含めるよう指示する。理由が解消すれば次の巡回で入れ替わる。
+
+扱わないもの：設定ファイル（`agent-runner.json`）の変更は取り込まない（再起動が要る）。監視プロセス `supervisor.ts` 自体の変更は、入れ替わった後も古い監視プロセスが動き続けるため、所有者が `npm run agents` を起動し直すまで反映されない。
+
 ## 状態・ログ・排他制御
 
 端末には時刻と Issue 番号付きで AI の進捗メッセージ、実行コマンドと完了・失敗、ファイル変更を表示する。コマンドの長い出力や生の JSON、推論内容は表示しない。AI 実行中は60秒ごとに経過時間・最後のログ更新からの秒数・直近の動作も表示する。ログ更新が途絶えた場合も、ハートビート自体は AI が進んでいる保証ではなく、管理側が実行終了を待っていることを示す。
@@ -205,10 +223,10 @@ worker が依存や判断を待つ場合、待つ Issue を本文に `Depends on
 
 共通 Git ディレクトリの `agent-runner/` に保存する。通常は `.git/agent-runner/`。別 worktree から起動しても共通のロックを使う。
 
-- `state.json`：担当 Issue、claim、ブランチ、worktree、試行回数、日次実行数。更新は一時ファイルから rename する。
+- `state.json`：担当 Issue、claim、ブランチ、worktree、試行回数、日次実行数、各 CLI 起動のプロセスグループ（`pid`）、入れ替わりの判定（`selfUpdate`）。更新は一時ファイルから rename する。
 - `<Issue番号>-<時刻>.log`：AI の標準出力・標準エラー。実装の進捗や CLI の権限エラーを確認できる。
 - `worktrees/<Issue番号>/`：作業用 checkout。マージ済み PR が Issue に紐付き、base に取り込まれ、後続 PR がなく、ブランチの先端が一致する場合に次の巡回で片付ける。未追跡ファイル・変更やロックがある worktree は残す。無視ファイルは、生成物（`node_modules`・`servers`・`dist`・`__pycache__`、各パックのビルド出力、`*.tsbuildinfo`）だけなら消し、それ以外（`sample-map/` など）があれば残す。削除できない場合はログを見て手動で確認する。強制削除はしない。
-- `lock`：管理プロセスの PID と起動時刻。多重起動時はエラーにする。
+- `lock`：管理プロセスの PID と起動時刻。多重起動時はエラーにする。監視プロセスではなく、`tools/agent-runner.ts` のプロセスの PID。
 
 SIGKILL・OS 障害ではロックが残る。`lock` の PID と AI・実サーバーの残存プロセスを確認し、必要なら停止してからロックを手動で削除する。PID だけで安全性を断定できないため、自動でロックを奪わない。状態ファイルは削除せず再利用する。
 
@@ -228,7 +246,7 @@ Description=JE2BE AI issue runner
 Type=simple
 WorkingDirectory=/home/tapukoko/code/mc-je2be-map-converter
 Environment=PATH=/home/tapukoko/.local/bin:/home/tapukoko/.nvm/versions/node/v24.13.1/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/tapukoko/.nvm/versions/node/v24.13.1/bin/node tools/agent-runner.ts --config agent-runner.json
+ExecStart=/home/tapukoko/.nvm/versions/node/v24.13.1/bin/node tools/agent-runner/supervisor.ts --config agent-runner.json
 Restart=on-failure
 RestartSec=30
 KillMode=control-group

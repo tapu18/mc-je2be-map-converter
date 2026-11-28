@@ -11,6 +11,7 @@ import { managerConfig, managerDue, managerPrompt, managerReport } from './agent
 import type { ManagerConfig, ManagerState } from './agent-runner/manager.ts';
 import { activeClaims, baseAllowsMerge, canMerge, checksFailed, dependencies, hasLabel, isDependencyBlocked, latestBaseRun } from './agent-runner/policy.ts';
 import type { Issue, PullRequest, WorkflowRun } from './agent-runner/policy.ts';
+import { checkoutBlockers, codeWarning, RESTART_EXIT_CODE, runningClis, SUPERVISED_ENV } from './agent-runner/self-update.ts';
 
 type Agent = 'codex' | 'claude';
 interface Config {
@@ -25,6 +26,7 @@ interface Config {
   maxRunsPerDay: number;
   limitWaitSeconds: number;
   autoMerge: boolean;
+  selfUpdate: boolean;
   agentArgs: string[];
   manager: ManagerConfig;
   workerOverrides: Record<string, { agent?: Agent; agentArgs?: string[] }>;
@@ -38,7 +40,7 @@ interface Task {
   totalAttempts?: number;
   phase: 'claiming' | 'working' | 'review' | 'blocked' | 'done';
   error?: string;
-  launches?: { agent: string; args: string[]; startedAt: number; finishedAt?: number; counted: boolean; limited?: boolean }[];
+  launches?: { agent: string; args: string[]; startedAt: number; finishedAt?: number; pid?: number; counted: boolean; limited?: boolean }[];
 }
 interface State {
   version: 1;
@@ -51,6 +53,8 @@ interface State {
   limits?: Partial<Record<Agent, { until: number; message: string; kind?: 'quota' | 'failure' }>>;
   codeWarning?: string;
   startupCode?: string[];
+  /** Last self-update decision: why it was skipped, or the code it switched to. */
+  selfUpdate?: { at: number; blocked?: string[]; from?: string[]; to?: string[] };
 }
 
 const { values } = parseArgs({ options: {
@@ -182,6 +186,7 @@ async function main() {
   const lock = await open(lockPath, 'wx', 0o600).catch(() => {
     throw new Error(`Runner lock exists: ${lockPath}. Check for surviving workers before removing it (see docs/agent-runner.md).`);
   });
+  let restart = false;
   try {
     await lock.writeFile(JSON.stringify({ pid: process.pid, started: new Date().toISOString() }));
     const statePath = join(stateDir, 'state.json');
@@ -194,10 +199,12 @@ async function main() {
     if (state.version !== 1 || state.repo !== config.repo || !Array.isArray(state.tasks)) throw new Error('State version/repository mismatch');
     state.startupCode = startupCode;
     delete state.codeWarning;
-    const save = async () => {
+    // Serialized: the CLI spawn callback saves concurrently with the main flow.
+    let saving: Promise<void> = Promise.resolve();
+    const save = () => saving = saving.catch(() => {}).then(async () => {
       await writeFile(`${statePath}.tmp`, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 });
       await rename(`${statePath}.tmp`, statePath);
-    };
+    });
     const limited = (agent: Agent) => {
       const limit = state.limits?.[agent];
       return limit && limit.until > Date.now() ? limit : undefined;
@@ -241,6 +248,7 @@ async function main() {
       const progress = await followProgress(logfile, message => log(`[PM] ${message}`));
       try {
         await command(config.manager.agent, managerArgs, {
+          onSpawn: pid => { manager.pid = pid; save().catch(error => log(`状態の保存に失敗: ${String(error)}`)); },
           cwd: root, timeoutMs: config.manager.timeoutSeconds * 1000, signal: abort.signal, log: logfile,
           input: managerPrompt(config.repo, config.base, config.milestone, config.manager.instructions, join(stateDir, 'manager-latest.md')) + (state.codeWarning ? `\n\n${state.codeWarning}` : ''),
         });
@@ -352,7 +360,7 @@ async function main() {
       let refunded = false;
       try {
         await command(agent, args,
-        { cwd: task.worktree, timeoutMs: config.timeoutSeconds * 1000, signal: abort.signal, log: logfile, input: prompt });
+        { onSpawn: pid => { launch.pid = pid; save().catch(error => log(`状態の保存に失敗: ${String(error)}`)); }, cwd: task.worktree, timeoutMs: config.timeoutSeconds * 1000, signal: abort.signal, log: logfile, input: prompt });
         delete task.error;
       } catch (error) {
         task.error = String(error);
@@ -399,13 +407,42 @@ async function main() {
       await save();
     };
 
+    /** Returns true when the checkout was fast-forwarded and this process must exit for a restart. */
+    const selfUpdate = async (): Promise<boolean> => {
+      const blocked: string[] = [];
+      if (!config.selfUpdate) blocked.push('設定 selfUpdate が false');
+      if (!process.env[SUPERVISED_ENV]) blocked.push('npm run agents（監視プロセス）を通さずに起動している');
+      const holder = JSON.parse(await readFile(lockPath, 'utf8').catch(() => '{}')) as { pid?: number };
+      if (holder.pid !== process.pid) blocked.push(`ロックの持ち主が自分ではない（pid ${holder.pid ?? '不明'}）`);
+      const running = runningClis(state);
+      if (running.length) blocked.push(`CLI が実行中: ${running.join('、')}`);
+      blocked.push(...await checkoutBlockers(git, config.base));
+      if (!blocked.length) {
+        try {
+          await git(['merge', '--ff-only', `origin/${config.base}`]);
+          // Once HEAD moved, the code on disk is no longer what runs: restart even if origin moved again meanwhile.
+          const now = await codeAt('HEAD');
+          if (now.every((hash, index) => hash === startupCode[index])) blocked.push('fast-forward 後も checkout のコードが変わらない');
+          else {
+            state.selfUpdate = { at: Date.now(), from: startupCode, to: now };
+            delete state.codeWarning;
+            await save();
+            log(`管理プログラムのコードを origin/${config.base} に進めました。新しいコードで起動し直すため終了します`);
+            return true;
+          }
+        } catch (error) { blocked.push(`fast-forward に失敗: ${String(error).split('\n')[0]}`); }
+      }
+      state.selfUpdate = { at: Date.now(), blocked };
+      state.codeWarning = codeWarning(config.base, blocked);
+      log(`管理プログラムのコードが origin/${config.base} で更新されたが、入れ替えを見送ります: ${blocked.join('、')}`);
+      return false;
+    };
     const tick = async () => {
       await command('git', ['fetch', 'origin', config.base], { cwd: root, signal: abort.signal });
       const baseCode = await codeAt(`origin/${config.base}`);
       if (startupCode.some ( (hash, index) => hash !== baseCode[index])) {
-        state.codeWarning = '管理プログラムのコードが更新された。再起動が必要';
-        log(state.codeWarning);
-      } else delete state.codeWarning;
+        if (await selfUpdate()) { restart = true; return; }
+      } else { delete state.codeWarning; delete state.selfUpdate; }
       await save();
       const day = new Date().toISOString().slice(0, 10);
       if (day !== state.day) { state.day = day; state.runs = 0; await save(); }
@@ -529,7 +566,7 @@ async function main() {
       log(`巡回開始（本日の AI 起動 ${state.runs}/${config.maxRunsPerDay}）`);
       try { await tick(); }
       catch (error) { if (!abort.signal.aborted) log(`巡回失敗（状態を維持）: ${String(error)}`); if (values.once || error instanceof AgentLaunchError) throw error; }
-      if (values.once || abort.signal.aborted) break;
+      if (restart || values.once || abort.signal.aborted) break;
       log(`次の巡回まで ${config.pollSeconds}秒待機`);
       await delay(config.pollSeconds * 1000, undefined, { signal: abort.signal }).catch(() => {});
     } while (!abort.signal.aborted);
@@ -537,12 +574,13 @@ async function main() {
     await lock.close();
     await unlink(lockPath);
   }
+  if (restart) process.exitCode = RESTART_EXIT_CODE;
 }
 
 function validateConfig(input: unknown): Config {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Config must be an object');
   const raw = input as Record<string, unknown>;
-  const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxTotalAttempts: 10, maxRunsPerDay: 12, limitWaitSeconds: 3600, autoMerge: true, agentArgs: [], workerOverrides: {} };
+  const defaults = { agent: 'codex', base: 'main', pollSeconds: 60, timeoutSeconds: 3600, maxAttempts: 3, maxTotalAttempts: 10, maxRunsPerDay: 12, limitWaitSeconds: 3600, autoMerge: true, selfUpdate: true, agentArgs: [], workerOverrides: {} };
   const config = { ...defaults, ...raw } as unknown as Config;
   for (const key of Object.keys(raw)) if (![...Object.keys(defaults), 'repo', 'milestone', 'manager'].includes(key)) throw new Error(`Unknown config key: ${key}`);
   config.manager = managerConfig(raw.manager);
@@ -559,6 +597,7 @@ function validateConfig(input: unknown): Config {
   for (const key of ['pollSeconds', 'timeoutSeconds', 'maxAttempts', 'maxTotalAttempts', 'maxRunsPerDay', 'limitWaitSeconds'] as const) {
     if (!Number.isSafeInteger(config[key]) || config[key] < 1) throw new Error(`${key} must be a positive integer`);
   }
+  if (typeof config.selfUpdate !== 'boolean') throw new Error('selfUpdate must be a boolean');
   if (typeof config.autoMerge !== 'boolean' || !Array.isArray(config.agentArgs) || !config.agentArgs.every(arg => typeof arg === 'string')) throw new Error('Invalid autoMerge or agentArgs');
   return config;
 }
