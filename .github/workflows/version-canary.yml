@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/version-canary.yml"
       - "tools/version-canary*.ts"
+      - "tools/version-series*.ts"
+      - "packages/converter/src/geyser-source.ts"
 permissions:
   contents: read
 jobs:

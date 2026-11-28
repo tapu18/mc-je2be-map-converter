@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { selectBedrockBeta } from "./version-canary-select.ts";
+import { geyserSeriesMismatches } from "./version-series.ts";
+import { GEYSER_SOURCE } from "../packages/converter/src/geyser-source.ts";
 
 const out = "servers/version-canary";
 mkdirSync(out, { recursive: true });
@@ -51,7 +53,29 @@ for (const name of Object.keys(pkg.dependencies).filter((x) => x.startsWith("@mi
   npmVersions[name] = { previous: pkg.dependencies[name], latestBeta: tagged, candidate };
   pkg.dependencies[name] = candidate;
 }
-writeFileSync(`${out}/versions.json`, JSON.stringify({ previous, candidate: config, npm: npmVersions }, null, 2) + "\n");
+// Geyser の対応表は自動で上げない。最新 revision と、使っているファイルの変化だけを記録する（#362）。
+const geyserRepo = "GeyserMC/mappings";
+const geyserBranch = (await json(`https://api.github.com/repos/${geyserRepo}`)).default_branch as string;
+const geyserHead = await json(`https://api.github.com/repos/${geyserRepo}/commits/${encodeURIComponent(geyserBranch)}`);
+const geyserLatest = geyserHead.sha as string;
+if (!/^[a-f0-9]{40}$/.test(geyserLatest)) throw new Error("Geyser latest revision missing");
+const geyserFiles: Record<string, { changed: boolean; pinnedSha256: string; latestSha256: string }> = {};
+for (const name of ["blocks.nbt", "items.json", "sounds.json", "particles.json", "LICENSE"] as const) {
+  // compare API のファイル一覧は 300 件で切れるため、内容のハッシュで比べる。
+  const bytes = Buffer.from(await (await get(`https://raw.githubusercontent.com/${geyserRepo}/${geyserLatest}/${name}`)).arrayBuffer());
+  const latestSha256 = createHash("sha256").update(bytes).digest("hex");
+  geyserFiles[name] = { changed: latestSha256 !== GEYSER_SOURCE.sha256[name], pinnedSha256: GEYSER_SOURCE.sha256[name], latestSha256 };
+}
+const geyser = {
+  pinned: { revision: GEYSER_SOURCE.revision, javaVersion: GEYSER_SOURCE.javaVersion, bedrockVersion: GEYSER_SOURCE.bedrockVersion },
+  latest: { revision: geyserLatest, date: geyserHead.commit?.committer?.date as string | undefined, message: (geyserHead.commit?.message as string | undefined)?.split("\n", 1)[0] },
+  revisionChanged: geyserLatest !== GEYSER_SOURCE.revision,
+  usedFilesChanged: Object.values(geyserFiles).some((x) => x.changed),
+  files: geyserFiles,
+  // 候補版に対する系列のずれ。空でなければ npm run check も落ちる（tools/version-series.test.ts）。
+  seriesMismatches: geyserSeriesMismatches(GEYSER_SOURCE, config),
+};
+writeFileSync(`${out}/versions.json`, JSON.stringify({ previous, candidate: config, npm: npmVersions, geyser }, null, 2) + "\n");
 writeFileSync("tools/servers.json", JSON.stringify(config, null, 2) + "\n");
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
 // manifest の API module version は npm の prerelease suffix を除いたもの。
@@ -62,4 +86,4 @@ for (const path of ["packages/bridge-pack/pack/manifest.json", "poc/launcher/pac
   for (const dep of manifest.dependencies ?? []) if (dep.module_name === "@minecraft/server") dep.version = moduleVersion;
   writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n");
 }
-console.log(JSON.stringify({ previous, candidate: config, npm: npmVersions }, null, 2));
+console.log(JSON.stringify({ previous, candidate: config, npm: npmVersions, geyser }, null, 2));
