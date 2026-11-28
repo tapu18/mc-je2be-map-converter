@@ -47,6 +47,10 @@ it('reads quota reset times from Codex and Claude messages', () => {
   expect(limitResetAt('try again at 12:30 AM', now)).toBe(new Date(2026, 10, 27, 0, 30).getTime());
   expect(limitResetAt('Claude AI usage limit reached|1795670000', now)).toBe(1795670000_000);
   expect(limitResetAt('You\'ve hit your limit · resets 3pm (Asia/Tokyo)', now)).toBe(new Date(2026, 10, 26, 15, 0).getTime());
+  expect(limitResetAt('You\'ve hit your 5-hour limit · resets 3:50am (Asia/Tokyo)', now)).toBe(new Date(2026, 10, 27, 3, 50).getTime());
+  expect(limitResetAt('or try again at Nov 30th, 2026 9:53 PM.', now)).toBe(new Date(2026, 10, 30, 21, 53).getTime());
+  expect(limitResetAt('try again at Jan 2nd 9:05 AM', now)).toBe(new Date(2027, 0, 2, 9, 5).getTime());
+  expect(limitResetAt('try again at Feb 31st, 2027 9:05 AM', now)).toBeUndefined();
   expect(limitResetAt('usage limit reached', now)).toBeUndefined();
 });
 
@@ -64,6 +68,16 @@ it('detects quota failures only in CLI failure events', async () => {
     expect(await usageLimit(log)).toContain('|1795670000');
     expect(await failedBeforeWork(log)).toBe(true);
     await write({ type: 'result', is_error: false, result: 'Done. No usage limit hit.' });
+    expect(await usageLimit(log)).toBeUndefined();
+    // Claude Code 2.1 (#395): the result text alone was missed; the reset time comes from rate_limit_event.
+    const reset = 1795805400;
+    await write({ type: 'rate_limit_event', rate_limit_info: { status: 'rejected', resetsAt: reset } },
+      { type: 'result', is_error: true, api_error: 'usage_limit_reached', result: "You've hit your 5-hour limit · resets 3:50am (Asia/Tokyo)" });
+    expect(await usageLimit(log)).toBe(`You've hit your 5-hour limit · resets 3:50am (Asia/Tokyo)|${reset}`);
+    expect(limitResetAt((await usageLimit(log))!, 0)).toBe(reset * 1000);
+    await write({ type: 'result', is_error: true, api_error: 'usage_limit_reached', result: 'Request refused' });
+    expect(await usageLimit(log)).toBe('Request refused');
+    await write({ type: 'rate_limit_event', rate_limit_info: { status: 'allowed_warning', resetsAt: reset } }, { type: 'result', is_error: false, result: 'Done' });
     expect(await usageLimit(log)).toBeUndefined();
     await write('Error: rate limit reached for requests');
     expect(await usageLimit(log)).toContain('rate limit');

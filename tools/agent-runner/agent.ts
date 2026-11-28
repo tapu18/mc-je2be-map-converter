@@ -55,35 +55,62 @@ export async function failedBeforeWork(logfile: string): Promise<boolean> {
 }
 
 // Provider quota messages, e.g. Codex: "You’ve hit your usage limit ... try again at 2:21 PM."
-// Claude: "Claude AI usage limit reached|<epoch seconds>" or "You've hit your limit · resets 3pm".
-const limitPattern = /usage limit|hit your (?:usage )?limit|limit reached|rate limit/i;
+// Claude: "Claude AI usage limit reached|<epoch seconds>", "You've hit your limit · resets 3pm"
+// or "You've hit your 5-hour limit · resets 3:50am".
+const limitPattern = /usage limit|hit your (?:[\w-]+ )?limit|limit reached|rate limit/i;
 
-function limitMessage(line: string): string | undefined {
+type LimitEvent = { message?: string; resetsAt?: number };
+
+function limitEvent(line: string): LimitEvent | undefined {
   let event;
   try { event = JSON.parse(line); }
-  catch { return limitPattern.test(line) ? line.trim() : undefined; } // CLI diagnostics on stderr.
+  catch { return limitPattern.test(line) ? { message: line.trim() } : undefined; } // CLI diagnostics on stderr.
   if (!event || typeof event !== 'object') return undefined;
+  // Claude reports a refused request with its reset time before the failing result.
+  if (event.type === 'rate_limit_event') {
+    const info = event.rate_limit_info;
+    return info?.status === 'rejected' && typeof info.resetsAt === 'number' ? { resetsAt: info.resetsAt } : undefined;
+  }
   // Only the CLI's own failure events: tool output and agent text may mention limits harmlessly.
   const text = event.type === 'error' ? event.message
     : event.type === 'turn.failed' ? event.error?.message
     : event.type === 'result' && event.is_error ? event.result
     : undefined;
-  return typeof text === 'string' && limitPattern.test(text) ? text : undefined;
+  if (typeof text !== 'string') return undefined;
+  if (event.type === 'result' && (event.api_error === 'usage_limit_reached' || event.error === 'rate_limit')) return { message: text };
+  return limitPattern.test(text) ? { message: text } : undefined;
 }
+
+const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 /** Parse the reset time a quota message names; local wall-clock times are the next occurrence. */
 export function limitResetAt(message: string, now: number): number | undefined {
   const epoch = /\|(\d{10})\b/.exec(message);
   if (epoch) return Number(epoch[1]) * 1000;
-  const clock = /(?:try again at|resets(?: at)?)\s+(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?/i.exec(message);
+  // "try again at 2:21 PM", "resets 3pm", or with a date: "try again at Nov 30th, 2026 9:53 PM".
+  const clock = /(?:try again at|resets(?: at)?)\s+(?:([a-z]{3})[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(?:(\d{4}),?\s+)?(?:at\s+)?)?(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?/i.exec(message);
   if (!clock) return undefined;
-  let hour = Number(clock[1]);
-  const minute = Number(clock[2] ?? 0);
-  const meridiem = clock[3]?.[0]?.toLowerCase();
+  const month = clock[1] === undefined ? undefined : months.indexOf(clock[1].toLowerCase());
+  if (month === -1) return undefined;
+  let hour = Number(clock[4]);
+  const minute = Number(clock[5] ?? 0);
+  const meridiem = clock[6]?.[0]?.toLowerCase();
   if (meridiem === 'p' && hour < 12) hour += 12;
   if (meridiem === 'a' && hour === 12) hour = 0;
   if (hour > 23 || minute > 59) return undefined;
   const at = new Date(now);
+  if (month !== undefined) {
+    const day = Number(clock[2]);
+    if (clock[3] !== undefined) at.setFullYear(Number(clock[3]), month, day);
+    else {
+      at.setMonth(month, day);
+      at.setHours(hour, minute, 0, 0);
+      if (at.getTime() <= now) at.setFullYear(at.getFullYear() + 1, month, day);
+    }
+    if (at.getMonth() !== month) return undefined; // e.g. Feb 31st
+    at.setHours(hour, minute, 0, 0);
+    return at.getTime();
+  }
   at.setHours(hour, minute, 0, 0);
   if (at.getTime() <= now) at.setDate(at.getDate() + 1);
   return at.getTime();
@@ -92,8 +119,15 @@ export function limitResetAt(message: string, now: number): number | undefined {
 /** The last provider quota failure in a CLI log, if the run ended because of one. */
 export async function usageLimit(logfile: string): Promise<string | undefined> {
   let found: string | undefined;
+  let resetsAt: number | undefined;
   const lines = createInterface({ input: createReadStream(logfile), crlfDelay: Infinity });
-  for await (const line of lines) found = limitMessage(line) ?? found;
+  for await (const line of lines) {
+    const event = limitEvent(line);
+    if (event?.message !== undefined) found = event.message;
+    if (event?.resetsAt !== undefined) resetsAt = event.resetsAt;
+  }
+  // A structured reset time is exact; the wall-clock text depends on this machine's time zone.
+  if (found !== undefined && resetsAt !== undefined && !/\|\d{10}\b/.test(found)) found = `${found}|${resetsAt}`;
   return found;
 }
 

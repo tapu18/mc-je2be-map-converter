@@ -385,19 +385,25 @@ it('stops the loop on CLI startup errors, shows diagnostics and refunds the atte
   expect((await f.load()).prs).toHaveLength(1);
 });
 
-it('refunds a structured CLI failure before work and stops with its diagnostic', async () => {
+it('refunds a structured CLI failure before work and holds that CLI without stopping', async () => {
   const f = await fixture();
   await f.run();
   await f.update(d => { d.workerLog = [
     JSON.stringify({ type: 'thread.started', thread_id: 'test' }),
     JSON.stringify({ type: 'turn.failed', error: { message: "The ' gpt-6.1-terra' model is not supported when using Codex with a ChatGPT account." } }),
   ]; });
-  await expect(f.run()).rejects.toThrow('AI CLI could not start');
+  expect((await f.run()).stdout).toContain('codex が作業前に失敗');
   const state = await f.state();
   expect(state.runs).toBe(0);
   expect(state.tasks[0].attempts).toBe(0);
   expect(state.tasks[0].error).toContain('model is not supported');
+  expect(state.tasks[0].launches[0]).toMatchObject({ counted: false });
+  expect(state.tasks[0].launches[0].limited).toBeUndefined();
+  expect(state.limits.codex).toMatchObject({ kind: 'failure' });
+  expect(state.limits.codex.until - Date.now()).toBeLessThanOrEqual(3600_000);
   expect((await f.load()).issues[0]!.labels.some(label => label.name === 'status:blocked')).toBe(false);
+  expect((await f.run()).stdout).toContain('起動失敗のため見送り中');
+  expect((await f.load()).workerPrompts).toHaveLength(1);
 });
 
 it('counts a failure after work and refunds an early error event', async () => {
@@ -407,7 +413,8 @@ it('counts a failure after work and refunds an early error event', async () => {
   await f.run();
   expect((await f.state()).runs).toBe(1);
   await f.update(d => { d.workerLog = [JSON.stringify({ type: 'error', message: 'authentication failed' })]; });
-  await expect(f.run()).rejects.toThrow('AI CLI could not start');
+  await f.run();
+  expect((await f.state()).limits.codex).toMatchObject({ kind: 'failure' });
   expect((await f.state()).runs).toBe(1);
   expect((await f.state()).tasks[0].attempts).toBe(1);
 });
@@ -419,10 +426,31 @@ it.each([['--model', ' bad'], ['--model=bad '], ['--model', "'bad'"], ['--model'
   await expect(access(join(f.root, '.git'))).rejects.toThrow();
 });
 
+// Shape of a real Claude Code 2.1 log (#395): the text alone did not match the quota pattern.
+const claudeQuota = [
+  JSON.stringify({ type: 'system', subtype: 'init', session_id: 'test' }),
+  JSON.stringify({ type: 'rate_limit_event', rate_limit_info: { status: 'rejected', resetsAt: Math.floor(Date.now() / 1000) + 7200, rateLimitType: 'five_hour' } }),
+  JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: "You've hit your 5-hour limit · resets 3:50am (Asia/Tokyo)" }] }, error: 'rate_limit' }),
+  JSON.stringify({ type: 'result', subtype: 'success', is_error: true, api_error_status: 429, api_error: 'usage_limit_reached', result: "You've hit your 5-hour limit · resets 3:50am (Asia/Tokyo)" }),
+];
+
 const quota = [
   JSON.stringify({ type: 'item.completed', item: { type: 'command_execution' } }),
   JSON.stringify({ type: 'turn.failed', error: { message: 'You’ve hit your usage limit. Upgrade to Pro or try again at 2:21 PM.' } }),
 ];
+
+it('waits for the Claude 5-hour limit until its structured reset time (#395)', async () => {
+  const f = await fixture();
+  await writeFile(f.config, JSON.stringify({ repo: 'owner/repo', agent: 'claude', agentArgs: ['--permission-mode', 'auto'] }));
+  await f.run();
+  await f.update(d => { d.workerLog = claudeQuota; });
+  expect((await f.run()).stdout).toContain('claude の使用量の上限');
+  const state = await f.state();
+  expect(state.runs).toBe(0);
+  expect(state.tasks[0].launches[0]).toMatchObject({ counted: false, limited: true });
+  const resetsAt = JSON.parse(claudeQuota[1]!).rate_limit_info.resetsAt * 1000;
+  expect(state.limits.claude).toMatchObject({ until: resetsAt + 60_000, kind: 'quota' });
+});
 
 it('waits for a worker CLI quota without stopping the runner or counting the launch', async () => {
   const f = await fixture();
