@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { paths, repoRoot } from "../paths.ts";
 import { assessComparison, formatDiffs, unexpectedDiffs } from "./compare.ts";
 import { loadScenarios, readGolden, writeGolden } from "./load.ts";
-import { runBedrockLoadTick } from "./load-tick.ts";
+import { runBedrockLoadTick, runBedrockRuntimeActions } from "./load-tick.ts";
 import { runBedrock, runJava } from "./run.ts";
 
 const servers = JSON.parse(readFileSync(join(repoRoot, "tools/servers.json"), "utf8")) as { java: { version: string } };
@@ -54,7 +54,8 @@ for (const s of selected) {
       const golden = readGolden(s);
       if (!golden) throw new Error(`${s.id}: 正解データがない`);
       const loadTick = s.bedrockRuntime === "load-tick";
-      const { state, log } = await (loadTick ? runBedrockLoadTick(s, servers.java.version) : runBedrock(s));
+      const { state, log } = await (loadTick ? runBedrockLoadTick(s, servers.java.version)
+        : s.bedrockRuntime === "actions" ? runBedrockRuntimeActions(s, servers.java.version) : runBedrock(s));
       if (loadTick) {
         const [id] = s.observe.storage!;
         const expected = golden.state.storage?.[id!] as { trace: { source: string }[]; after_reload: unknown[] };

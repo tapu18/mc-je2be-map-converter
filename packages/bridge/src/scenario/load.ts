@@ -29,7 +29,7 @@ export function loadScenarios(dir = scenariosDir): (Scenario & { id: string })[]
         throw new Error(`${s.id}: restart は bedrockPending の actions 専用`);
       }
       if (s.bedrockRuntime !== undefined) {
-        if (s.bedrockRuntime !== "load-tick" || !s.datapack || !s.observe.storage?.length
+        if ((s.bedrockRuntime !== "load-tick" && s.bedrockRuntime !== "actions") || !s.datapack || (s.bedrockRuntime === "load-tick" && !s.observe.storage?.length)
           || s.bedrockPending !== undefined || s.bedrock || s.play) {
           throw new Error(`${s.id}: bedrockRuntime には datapack と observe.storage が必要。bedrockPending、bedrock、play との併用はできない`);
         }
