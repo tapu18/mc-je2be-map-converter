@@ -44,6 +44,9 @@ describe("text to rawtext", () => {
     });
     // SNBT の書き方（1.21.5 以降）でも同じ
     expect(raw("{text:'x',italic:1b,extra:[{text:'y',italic:false}]}").rawtext).toEqual({ rawtext: [{ text: "§ox§ry" }] });
+    // 型の混ざったリストの先頭の文字列（SNBT では {"": …} に包まれる）を落とさない（#347）
+    expect(raw("['Hi ',{text:'x',color:'red'}]")).toEqual({ rawtext: { rawtext: [{ text: "Hi §cx" }] }, issues: [] });
+    expect(raw("['',{text:'x',bold:1b}]")).toEqual({ rawtext: { rawtext: [{ text: "§lx" }] }, issues: [] });
   });
 
   it("keeps translations with arguments and reports dropped or unsupported parts", () => {

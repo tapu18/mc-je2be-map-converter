@@ -96,8 +96,10 @@ export function toRawText(value: NbtTag, opts: RawTextOptions): { rawtext: RawTe
     }
     if (tag.type === "list") {
       // 配列は、先頭の要素を親にして残りをその extra とみなす（Java の決まり）
-      const [head, ...rest] = tag.value;
-      if (!head) return;
+      const [first, ...rest] = tag.value;
+      if (!first) return;
+      // 型の混ざったリストの要素はキーが空の compound に包まれるため、先頭は包みを外してから親にする
+      const head = first.type === "compound" && first.value.size === 1 && first.value.has("") ? first.value.get("")! : first;
       if (head.type === "compound") {
         const extra = head.value.get("extra");
         const merged = new Map(head.value);
