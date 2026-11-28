@@ -36,7 +36,7 @@ describe("警告コード", () => {
   });
 
   it("分類できない英語の理由は UNCLASSIFIED にして詳細を出さない", () => {
-    const warnings = collectWarnings({ ...empty, datapacks: { functions: 0, omitted: [], diagnostics: [{ pack: "p", path: "x", reason: "brand new internal reason" }] } });
+    const warnings = collectWarnings({ ...empty, datapacks: { functions: 0, omitted: [], nativeLines: { delegated: 0, undelegated: 0 }, diagnostics: [{ pack: "p", path: "x", reason: "brand new internal reason" }] } });
     expect(warnings).toMatchObject([{ code: "UNCLASSIFIED" }]);
     expect(renderMarkdownReport(empty, warnings, ctx)).not.toContain("brand new internal reason");
   });
@@ -46,7 +46,7 @@ const empty: ConvertReport = {
   scores: { objectives: 0, participants: 0, skipped: [] },
   storage: { entries: 0, errors: [] },
   entities: { scheduled: 0, skipped: [], fields: [] },
-  datapacks: { functions: 0, omitted: [], diagnostics: [] },
+  datapacks: { functions: 0, omitted: [], nativeLines: { delegated: 0, undelegated: 0 }, diagnostics: [] },
 };
 const ctx = { dataVersion: 4790, converterVersion: "git test", chunkerVersion: "1.21.0", mappingJavaVersion: "26.3", mappingDataVersion: 4790 };
 
@@ -58,7 +58,7 @@ const report: ConvertReport = {
     skipped: [{ type: "minecraft:marker", dimension: "minecraft:overworld", pos: { x: 1.5, y: 64, z: -2.25 }, field: "type", reason: "Java 専用。代替エンティティの移植対象" }],
     fields: [{ type: "minecraft:armor_stand", dimension: "minecraft:overworld", uuid: "u", pos: { x: 0, y: 64, z: 0 }, field: "NoGravity", reason: "保存値の復元は未対応" }],
   },
-  datapacks: { functions: 3, omitted: ["advancement", "functions"], diagnostics: [
+  datapacks: { functions: 3, omitted: ["advancement", "functions"], nativeLines: { delegated: 0, undelegated: 0 }, diagnostics: [
     { pack: "file/demo", path: "data/demo/function/a.mcfunction:2", reason: "command parse failed", command: "sya hi", error: "不明なコマンドかサブコマンド 'sya'（1文字目）" },
     { pack: "file/demo", path: "data/demo/function/m.mcfunction:1", reason: "macro hole can change command shape", start: 1, end: 9, command: "$$(cmd) hi" },
     { pack: "file/demo", path: "data/demo/tags/function/load.json", reason: "invalid tag JSON" },

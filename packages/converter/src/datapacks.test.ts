@@ -3,18 +3,24 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import AdmZip from "adm-zip";
-import { deserializeCommandIR, MappingLookup, writeNbt, type NbtTag } from "@je2be/core";
+import { deserializeCommandIR, MappingLookup, rewriteNativeCommand, writeNbt, type NbtTag } from "@je2be/core";
 import { expect, it, vi } from "vitest";
 import { collectDatapacks } from "./datapacks.ts";
 
+vi.mock("@je2be/core", async (importOriginal) => {
+  const core = await importOriginal<typeof import("@je2be/core")>();
+  return { ...core, rewriteNativeCommand: vi.fn(core.rewriteNativeCommand) };
+});
+vi.mock("./block-defaults.ts", () => ({ loadBlockDefaults: () => () => undefined }));
 vi.mock("./java-grammars.ts", () => ({
   fixedJavaDataVersion: 1,
   loadJavaGrammars: () => [
     { version: "test", dataVersion: 1, packFormat: 42, textFormat: "json", source: { functionDirectory: "function" } },
-    { version: "1.20.4", dataVersion: 3700, packFormat: 26, textFormat: "json", source: { functionDirectory: "functions" } },
+    { version: "1.20.4", dataVersion: 3700, packFormat: 26, textFormat: "json", commandsPath: "/grammars/1.20.4/commands.json", source: { functionDirectory: "functions" } },
   ],
   loadGrammarTree: () => ({ type: "root", children: {
     say: { type: "literal", executable: true },
+    spectate: { type: "literal", executable: true },
     give: { type: "literal", children: { targets: {
       type: "argument", parser: "minecraft:entity", children: { item: { type: "argument", parser: "minecraft:item_stack", executable: true } },
     } } },
@@ -42,7 +48,7 @@ it("collects enabled folder and zip functions and tags in saved order and report
     zip.addFile("data/minecraft/tags/function/tick.json", Buffer.from('{"replace":true,"values":["demo:b"]}'));
     zip.writeZip(join(world, "datapacks", "two.zip"));
     const result = collectDatapacks(world);
-    expect(result.report).toEqual({ functions: 2, omitted: ["advancement"], diagnostics: [] });
+    expect(result.report).toEqual({ functions: 2, omitted: ["advancement"], nativeLines: { delegated: 0, undelegated: 0 }, diagnostics: [] });
     expect(result.packs.map(p => p.name)).toEqual(["one", "two.zip"]);
     expect(result.packs[0]!.tags["minecraft:load"]).toEqual({ values: ["demo:a"] });
     expect(result.packs[1]!.tags["minecraft:tick"]).toEqual({ replace: true, values: ["demo:b"] });
@@ -83,4 +89,49 @@ it("selects 1.20.4 for a saved world and its legacy data pack", () => {
       reason: expect.stringContaining("1.20.4 → 1.20.5"), start: 10, end: 28, command: "give @s stick{HideFlags:1}",
     }]);
   } finally { rmSync(world, { recursive: true, force: true }); }
+});
+
+const mappings = new MappingLookup({schemaVersion: 1, source: {repository: "", revision: "", javaVersion: "", bedrockVersion: "", sha256: {}}, blocks: [], items: []});
+const strings = (values: string[]): NbtTag => ({ type: "list", elementType: "string", value: values.map(value => ({ type: "string", value })) });
+const compound = (entries: [string, NbtTag][]): NbtTag & { type: "compound" } => ({ type: "compound", value: new Map(entries) });
+/** A world with enabled folder packs: name → [pack_format, function directory, files]. */
+function packWorld(packs: [string, number, string, Record<string, string>][]): string {
+  const world = mkdtempSync(join(tmpdir(), "je2be-native-"));
+  writeFileSync(join(world, "level.dat"), gzipSync(writeNbt({ name: "", tag: compound([["Data", compound([["DataVersion", { type: "int", value: 1 }], ["DataPacks", compound([["Enabled", strings(packs.map(([name]) => `file/${name}`))], ["Disabled", strings([])]])]])]]) }, "java")));
+  for (const [name, format, directory, files] of packs) {
+    const dir = join(world, "datapacks", name, "data", "demo", directory);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(world, "datapacks", name, "pack.mcmeta"), JSON.stringify({ pack: { pack_format: format } }));
+    for (const [file, text] of Object.entries(files)) writeFileSync(join(dir, file), text);
+  }
+  return world;
+}
+
+it("reports function lines whose terminal command has no BE rewrite, per site, and keeps the function", () => {
+  const world = packWorld([["one", 42, "function", { "a.mcfunction": "say\n  spectate\n", "b.mcfunction": "spectate\n" }]]);
+  try {
+    const result = collectDatapacks(world, { mappings, blocksJson: "" });
+    expect(Object.keys(result.packs[0]!.functions)).toEqual(["demo:a", "demo:b"]);
+    expect(result.packs[0]!.functions["demo:a"]).toHaveLength(2);
+    expect(result.nativeCommands).toEqual([["say", "say"]]);
+    const site = (path: string, start: number) => ({ pack: "one", path, reason: "native rewrite unsupported", start, end: start + 8, command: "spectate", error: "spectate の書き換えは未対応" });
+    expect(result.report.diagnostics).toEqual([site("data/demo/function/a.mcfunction:2", 2), site("data/demo/function/b.mcfunction:1", 0)]);
+    expect(result.report.nativeLines).toEqual({ delegated: 1, undelegated: 2 });
+  } finally { rmSync(world, { recursive: true, force: true }); }
+});
+
+it("reports lines whose BE rewrite differs across pack grammar versions", () => {
+  vi.mocked(rewriteNativeCommand).mockImplementation((line, ctx) => ({ status: "rewritten", command: `${line} ${ctx.parser.options.version}`, issues: [] }));
+  const world = packWorld([["new", 42, "function", { "a.mcfunction": "say\n" }], ["old", 26, "functions", { "a.mcfunction": "say\n" }]]);
+  try {
+    const result = collectDatapacks(world, { mappings, blocksJson: "" });
+    expect(result.packs.map(pack => Object.keys(pack.functions))).toEqual([["demo:a"], ["demo:a"]]);
+    expect(result.nativeCommands).toEqual([]);
+    const site = (pack: string, path: string) => ({ pack, path, reason: "native rewrite differs across grammar versions", start: 0, end: 3, command: "say", error: "test: say test; 1.20.4: say 1.20.4" });
+    expect(result.report.diagnostics).toEqual([site("new", "data/demo/function/a.mcfunction:1"), site("old", "data/demo/functions/a.mcfunction:1")]);
+    expect(result.report.nativeLines).toEqual({ delegated: 0, undelegated: 2 });
+  } finally {
+    vi.mocked(rewriteNativeCommand).mockRestore();
+    rmSync(world, { recursive: true, force: true });
+  }
 });
