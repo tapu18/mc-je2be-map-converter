@@ -29,40 +29,40 @@
     "familyMaps": {
       "advancement_trigger": 8,
       "attribute": 4,
-      "click": 3,
-      "command": 17,
+      "click": 4,
+      "command": 18,
       "component": 12,
-      "effect": 15,
-      "entity": 16,
-      "game_rule": 8,
-      "hover": 2,
+      "effect": 16,
+      "entity": 17,
+      "game_rule": 9,
+      "hover": 3,
       "loot_condition": 6,
       "loot_entry": 7,
       "loot_function": 5,
-      "particle": 13,
-      "sound": 14
+      "particle": 14,
+      "sound": 15
     },
     "familyOutput": {
-      "command": 23071,
-      "game_rule": 78,
-      "sound": 1243,
-      "effect": 197,
-      "click": 61,
-      "entity": 541,
-      "particle": 58,
-      "hover": 2
+      "command": 29130,
+      "game_rule": 118,
+      "sound": 1657,
+      "effect": 520,
+      "entity": 653,
+      "particle": 72,
+      "click": 77,
+      "hover": 3
     },
     "definitionFiles": 1325,
     "commands": {
       "total": 115487,
-      "unavailable": 16455,
+      "unavailable": 5,
       "different": 90,
       "macro": 3630,
-      "invalid": 58,
-      "unmatched": 605,
-      "matched": 94649,
-      "output": 16722,
-      "outputWithWarnings": 2589
+      "invalid": 2373,
+      "unmatched": 1584,
+      "matched": 107805,
+      "output": 21200,
+      "outputWithWarnings": 3570
     }
   }
 }

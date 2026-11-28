@@ -6,58 +6,58 @@ Java 26.3 / BDS 1.26.66.1 / Geyser `e9271c00413bc75d0df5b3c4f1d9ca9c9764d4c7`。
 | --- | ---: | --- | ---: | ---: | ---: | ---: |
 | advancement_trigger | 58 | uninvestigated 58 | — 行・714 定義 | 0.00% | — | 8 |
 | attribute | 40 | uninvestigated 40 | 22 行・— 定義 | 0.00% | 0.00% | 4 |
-| click | 8 | uninvestigated 8 | 315 行・— 定義 | 0.00% | 19.37% | 3 |
-| command | 1489 | native 62 / rewrite 129 / runtime 9 / approximation 74 / uninvestigated 1215 | 176602 行・— 定義 | 12.34% | — | 17 |
+| click | 8 | uninvestigated 8 | 331 行・— 定義 | 0.00% | 23.26% | 4 |
+| command | 1489 | native 58 / rewrite 129 / runtime 63 / approximation 74 / uninvestigated 1165 | 198030 行・— 定義 | 64.75% | — | 18 |
 | component | 122 | uninvestigated 122 | 1702 行・— 定義 | 0.00% | 0.00% | 12 |
-| effect | 40 | rewrite 36 / impossible 4 | 254 行・— 定義 | 92.13% | 77.56% | 15 |
-| entity | 161 | rewrite 126 / asset 5 / uninvestigated 30 | 5319 行・— 定義 | 39.65% | 10.17% | 16 |
-| game_rule | 59 | native 1 / rewrite 27 / impossible 31 | 121 行・— 定義 | 64.46% | 64.46% | 8 |
-| hover | 3 | uninvestigated 3 | 237 行・— 定義 | 0.00% | 0.84% | 2 |
+| effect | 40 | rewrite 36 / impossible 4 | 594 行・— 定義 | 96.63% | 87.54% | 16 |
+| entity | 161 | rewrite 126 / asset 5 / uninvestigated 30 | 8987 行・— 定義 | 31.59% | 7.27% | 17 |
+| game_rule | 59 | native 1 / rewrite 27 / impossible 31 | 181 行・— 定義 | 63.54% | 65.19% | 9 |
+| hover | 3 | uninvestigated 3 | 238 行・— 定義 | 0.00% | 1.26% | 3 |
 | loot_condition | 20 | uninvestigated 20 | — 行・271 定義 | 0.00% | — | 6 |
 | loot_entry | 9 | uninvestigated 9 | — 行・618 定義 | 0.00% | — | 7 |
 | loot_function | 42 | uninvestigated 42 | — 行・1170 定義 | 0.00% | — | 5 |
-| particle | 128 | approximation 92 / uninvestigated 36 | 1442 行・— 定義 | 71.57% | 4.02% | 13 |
-| sound | 1991 | approximation 1917 / uninvestigated 74 | 1449 行・— 定義 | 96.34% | 85.78% | 14 |
+| particle | 128 | approximation 92 / uninvestigated 36 | 1985 行・— 定義 | 77.93% | 3.63% | 14 |
+| sound | 1991 | approximation 1917 / uninvestigated 74 | 1924 行・— 定義 | 97.25% | 86.12% | 15 |
 
 | 方式 | 全項目数 |
 | --- | ---: |
-| native | 63 |
+| native | 59 |
 | rewrite | 318 |
-| runtime | 9 |
+| runtime | 63 |
 | asset | 5 |
 | approximation | 2083 |
 | impossible | 35 |
-| uninvestigated | 1657 |
+| uninvestigated | 1607 |
 | 合計 | 4170 |
 
 入力があったアーカイブ 19 本、進捗・predicate・ルートテーブル定義 1325 ファイル。
-全 115487 行のうち、版選択不能 16455、範囲内で結果が異なる 90、マクロ 3630、構文不受理 58、パース済みで形が対応づかない 605。
-形が対応づいた 94649 行で書き換え器が出力したのは 16722 行（17.67%、全入力の 14.48%）。うち警告付き 2589 行。
+全 115487 行のうち、版選択不能 5、範囲内で結果が異なる 90、マクロ 3630、構文不受理 2373、パース済みで形が対応づかない 1584。
+形が対応づいた 107805 行で書き換え器が出力したのは 21200 行（19.67%、全入力の 18.36%）。うち警告付き 3570 行。
 
 ## 未調査の頻度上位20件（行数）
 
 | 族 | 項目 | 行数 | 作品数 |
 | --- | --- | ---: | ---: |
-| command | `execute if entity entities<minecraft:entity>` | 57159 | 15 |
-| command | `data modify entity target<minecraft:entity> targetPath<minecraft:nbt_path> merge value value<minecraft:nbt_tag>` | 55366 | 1 |
-| command | `function name<minecraft:function>` | 7607 | 14 |
-| command | `execute if score target<minecraft:score_holder> targetObjective<minecraft:objective> matches range<minecraft:int_range>` | 6302 | 15 |
-| command | `execute as targets<minecraft:entity>` | 5362 | 16 |
-| command | `execute at targets<minecraft:entity>` | 3781 | 16 |
-| command | `execute on passengers` | 2046 | 2 |
-| command | `summon entity<minecraft:resource> pos<minecraft:vec3> nbt<minecraft:nbt_compound_tag>` | 1835 | 15 |
-| command | `execute if data storage source<minecraft:resource_location> path<minecraft:nbt_path>` | 1210 | 4 |
-| command | `data modify storage target<minecraft:resource_location> targetPath<minecraft:nbt_path> append value value<minecraft:nbt_tag>` | 1088 | 3 |
+| command | `data modify entity target<minecraft:entity> targetPath<minecraft:nbt_path> merge value value<minecraft:nbt_tag>` | 55584 | 2 |
+| command | `summon entity<minecraft:resource> pos<minecraft:vec3> nbt<minecraft:nbt_compound_tag>` | 3296 | 16 |
+| command | `execute on passengers` | 2070 | 3 |
 | command | `data merge entity target<minecraft:entity> nbt<minecraft:nbt_compound_tag>` | 947 | 9 |
 | command | `particle name<minecraft:particle> pos<minecraft:vec3> delta<minecraft:vec3> speed<brigadier:float> count<brigadier:integer> force viewers<minecraft:entity>` | 937 | 6 |
-| command | `execute positioned pos<minecraft:vec3>` | 837 | 13 |
-| command | `execute store result score targets<minecraft:score_holder> objective<minecraft:objective>` | 729 | 13 |
-| command | `function name<minecraft:function> with storage source<minecraft:resource_location> path<minecraft:nbt_path>` | 710 | 5 |
-| command | `execute if block pos<minecraft:block_pos> block<minecraft:block_predicate>` | 618 | 14 |
-| command | `scoreboard players get target<minecraft:score_holder> objective<minecraft:objective>` | 452 | 9 |
-| command | `execute unless entity entities<minecraft:entity>` | 436 | 15 |
-| command | `execute store result storage target<minecraft:resource_location> path<minecraft:nbt_path> int scale<brigadier:double>` | 434 | 6 |
-| command | `execute unless score target<minecraft:score_holder> targetObjective<minecraft:objective> matches range<minecraft:int_range>` | 386 | 13 |
+| command | `data modify entity target<minecraft:entity> targetPath<minecraft:nbt_path> set value value<minecraft:nbt_tag>` | 798 | 8 |
+| command | `particle name<minecraft:particle> pos<minecraft:vec3> delta<minecraft:vec3> speed<brigadier:float> count<brigadier:integer> force` | 501 | 5 |
+| command | `execute unless data storage source<minecraft:resource_location> path<minecraft:nbt_path>` | 383 | 5 |
+| component | `minecraft:custom_model_data` | 341 | 2 |
+| command | `data get storage target<minecraft:resource_location> path<minecraft:nbt_path>` | 334 | 5 |
+| command | `execute on origin` | 330 | 2 |
+| click | `run_command` | 328 | 3 |
+| particle | `minecraft:dust` | 290 | 6 |
+| command | `execute if predicate predicate<minecraft:loot_predicate>` | 280 | 3 |
+| component | `minecraft:custom_name` | 276 | 9 |
+| command | `execute if data entity source<minecraft:entity> path<minecraft:nbt_path>` | 265 | 7 |
+| component | `minecraft:lore` | 260 | 4 |
+| command | `function name<minecraft:function> with storage source<minecraft:resource_location>` | 253 | 5 |
+| command | `advancement revoke targets<minecraft:entity> only advancement<minecraft:resource_key>` | 245 | 5 |
+| hover | `show_text` | 238 | 3 |
 
 ## 未調査の頻度上位20件（定義ファイル数）
 
