@@ -596,3 +596,13 @@ Java 26.3 で記録した `scenarios/datapack/entity-nbt-read.java.json`（Node 
 - 添字なしの `Pos` は 3、`UUID` は 4（要素数）を返す。`UUID[3]`・`UUID[-1]` のように int 配列にも添字（負を含む）が使え、要素の int を返す
 - 停止中の tick で召喚した `NoGravity` の防具立ては、召喚時の `Motion` をそのまま返す。`Motion` を指定しないマーカーも `Motion:[0.0,0.0,0.0]` を持つ
 - `execute store result storage … double 0.001` は `data get` の結果（1250）を 1.25 の double として書く
+
+### kill・tag・teleport をコマンドブロックに残す経路（#346）
+
+Java 26.3 と BDS 1.26.66.1 で、変換を通す `scenarios/convert/entity-commands`（3 回連続で両エディションとも通過）。対象は防具立てと豚で、プレイヤーは測っていない（#363）。成否はコマンドごとの条件付きチェーンでスコアに残した成功・失敗で、成功件数そのものは比べていない。
+
+- `kill @e[tag=…]`（防具立て・豚）、`execute as … run kill`（引数なし）は、40 tick 後に両エディションとも対象が残らなかった。一致しないセレクタの `kill` はどちらも失敗した
+- `tag … add` は複数の対象に付き、すでに持つタグの `add` と、持たないタグの `remove` は、どちらのエディションでも失敗した。一致しないセレクタも失敗
+- `tp` の絶対座標（小数）、`~` の相対座標、`execute … at @s run tp @s ~ ~ ~`、`<位置> <向き>`、`~45 ~10` の相対の向き、`facing <位置>`、`facing entity`（`feet` あり・なし、`entity` と `feet` を除いて BE の `facing <対象>` に書き換え）、`tp <対象> <対象>` で、座標とヨーが 0.01 以内で一致した。コマンドブロックからの `~` は両エディションとも、ブロックの x・z の中央を起点にした
+- **防具立てのピッチ**：BE の防具立ては `tp` で付けたピッチを保たず、40 tick 後の観測では 0 だった（ヨーは一致）。同じ tick の `execute as … at @s run tp @s ^ ^ ^4` はピッチ -60 度の向きに動いた（座標が Java と一致）。40 tick 後の同じ操作は水平に 4 進んだ（Java は -60 度のまま 2 進む）。Java は `tp` で付けたピッチを保ち続ける。0 に戻るまでの tick 数は測っていない
+- 防具立てのピッチが 40 tick 後に 0 になるため、`facing entity` の `feet`（Java の既定）と目の高さの違いは、このシナリオでは区別できていない。ヨーだけが一致を示す
