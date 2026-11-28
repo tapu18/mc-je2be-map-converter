@@ -17,7 +17,9 @@ export const nbtTextRuntimeReason =
   "テキストの nbt 成分（storage・エンティティ・ブロックの値の表示）は BE の rawtext にないため、ランタイムで値を読んで文字にする必要がある（仮想 NBT 層 #345 の後）";
 
 export function textCommandPlan(ir: CommandIR): TextCommandPlan | undefined {
-  const command = ir.command;
+  let command = ir.command;
+  // return run tellraw … も同じテキストを出す
+  while (command?.name === "return" && command.run) command = command.run.command;
   if (command?.name !== "tellraw" && command?.name !== "title") return undefined;
   const text = command.nodes.find(n => n.value?.kind === "text");
   if (text?.value?.kind !== "text") return undefined;

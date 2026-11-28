@@ -7,6 +7,7 @@ const entities = { type: "entities", amount: "multiple" };
 const component = { type: "argument", parser: "minecraft:component", executable: true } as const;
 const tree: CommandTreeNode = { type: "root", children: {
   tellraw: { type: "literal", children: { targets: { type: "argument", parser: "minecraft:entity", properties: entities, children: { message: component } } } },
+  return: { type: "literal", children: { run: { type: "literal" } } },
   title: { type: "literal", children: { targets: { type: "argument", parser: "minecraft:entity", properties: entities, children: {
     actionbar: { type: "literal", children: { title: component } },
     clear: { type: "literal", executable: true },
@@ -41,5 +42,6 @@ describe("text components", () => {
       .toEqual({ status: "unsupported", reason: nbtTextRuntimeReason, warnings: [], requiredContext: ["entityNbt"] });
     expect(assessText({ status: "parsed", ir: parse("tellraw @a {keybind:'key.jump'}") })).toMatchObject({ status: "unsupported", requiredContext: [] });
     expect(assessText({ status: "parsed", ir: parse("title @a clear") })).toMatchObject({ status: "unsupported" });
+    expect(assessText({ status: "parsed", ir: parse("return run tellraw @a 'x'") })).toMatchObject({ status: "native", value: { command: "tellraw" } });
   });
 });
