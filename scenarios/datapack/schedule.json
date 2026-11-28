@@ -68,5 +68,8 @@
       "m2:schedule"
     ]
   },
-  "bedrockPending": "M2 のデータパック実行が未実装"
+  "bedrockRuntime": "actions",
+  "requiredObservations": [
+    "storage.m2:schedule"
+  ]
 }

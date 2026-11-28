@@ -64,6 +64,8 @@ Java版サーバーで実行した結果を正解として記録し、BE で実�
 - Java は有効な空パックで起動する。tick を止めて `setup` を実行し、関数とタグを書き込んで `reload` を行う。関数が読み込まれてから `actions` へ進む。load・tick 関数を動かすには `ticks` で明示的に進める。
 - `observe.storage` では ID ごとに Java の保存 NBT を JSON に変換した値を記録する。リストの並びは保存する。long は文字列になり、そのほかの数値型の区別は省く。
 - `bedrockPending` は BE を実行できない理由。Java の記録と照合は通常どおり行い、BE のテストは理由付きでスキップする。`bedrock`、`play`、`knownDiffs` とは併用できない。
+- `bedrockRuntime: "actions"` はデータパックの関数を変換済みランタイムで動かして比べる。Java は `setup` とパックの読み込みまでを保存して変換する。`actions` の各 `run` は BE 側だけ、シナリオ専用の名前空間 `je2be_scenario:action/<番号>` の1行の関数にして変換器に通す（BE には Java のコマンドを RCON のように直接ランタイムへ渡す口がないため）。BE ではランタイムの毎 tick の処理の合間（`schedule` の tick 番号が Java の `tick step` と同じになった時点）でその関数を順に呼び、`ticks` はランタイムの tick 番号で待つ。最後にスコアを投影してからスコアとランタイムの storage を観測する。中核が未対応として失敗した操作は止めずに続け、テストの出力に一覧を出す。その影響は差分として現れるので、理由を `knownDiffs` に書く。`run` と `ticks` だけを使える。
+- `observe.storage` の差分は、根が複合値なら最上位のキーごとに出す（`storage.m2:calls.executors`）。既知の差分が同じ storage の別のキーの差分を隠さないようにするため。
 - `bedrockRuntime: "load-tick"` は起動順序の検証に使う。Java の準備と最後の tick 操作の直前までを保存して変換し、BE の指定 tick でスコア投影と確定済み storage を観測する。実行モードのない `datapack` と `observe.storage` には `bedrockPending` が必要。
 
 ## 比較の決まり

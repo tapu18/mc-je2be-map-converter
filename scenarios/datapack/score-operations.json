@@ -55,5 +55,8 @@
       "arithmetic"
     ]
   },
-  "bedrockPending": "M2 のデータパック実行が未実装"
+  "bedrockRuntime": "actions",
+  "requiredObservations": [
+    "scores.arithmetic"
+  ]
 }

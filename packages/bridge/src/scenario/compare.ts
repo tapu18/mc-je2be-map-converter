@@ -66,7 +66,13 @@ export function compareStates(java: NormalizedState, bedrock: NormalizedState): 
   for (const id of new Set([...Object.keys(java.storage ?? {}), ...Object.keys(bedrock.storage ?? {})])) {
     const j = java.storage?.[id];
     const b = bedrock.storage?.[id];
-    if (!isDeepStrictEqual(j, b)) diffs.push({ path: `storage.${id}`, java: j, bedrock: b });
+    if (isDeepStrictEqual(j, b)) continue;
+    // Compare a compound root per key so a known difference in one entry cannot hide another.
+    const compound = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);
+    if (!compound(j) || !compound(b)) { diffs.push({ path: `storage.${id}`, java: j, bedrock: b }); continue; }
+    for (const key of [...new Set([...Object.keys(j), ...Object.keys(b)])].sort()) {
+      if (!isDeepStrictEqual(j[key], b[key])) diffs.push({ path: `storage.${id}.${key}`, java: j[key], bedrock: b[key] });
+    }
   }
   compareMaps("blocks", java.blocks, bedrock.blocks, diffs, incomparable);
   compareMaps("entities", java.entities, bedrock.entities, diffs);

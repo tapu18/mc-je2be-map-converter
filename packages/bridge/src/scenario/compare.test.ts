@@ -102,6 +102,16 @@ describe("scenario normalize/compare", () => {
     expect(() => normalizeJava(observe, { entities: [...raw, raw[0]!] })).toThrow(/2 体/);
   });
 
+  it("compares a compound storage root per key so one known difference cannot hide another", () => {
+    const j = { storage: { "a:b": { trace: [1], executors: [1, 2] }, "a:list": [1] } };
+    const b = { storage: { "a:b": { trace: [2], executors: [] }, "a:list": [2] } };
+    expect(compareStates(j, b).diffs.map(d => d.path)).toEqual(["storage.a:b.executors", "storage.a:b.trace", "storage.a:list"]);
+    const known = { "storage.a:b.executors": "known", "storage.a:list": "known" };
+    expect(assessComparison(j, b, ["storage.a:b"], known)).toMatchObject({ passed: false, required: { different: 1 } });
+    expect(assessComparison({ storage: { "a:b": { trace: [1], executors: [1] } } }, { storage: { "a:b": { trace: [1], executors: [] } } }, ["storage.a:b"], known))
+      .toMatchObject({ passed: true, required: { "known-difference": 1 } });
+  });
+
   it("formats Java block states in a stable order", () => {
     expect(javaBlockString("minecraft:oak_stairs", { half: "top", facing: "east" })).toBe("minecraft:oak_stairs[facing=east,half=top]");
     expect(minimalBlockMapper("minecraft:stone", {})).toBeUndefined();

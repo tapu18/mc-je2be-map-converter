@@ -545,6 +545,15 @@ BDS 1.26.66.1 で `scenarios/datapack/load-tick.json` の変換済みワール�
 
 `packages/runtime-host/src/startup.servers.test.ts` では、BDS の初回起動と同じワールドの再起動で、各起動の最初の `tick` が同じ tick の `schedule` によるスコア変更を読み取った。再起動の `load` は前セッションで確定したスコアと storage を読み取った。
 
+### データパックのシナリオを変換済みランタイムで照合（#102）
+
+BDS 1.26.66.1 で、#96 の `calls`・`schedule`・`score-operations`・`storage-macro` の変換済みワールドを起動した。各 `run` 操作を1行の関数として変換器に通し、ランタイムの tick の合間に呼んだ（`bedrockRuntime: "actions"`、docs/scenarios.md）。結果を Java 26.3 の正解データと比べた（3回連続で同じ結果、`packages/bridge/src/scenario/scenarios.servers.test.ts`）。
+
+- `score-operations`：全演算子、負数の除算・剰余（`-7 / 2 = -4`、`-7 % 2 = 1`、`7 / -2 = -4`、`7 % -2 = -1`）、加算のオーバーフロー（`-2147483648`）が一致した
+- `schedule`：2 tick 後に `append` だけ、4 tick 後に `append` 2回、5 tick 後に `replace` が加わる順序が一致した。`replace` で以前の予約が消え、`clear` した関数は動かなかった
+- `storage-macro`：`set`・`merge`・`append`、スコアの保存、storage の複合値からのマクロ展開が一致した
+- `calls`：`return`・`return run`・`return fail`、`execute store result/success`、関数タグの順序（`second` → `first`）、スコア条件で動かない呼び出しが一致した。`summon minecraft:marker` は変換器が Java 専用エンティティとして未対応にしたため（代替エンティティは #383）、marker を実行者にした `executors` は Java の `[1,2,3,3,2,1]` に対して空だった
+
 ### 変換したコマンドブロックのチェーン起動（#321）
 
 [自作シナリオ](../scenarios/convert/runtime-command-chain.json) を Java 26.3 で生成し、Chunker 1.21.0 を通したワールドを BDS 1.26.66.1 で起動した。先頭のインパルスをレッドストーンで起動すると、storage から取得した値がスコア `observed = 42` になった。存在しないパスの取得の直後にある条件付きブロックはスキップされ、末尾の加算は1回だけ動いた。東向きに曲がる部分のローカル座標に従ってエメラルドブロックが置かれ、後続の BE への委譲がその位置で条件を満たしてダイヤモンドブロックに置き換えた。両版の観測値は [Java の正解データ](../scenarios/convert/runtime-command-chain.java.json) と一致した。
