@@ -176,13 +176,17 @@ export class RuntimeSession {
   private readonly deferred = new Set<string>();
   private chainCommands: ReadonlyMap<string, string> | undefined;
   private pendingNative: { before: Scores; run: () => CommandResult; source: string }[] = [];
+  /** Chains moved to the writable phase (#93 decision 2), in launch order. */
+  private queuedChains: (() => void)[] = [];
   constructor(state = new RuntimeState(), resolveNative?: NativeCommandResolver) {
     this.state = state;
     state.host ??= executionHost((_command, context, source) => {
       if (this.chainCommands) {
         const command = this.chainCommands.get(source);
-        if (command === undefined) return undefined;
-        return this.deferChainCommand(source, command, context);
+        if (command !== undefined) return this.restricted
+          ? this.deferChainCommand(source, command, context)
+          : executeNative(context, {command, completion: "synchronous"});
+        if (this.restricted) return undefined;
       }
       const native = resolveNative?.(source);
       if (native) return this.restricted ? {status: "unknown"} : executeNative(context, native);
@@ -236,6 +240,32 @@ export class RuntimeSession {
     return {status: "unknown"};
   }
 
+  /**
+   * Queue a whole chain for the writable phase after this tick's command blocks (#93 decision 2).
+   * Its delegated commands then report BE's `successCount` to later conditional blocks.
+   */
+  queueChain(run: () => void): {success: false; error: string} | {status: "unknown"} | undefined {
+    if (!this.consistent) return {success: false, error: "inconsistent session"};
+    if (this.unknownNative) return {status: "unknown"};
+    this.queuedChains.push(run);
+  }
+  /** Run queued chains in launch order. Call after `syncScores` in a writable tick. */
+  runQueuedChains(): void {
+    const chains = this.queuedChains;
+    this.queuedChains = [];
+    for (const run of chains) {
+      if (!this.consistent) throw Error("inconsistent session");
+      run();
+    }
+  }
+  /** Run a delegated chain block synchronously after projecting pending scores. Writable phase only. */
+  executeNativeNow(command: string, context: ExecutionContext): CommandResult {
+    if (!this.consistent) return {success: false, error: "inconsistent session"};
+    if (this.unknownNative) return {status: "unknown"};
+    try { this.syncScores(); } catch (error) { return {success: false, error: String(error)}; }
+    return executeNative(context, {command, completion: "synchronous"});
+  }
+
   private beginRestricted(): void {
     // Between callbacks in one tick, core commands read the unprojected scores.
     if (this.pendingScores) return;
@@ -260,10 +290,16 @@ export class RuntimeSession {
     if (result.ok && result.value.status === "unknown") this.unknownNative = true;
     return { status: "executed" as const, result };
   }
-  execute(ir: CommandIR, context?: ExecutionContext) {
+  /** `chainCommands` delegates command-block terminals synchronously, as in a queued chain. */
+  execute(ir: CommandIR, context?: ExecutionContext, chainCommands?: ReadonlyMap<string, string>) {
     if (!this.consistent) return { status: "inconsistent" as const };
     if (this.unknownNative) return { status: "unknown-native" as const };
     try { this.syncScores(); } catch (error) { return { status: "inconsistent" as const, error: String(error) }; }
+    this.chainCommands = chainCommands;
+    try { return this.executeWritable(ir, context); }
+    finally { this.chainCommands = undefined; }
+  }
+  private executeWritable(ir: CommandIR, context?: ExecutionContext) {
     let before = snapshot(this.state);
     let projection: Projection = {ok: true};
     const flush = () => {

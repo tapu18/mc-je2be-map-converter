@@ -16,6 +16,11 @@ export interface RuntimeChain {
   blocks: RuntimeChainBlock[];
   /** Terminal BE commands delegated by command blocks, keyed by the Java source. */
   nativeCommands: [string, string][];
+  /**
+   * Run the whole chain after this tick's command blocks, where delegated commands report BE's
+   * `successCount` to later conditional blocks (#93 decision 2). The launching block cannot observe the result.
+   */
+  deferred?: true;
 }
 
 export const chainLaunchPrefix = "chain@";

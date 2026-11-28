@@ -45,8 +45,10 @@ world.afterEvents.worldLoad.subscribe(() => {
     session = runtime;
     const interval = system.runInterval(() => {
       try {
+        // Project pending launcher scores, then run chains moved after this tick's command blocks
+        // (#93 decision 2), before schedule and the tick tag.
         runtime.syncScores();
-        // Project pending launcher scores before schedule and the tick tag.
+        runtime.runQueuedChains();
         if (state.functions.size) for (const {ir} of scheduledFunctionCalls(state)) execute(ir);
         runTag("minecraft:tick");
         commitState(properties, state);

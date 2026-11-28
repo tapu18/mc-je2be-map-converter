@@ -49,6 +49,15 @@ export function registerLauncher(getSession: () => RuntimeSession | undefined, g
         };
         const chain = isChain ? getChains().get(id) : undefined;
         if (isChain && (!chain || chain.dimension !== dim)) return failure(`unknown chain in ${dim}: ${id}`);
+        if (chain?.deferred) {
+          const queued = session.queueChain(() => {
+            const result = executeChain(session, chain, context, "writable");
+            if ("status" in result) console.warn(`[je2be] ${id}: unknown head outcome`);
+          });
+          if (queued) return "status" in queued ? failure("runtime has an unknown native outcome") : failure(queued.error);
+          // The head's outcome is unknown here. Do not report success to its comparator (#236).
+          return failure(`${id} runs after this tick's command blocks`);
+        }
         const result = chain ? executeChain(session, chain, context) : session.executeRestricted(functionCall(id), context);
         if ("status" in result) {
           console.warn(`[je2be] je2be:run ${id}: unknown command outcome`);
