@@ -40,6 +40,7 @@ export interface Playtest {
 const OFFSETS: Record<Facing, Vec3> = { down: [0, -1, 0], up: [0, 1, 0], north: [0, 0, -1], south: [0, 0, 1], west: [-1, 0, 0], east: [1, 0, 0] };
 const BE_FACING: Record<Facing, number> = { down: 0, up: 1, north: 2, south: 3, west: 4, east: 5 };
 const TRIGGER = /^setblock (-?\d+) (-?\d+) (-?\d+) minecraft:redstone_block$/;
+const PRESS_TICKS = 5;
 const OBJECTIVE = /^scoreboard objectives add (\S+) /;
 /** 準備のチェーンを置く列。BDS の読み込み範囲（0..63）に入れる。シナリオの配置と重なれば失敗にする */
 const PREP_X = 0;
@@ -76,15 +77,20 @@ export function toPlaytest(s: Scenario): Playtest {
   const blocks = commandBlocks(s.actions);
   const prepCommands: string[] = [];
   const triggers: PlaytestButton[] = [];
+  /** 起動ごとに、次の起動までにシナリオが進める tick */
+  const waits: number[] = [];
   for (const a of s.play) {
     if (!("run" in a)) {
       if ("commandBlocks" in a) throw new Error(`${s.id}: play でコマンドブロックを置く操作は作り替えられない`);
+      if ("ticks" in a && waits.length) waits[waits.length - 1]! += a.ticks;
       continue;
     }
     const m = TRIGGER.exec(a.run);
     const button = m ? triggerButton([Number(m[1]), Number(m[2]), Number(m[3])], blocks, `実行${triggers.length + 1}`) : undefined;
-    if (button) triggers.push(button);
-    else {
+    if (button) {
+      triggers.push(button);
+      waits.push(0);
+    } else {
       if (triggers.length) throw new Error(`${s.id}: 起動の後に準備のコマンドがある（${a.run}）`);
       prepCommands.push(a.run);
     }
@@ -108,7 +114,8 @@ export function toPlaytest(s: Scenario): Playtest {
     buttons.unshift({ label: "準備", pos: [PREP_X, y, 1], facing: "north" });
   }
   for (const b of buttons) extra.push({ run: `setblock ${b.pos.join(" ")} ${javaButton(b, false)}` });
-  const steps: PlaytestStep[] = buttons.map((button) => ({ button, ticks: 5 }));
+  // 押した後は、元のシナリオがその起動の後に進める tick（最低 5 tick）だけ待つ
+  const steps: PlaytestStep[] = buttons.map((button) => ({ button, ticks: Math.max(PRESS_TICKS, waits[triggers.indexOf(button)] ?? 0) }));
   if (!s.requiredObservations?.length) throw new Error(`${s.id}: requiredObservations がない`);
   return {
     id: s.id, setup: s.setup, actions: [...s.actions, ...extra], steps,

@@ -12,6 +12,7 @@ const base = (play: NonNullable<Scenario["play"]>): Scenario => ({
 it("turns redstone triggers into buttons and other play commands into a prep chain", () => {
   const p = toPlaytest(base([{ run: "summon minecraft:armor_stand 10 -60 4" }, { ticks: 2 }, { run: "setblock 2 -60 1 minecraft:redstone_block" }, { ticks: 5 }]));
   expect(p.steps.map((s) => [s.button.label, s.button.pos, s.button.facing])).toEqual([["準備", [0, -60, 1], "north"], ["実行1", [2, -60, 1], "north"]]);
+  expect(p.steps.map((s) => s.ticks)).toEqual([5, 5]);
   expect(p.actions[1]).toEqual({ commandBlocks: [
     { pos: [0, -60, 2], kind: "impulse", facing: "south", alwaysActive: false, command: "summon minecraft:armor_stand 10 -60 4" },
     { pos: [0, -60, 3], kind: "chain", facing: "south", alwaysActive: true, command: "scoreboard objectives setdisplay sidebar t" },
@@ -23,6 +24,18 @@ it("turns redstone triggers into buttons and other play commands into a prep cha
   expect(p.buttonObserve).toEqual({ blocks: [{ from: [0, -60, 1] }, { from: [2, -60, 1] }] });
   expect(p.observe).toEqual({ scores: ["t"] });
   expect(p.requiredObservations).toEqual(["scores.t"]);
+});
+
+it("waits after each button as long as the scenario waits after that trigger", () => {
+  const blocks = { commandBlocks: [
+    { pos: [2, -60, 2] as [number, number, number], kind: "impulse" as const, facing: "south" as const, alwaysActive: false, command: "say a" },
+    { pos: [6, -60, 2] as [number, number, number], kind: "impulse" as const, facing: "south" as const, alwaysActive: false, command: "say b" },
+  ] };
+  const p = toPlaytest({ ...base([
+    { run: "setblock 2 -60 1 minecraft:redstone_block" }, { ticks: 30 }, { ticks: 10 },
+    { run: "setblock 6 -60 1 minecraft:redstone_block" },
+  ]), actions: [blocks] });
+  expect(p.steps.map((s) => [s.button.label, s.ticks])).toEqual([["準備", 5], ["実行1", 40], ["実行2", 5]]);
 });
 
 it("rejects play steps it cannot turn into buttons", () => {
