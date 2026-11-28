@@ -1,5 +1,5 @@
 import {
-  commandBlockBehind, commandBlockLinks, compileModifier, entityNbtRejection, normalizeCommandIR, rewriteCommand, rewriteNativeCommand, runtimeFamilies, serializeCommandIR, toCommandIR,
+  assessText, commandBlockBehind, commandBlockLinks, compileModifier, entityNbtRejection, normalizeCommandIR, rewriteCommand, rewriteNativeCommand, runtimeFamilies, serializeCommandIR, toCommandIR,
   type CommandBlockInfo, type CommandIR, type RewriteContext, type RuntimeChain, type RuntimeState, type TextFormat,
 } from "@je2be/core";
 
@@ -113,7 +113,12 @@ export function compileRuntimeChain(
     const rejection = entityNbtRejection(ir);
     if (rejection) return rejection;
     const native = resolve(ir.source);
-    if (native === undefined) return `ランタイム実行・BE への委譲ともに未対応: ${command.name}`;
+    if (native === undefined) {
+      // nbt 成分のテキストは、ランタイムに回すべき理由（値の読み出し）をそのまま出す（#347）
+      const text = command.name === "tellraw" || command.name === "title" ? assessText({ status: "parsed", ir }) : undefined;
+      if (text?.status === "unsupported" && text.requiredContext.length) return text.reason;
+      return `ランタイム実行・BE への委譲ともに未対応: ${command.name}`;
+    }
     if (consumes) return pendingDecision;
     const previous = delegates.get(ir.source);
     if (previous !== undefined && previous !== native) return "同一の命令に複数の BE への委譲先がある";

@@ -3,7 +3,7 @@ import type { NbtTag } from "../nbt/nbt.ts";
 import { MappingLookup, type MappingTables } from "../mappings/mappings.ts";
 import { readSelector } from "./arguments.ts";
 import { CommandParser, type CommandTreeNode } from "./parser.ts";
-import { toRawText } from "./rawtext.ts";
+import { toRawText } from "../features/text/rawtext.ts";
 import { StringReader } from "./reader.ts";
 import { rewriteCommand, rewriteSelector, type RewriteContext } from "./rewrite.ts";
 import { readSnbtValue } from "./snbt.ts";
