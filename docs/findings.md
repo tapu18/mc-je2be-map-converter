@@ -551,6 +551,10 @@ BDS 1.26.66.1 で `scenarios/datapack/load-tick.json` の変換済みワール�
 
 BDS のカスタムコマンドの文字列引数では、`chain@0` を引用符なしで渡すと `@0` で構文エラーになった。引用符付きの `"chain@0"` は受理され、生成したワールドからの起動にも使えた。
 
+### 書き込みのできる段階に移したチェーンの成否（#236）
+
+BDS 1.26.66.1 の `packages/runtime-host/src/deferred-chain.servers.test.ts`（3回連続成功）で確かめた。`deferred` を付けたチェーンを `je2be:run` で起動すると、ハンドラはキューに積んで `Failure` を返し、毎tickの処理（`system.runInterval`）で丸ごと実行された。先頭のスコア設定の後、委譲した `tag @e[tag=…,c=1] add …` は、対象がいる行では `successCount` 1 でタグを付けて後ろの条件付きブロックを動かした。対象がいない行では条件付きブロックが動かず、スコアは設定されなかった。どちらの行でも先頭の比較器は点灯しなかった。同じ配置で `deferred` を外すと（ハンドラ内で実行）、委譲の成否が未確定のため対象がいる行でも条件付きブロックが動かなかった。
+
 ### エンティティとプレイヤーのスコア保持者（#331）
 
 `packages/runtime-host/src/holders.servers.test.ts`（BDS 1.26.66.1、各3回）で確かめた。
