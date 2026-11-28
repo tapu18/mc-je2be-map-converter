@@ -59,7 +59,7 @@ it.each([
     const report = convertWorld(java.worldDirectory, out, conversion);
     expect(report.datapacks.diagnostics).toEqual([{
       pack: "je2be-scenario", path: `data/demo/${grammar.source.functionDirectory}/invalid.mcfunction:2`,
-      reason: expect.stringContaining("26.2 → 26.3: schedule clear"), start: 28, end: 31,
+      reason: expect.stringContaining("26.2 → 26.3: schedule clear"), start: 28, end: 31, command: "return run schedule clear foo",
     }]);
     const js = readFileSync(join(out, "behavior_packs", "je2be_init", "scripts", "datapacks.js"), "utf8");
     const data = JSON.parse(js.slice("export const datapacks = ".length, -2));

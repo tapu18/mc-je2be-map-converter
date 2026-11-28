@@ -80,7 +80,7 @@ it("selects 1.20.4 for a saved world and its legacy data pack", () => {
     expect(result.packs[0]!.functions["demo:unsupported"]).toBeUndefined();
     expect(result.report.diagnostics).toEqual([{
       pack: "old", path: "data/demo/functions/unsupported.mcfunction:1",
-      reason: expect.stringContaining("1.20.4 → 1.20.5"), start: 10, end: 28,
+      reason: expect.stringContaining("1.20.4 → 1.20.5"), start: 10, end: 28, command: "give @s stick{HideFlags:1}",
     }]);
   } finally { rmSync(world, { recursive: true, force: true }); }
 });
